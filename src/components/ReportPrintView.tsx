@@ -412,7 +412,7 @@ export const ReportPrintView: React.FC<ReportPrintViewProps> = ({
           <div>
             <p className="text-slate-500 mb-1">Bandung, {todayStr}<br/>Pengawas Sekolah Pembina,</p>
             <div className="signature-space h-16"></div>
-            <p className="font-bold underline text-slate-900">H. Kusnandar, M.Si.</p>
+            <p className="font-bold underline text-slate-900">Kusnandar, M.Si</p>
             <p className="text-[11px] text-slate-600">Pengawas Pembina SMA Prov. Jawa Barat</p>
           </div>
         </div>

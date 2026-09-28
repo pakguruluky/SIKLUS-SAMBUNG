@@ -54,7 +54,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </p>
             <p className="text-lg font-bold text-white flex items-center justify-center gap-2">
               <ShieldCheck className="w-5 h-5 text-indigo-400" />
-              H. Kusnandar, M.Si.
+              Kusnandar, M.Si
             </p>
             <p className="text-xs text-indigo-300 mt-0.5">Pengawas Pembina &amp; Pengembang Mutu SMA</p>
           </div>
@@ -84,7 +84,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   <span className="text-xs font-bold text-white group-hover:text-purple-300">Pengawas / Admin</span>
                   <ShieldCheck className="w-4 h-4 text-purple-400" />
                 </div>
-                <p className="text-[11px] text-slate-400 mt-1">H. Kusnandar, M.Si.</p>
+                <p className="text-[11px] text-slate-400 mt-1">Kusnandar, M.Si</p>
               </button>
 
               <button
@@ -291,7 +291,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 </div>
                 <div>
                   <h3 className="font-bold text-slate-900">Pengawas / Admin</h3>
-                  <p className="text-xs text-slate-500">H. Kusnandar, M.Si.</p>
+                  <p className="text-xs text-slate-500">Kusnandar, M.Si</p>
                 </div>
               </div>
               <ul className="text-xs text-slate-600 space-y-2">

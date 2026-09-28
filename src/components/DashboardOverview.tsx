@@ -544,7 +544,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             </h1>
             <p className="text-xs sm:text-sm text-indigo-100 mt-1 max-w-2xl leading-relaxed">
               {isAdmin
-                ? 'Portal Pengawasan & Pembinaan Akademik SMA binaan H. Kusnandar, M.Si.'
+                ? 'Portal Pengawasan & Pembinaan Akademik SMA binaan Kusnandar, M.Si'
                 : isKepsek
                 ? `Dashboard Supervisi Akademik Internal ${currentUser.schoolName || 'Satuan Pendidikan'}.`
                 : `Ruang Kerja Guru & Portofolio Supervisi Pembelajaran ${currentUser.subject || ''} (${currentUser.schoolName || ''}).`}

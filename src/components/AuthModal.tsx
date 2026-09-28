@@ -70,7 +70,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         const newProfile: UserProfile = {
           uid: res.user.uid,
           email: res.user.email || email,
-          displayName: displayName || (finalRole === 'admin' ? 'H. Kusnandar, M.Si.' : 'Pengguna Baru'),
+          displayName: displayName || (finalRole === 'admin' ? 'Kusnandar, M.Si' : 'Pengguna Baru'),
           role: finalRole,
           schoolId: finalRole === 'admin' ? undefined : schoolId,
           schoolName: finalRole === 'admin' ? undefined : selectedSchool?.name,
@@ -94,7 +94,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           profile = {
             uid: res.user.uid,
             email: res.user.email || '',
-            displayName: res.user.displayName || (isAdminEmail ? 'H. Kusnandar, M.Si.' : 'Pengguna SIKLUS SAMBUNG'),
+            displayName: res.user.displayName || (isAdminEmail ? 'Kusnandar, M.Si' : 'Pengguna SIKLUS SAMBUNG'),
             role: isAdminEmail ? 'admin' : 'guru',
             createdAt: new Date().toISOString(),
           };
@@ -133,7 +133,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         profile = {
           uid: res.user.uid,
           email: res.user.email || '',
-          displayName: res.user.displayName || (isAdminEmail ? 'H. Kusnandar, M.Si.' : 'Guru SIKLUS SAMBUNG'),
+          displayName: res.user.displayName || (isAdminEmail ? 'Kusnandar, M.Si' : 'Guru SIKLUS SAMBUNG'),
           role: isAdminEmail ? 'admin' : 'guru',
           createdAt: new Date().toISOString(),
         };

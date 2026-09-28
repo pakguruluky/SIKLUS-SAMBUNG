@@ -83,7 +83,7 @@ export default function App() {
           const defaultProfile: UserProfile = {
             uid: user.uid,
             email: user.email || '',
-            displayName: user.displayName || (isAdmin ? 'H. Kusnandar, M.Si.' : 'Pengguna SIKLUS SAMBUNG'),
+            displayName: user.displayName || (isAdmin ? 'Kusnandar, M.Si' : 'Pengguna SIKLUS SAMBUNG'),
             role: isAdmin ? 'admin' : 'guru',
             createdAt: new Date().toISOString(),
           };
@@ -121,7 +121,7 @@ export default function App() {
       mockProfile = {
         uid: 'admin-kusnandar',
         email: 'pakguruluky@gmail.com',
-        displayName: 'H. Kusnandar, M.Si.',
+        displayName: 'Kusnandar, M.Si',
         role: 'admin',
         createdAt: new Date().toISOString(),
       };

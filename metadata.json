@@ -1,6 +1,6 @@
 {
   "name": "SIKLUS SAMBUNG - Sistem Informasi Supervisi Akademik SMA",
-  "description": "Sistem Informasi Pengawasan, Pendampingan, dan Evaluasi Guru SMA (SIKLUS SAMBUNG) dikembangkan untuk H. Kusnandar, M.Si. Mendampingi Guru, Meningkatkan Mutu.",
+  "description": "Sistem Informasi Pengawasan, Pendampingan, dan Evaluasi Guru SMA (SIKLUS SAMBUNG) dikembangkan untuk Kusnandar, M.Si. Mendampingi Guru, Meningkatkan Mutu.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

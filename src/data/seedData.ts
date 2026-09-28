@@ -15,7 +15,7 @@ export const SAMPLE_SUPERVISIONS: Supervision[] = [
     lessonTitle: 'Gelombang Mekanik & Resonansi Bunyi (Sebelum Penilaian)',
     status: 'draft',
     supervisorId: 'admin-kusnandar',
-    supervisorName: 'H. Kusnandar, M.Si.',
+    supervisorName: 'Kusnandar, M.Si',
     supervisorRole: 'admin',
     createdAt: '2026-09-01T08:00:00.000Z',
     updatedAt: '2026-09-20T10:00:00.000Z',
@@ -99,7 +99,7 @@ export const SAMPLE_SUPERVISIONS: Supervision[] = [
     lessonTitle: 'Termodinamika & Hukum Kekekalan Energi Berbasis Masalah Nyata',
     status: 'completed',
     supervisorId: 'admin-kusnandar',
-    supervisorName: 'H. Kusnandar, M.Si.',
+    supervisorName: 'Kusnandar, M.Si',
     supervisorRole: 'admin',
     createdAt: '2025-08-15T08:30:00.000Z',
     updatedAt: '2025-09-10T11:45:00.000Z',
@@ -136,7 +136,7 @@ export const SAMPLE_SUPERVISIONS: Supervision[] = [
         rekomendasi: 'Dapat dijadikan model praktik baik (Best Practice) bagi MGMP Fisika SMA Kota Bandung.'
       },
       reviewedAt: '2025-08-25T14:00:00.000Z',
-      reviewedBy: 'H. Kusnandar, M.Si.',
+      reviewedBy: 'Kusnandar, M.Si',
       revisi: {
         modulAjarRevisiUrl: 'https://drive.google.com/file/d/1DemoModulFisikaRevisi/view?usp=sharing',
         catatanRevisiGuru: 'Telah ditambahkan integrasi projek hemat energi dan rubrik peer-review asesmen otentik.',
@@ -255,7 +255,7 @@ export const SAMPLE_SUPERVISIONS: Supervision[] = [
     lessonTitle: 'Menulis Teks Anekdot Mengkritisi Kebijakan Publik Berdasarkan Fakta',
     status: 'completed',
     supervisorId: 'admin-kusnandar',
-    supervisorName: 'H. Kusnandar, M.Si.',
+    supervisorName: 'Kusnandar, M.Si',
     supervisorRole: 'admin',
     createdAt: '2025-08-18T09:00:00.000Z',
     updatedAt: '2025-09-12T14:20:00.000Z',
@@ -289,7 +289,7 @@ export const SAMPLE_SUPERVISIONS: Supervision[] = [
         rekomendasi: 'Diteruskan ke tahap observasi pembelajaran tatap muka.'
       },
       reviewedAt: '2025-08-26T11:00:00.000Z',
-      reviewedBy: 'H. Kusnandar, M.Si.',
+      reviewedBy: 'Kusnandar, M.Si',
       revisi: {
         modulAjarRevisiUrl: 'https://drive.google.com/file/d/1DemoModulAnekdotRevisi/view?usp=sharing',
         catatanRevisiGuru: 'Telah ditambahkan rubrik peer-review antarteman dan panduan regulasi emosi murid sesuai catatan supervisor.',
@@ -408,7 +408,7 @@ export const SAMPLE_SUPERVISIONS: Supervision[] = [
     lessonTitle: 'Eksplorasi Fungsi Eksponensial dalam Pertumbuhan Mikroorganisme dan Investasi',
     status: 'in_progress',
     supervisorId: 'admin-kusnandar',
-    supervisorName: 'H. Kusnandar, M.Si.',
+    supervisorName: 'Kusnandar, M.Si',
     supervisorRole: 'admin',
     createdAt: '2025-09-01T08:00:00.000Z',
     updatedAt: '2025-09-20T10:00:00.000Z',
@@ -442,7 +442,7 @@ export const SAMPLE_SUPERVISIONS: Supervision[] = [
         rekomendasi: 'Lanjut ke tahap pra-observasi dan kunjungan kelas tatap muka.'
       },
       reviewedAt: '2025-09-10T09:00:00.000Z',
-      reviewedBy: 'H. Kusnandar, M.Si.'
+      reviewedBy: 'Kusnandar, M.Si'
     },
 
     praObservasi: {

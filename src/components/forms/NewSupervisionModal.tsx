@@ -34,10 +34,10 @@ export const NewSupervisionModal: React.FC<NewSupervisionModalProps> = ({
   const [lessonTitle, setLessonTitle] = useState('');
   const [supervisorName, setSupervisorName] = useState(
     currentUser.role === 'admin' 
-      ? 'H. Kusnandar, M.Si.' 
+      ? 'Kusnandar, M.Si' 
       : currentUser.role === 'kepsek' 
       ? currentUser.displayName 
-      : 'H. Kusnandar, M.Si.'
+      : 'Kusnandar, M.Si'
   );
 
   const [saving, setSaving] = useState(false);
@@ -296,7 +296,7 @@ export const NewSupervisionModal: React.FC<NewSupervisionModalProps> = ({
               type="text"
               value={supervisorName}
               onChange={(e) => setSupervisorName(e.target.value)}
-              placeholder="H. Kusnandar, M.Si."
+              placeholder="Kusnandar, M.Si"
               className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-indigo-600"
             />
           </div>

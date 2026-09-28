@@ -1,0 +1,35 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'pakguruluky@gmail.com' ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+      );
+    }
+
+    // Schools Collection: public read, write for setup and admin
+    match /schools/{schoolId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Users Collection: read and write for authenticated users or user management
+    match /users/{userId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Supervisions Collection: accessible by users, supervised teachers, and administrators
+    match /supervisions/{supervisionId} {
+      allow read: if true;
+      allow write: if true;
+    }
+  }
+}

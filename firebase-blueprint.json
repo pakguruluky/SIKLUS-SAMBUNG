@@ -1,0 +1,72 @@
+{
+  "entities": {
+    "School": {
+      "title": "School",
+      "description": "SMA target sekolah pengawasan",
+      "type": "object",
+      "properties": {
+        "npsn": { "type": "string", "maxLength": 16, "description": "Nomor Pokok Sekolah Nasional" },
+        "name": { "type": "string", "maxLength": 120, "description": "Nama Satuan Pendidikan SMA" },
+        "address": { "type": "string", "maxLength": 250, "description": "Alamat Lengkap Sekolah" },
+        "principalName": { "type": "string", "maxLength": 100, "description": "Nama Kepala Sekolah dan Gelar" },
+        "accreditation": { "type": "string", "enum": ["A", "B", "C", "Belum Terakreditasi"], "description": "Peringkat Akreditasi" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Waktu pembuatan data" },
+        "createdBy": { "type": "string", "maxLength": 128, "description": "UID Pembuat data" }
+      },
+      "required": ["npsn", "name", "principalName", "accreditation", "createdAt", "createdBy"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Profil Pengguna SIKLUS SAMBUNG (Admin, Kepsek, Guru)",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "format": "email", "maxLength": 120, "description": "Email Akun" },
+        "displayName": { "type": "string", "maxLength": 100, "description": "Nama Lengkap dan Gelar" },
+        "role": { "type": "string", "enum": ["admin", "kepsek", "guru"], "description": "Peran Pengguna" },
+        "schoolId": { "type": "string", "maxLength": 128, "description": "ID Sekolah asal (kosong untuk Admin pusat)" },
+        "nip": { "type": "string", "maxLength": 30, "description": "NIP atau NUPTK Guru/Kepsek" },
+        "phone": { "type": "string", "maxLength": 20, "description": "Nomor WhatsApp aktif" },
+        "subject": { "type": "string", "maxLength": 80, "description": "Mata Pelajaran yang diampu (khusus Guru)" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Waktu registrasi" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Waktu pembaruan" }
+      },
+      "required": ["email", "displayName", "role", "createdAt"]
+    },
+    "Supervision": {
+      "title": "Supervision",
+      "description": "Data Rekam Supervisi Akademik Guru SMA Lengkap",
+      "type": "object",
+      "properties": {
+        "schoolId": { "type": "string", "maxLength": 128, "description": "ID Sekolah" },
+        "schoolName": { "type": "string", "maxLength": 120, "description": "Nama Sekolah" },
+        "teacherId": { "type": "string", "maxLength": 128, "description": "UID Guru yang disupervisi" },
+        "teacherName": { "type": "string", "maxLength": 100, "description": "Nama Guru" },
+        "teacherNip": { "type": "string", "maxLength": 30, "description": "NIP Guru" },
+        "subject": { "type": "string", "maxLength": 80, "description": "Mata Pelajaran" },
+        "classGrade": { "type": "string", "maxLength": 30, "description": "Kelas atau Fase" },
+        "semester": { "type": "string", "enum": ["Ganjil", "Genap"], "description": "Semester" },
+        "schoolYear": { "type": "string", "maxLength": 20, "description": "Tahun Pelajaran contoh 2025/2026" },
+        "status": { "type": "string", "enum": ["draft", "submitted", "in_progress", "completed"], "description": "Status Supervisi" },
+        "supervisorId": { "type": "string", "maxLength": 128, "description": "UID Penelaah/Supervisor" },
+        "supervisorName": { "type": "string", "maxLength": 100, "description": "Nama Pengawas / Kepala Sekolah" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Waktu pembuatan berkas" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Waktu update berkas" }
+      },
+      "required": ["schoolId", "teacherId", "teacherName", "subject", "schoolYear", "status", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/schools/{schoolId}": {
+      "schema": { "$ref": "#/entities/School" },
+      "description": "Daftar Satuan Pendidikan SMA binaan pengawas"
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Profil Pengguna dan Penetapan Peran"
+    },
+    "/supervisions/{supervisionId}": {
+      "schema": { "$ref": "#/entities/Supervision" },
+      "description": "Dokumen Rekam Jejak Supervisi Akademik Guru Lengkap"
+    }
+  }
+}

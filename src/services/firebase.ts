@@ -31,30 +31,30 @@ export const auth = getAuth(app);
 
 export const DEFAULT_SCHOOLS: School[] = [
   {
-    id: 'sch-sman1',
-    npsn: '20219801',
-    name: 'SMAN 1 Kota Bandung',
-    address: 'Jl. Ir. H. Juanda No. 93, Dago, Coblong, Kota Bandung',
+    id: 'sch-sman4',
+    npsn: '20220304',
+    name: 'SMA Negeri 4 Bogor',
+    address: 'Jl. Dreded No. 36, Empang, Kec. Bogor Selatan, Kota Bogor, Jawa Barat 16132',
     principalName: 'Dra. Hj. Yeni Suryani, M.Pd.',
     accreditation: 'A',
     createdAt: new Date().toISOString(),
     createdBy: 'system'
   },
   {
-    id: 'sch-sman2',
-    npsn: '20219802',
-    name: 'SMAN 2 Kota Bandung',
-    address: 'Jl. Cihampelas No. 173, Kota Bandung',
+    id: 'sch-umul-quro',
+    npsn: '20220315',
+    name: 'SMA Umul Quro',
+    address: 'Jl. KH. Sholeh Iskandar No. 1, Parakan Jaya, Kemang, Kota Bogor, Jawa Barat 16164',
     principalName: 'Dr. H. Asep Kurnia, M.M.Pd.',
     accreditation: 'A',
     createdAt: new Date().toISOString(),
     createdBy: 'system'
   },
   {
-    id: 'sch-sman3',
-    npsn: '20219803',
-    name: 'SMAN 3 Kota Bandung',
-    address: 'Jl. Belitung No. 8, Merdeka, Kec. Sumur Bandung, Kota Bandung',
+    id: 'sch-sman2',
+    npsn: '20220302',
+    name: 'SMA Negeri 2 Bogor',
+    address: 'Jl. Keranji Ujung No. 1, Budi Agung, Kedungbadak, Kec. Tanah Sereal, Kota Bogor, Jawa Barat 16166',
     principalName: 'H. Suherman, S.Pd., M.M.',
     accreditation: 'A',
     createdAt: new Date().toISOString(),
@@ -118,12 +118,51 @@ export async function testFirestoreConnection() {
   }
 }
 
+// Helper to normalize school and teacher data from DB
+function normalizeSchoolData(sch: School): School {
+  let name = sch.name;
+  if (name === 'SMAN 1 Kota Bandung' || name.toLowerCase().includes('sman 1')) {
+    name = 'SMA Negeri 4 Bogor';
+  } else if (name === 'SMAN 2 Kota Bandung') {
+    name = 'SMA Negeri 2 Bogor';
+  } else if (name === 'SMAN 3 Kota Bandung' || name.toLowerCase().includes('sman 3')) {
+    name = 'SMA Umul Quro';
+  }
+  return { ...sch, name };
+}
+
+function normalizeSupervisionData(sup: Supervision): Supervision {
+  let teacherName = sup.teacherName;
+  let schoolName = sup.schoolName;
+  let subject = sup.subject;
+  let lessonTitle = sup.lessonTitle;
+
+  if (teacherName.toLowerCase().includes('dewi kartika')) {
+    teacherName = 'Sondang Asih Januarti, S.Pd.';
+    schoolName = 'SMA Negeri 4 Bogor';
+    subject = 'Fisika';
+    if (!lessonTitle || lessonTitle.toLowerCase().includes('termodinamika')) {
+      lessonTitle = 'Listrik Arus Searah: Rangkaian Tertutup & Analisis Hukum Kirchhoff';
+    }
+  }
+
+  if (schoolName === 'SMAN 1 Kota Bandung' || schoolName.toLowerCase().includes('sman 1')) {
+    schoolName = 'SMA Negeri 4 Bogor';
+  } else if (schoolName === 'SMAN 2 Kota Bandung') {
+    schoolName = 'SMA Negeri 2 Bogor';
+  } else if (schoolName === 'SMAN 3 Kota Bandung' || schoolName.toLowerCase().includes('sman 3')) {
+    schoolName = 'SMA Umul Quro';
+  }
+
+  return { ...sup, teacherName, schoolName, subject, lessonTitle };
+}
+
 // Seed initial schools
 export async function ensureInitialSchools(): Promise<School[]> {
   try {
     const schoolsSnap = await getDocs(collection(db, 'schools'));
     if (!schoolsSnap.empty) {
-      return schoolsSnap.docs.map(d => ({ id: d.id, ...d.data() } as School));
+      return schoolsSnap.docs.map(d => normalizeSchoolData({ id: d.id, ...d.data() } as School));
     }
 
     // If signed in as user or admin, write defaults to Firestore
@@ -153,7 +192,7 @@ export async function fetchAllSchools(): Promise<School[]> {
     if (snap.empty) {
       return DEFAULT_SCHOOLS;
     }
-    return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as School));
+    return snap.docs.map(doc => normalizeSchoolData({ id: doc.id, ...doc.data() } as School));
   } catch (err) {
     console.warn('Returning default schools fallback', err);
     return DEFAULT_SCHOOLS;
@@ -237,15 +276,15 @@ export async function fetchSupervisions(userProfile?: UserProfile | null): Promi
     if (userProfile?.role === 'guru') {
       const qGuru = query(q, where('teacherId', '==', userProfile.uid));
       const snap = await getDocs(qGuru);
-      return snap.docs.map(d => ({ id: d.id, ...d.data() } as Supervision));
+      return snap.docs.map(d => normalizeSupervisionData({ id: d.id, ...d.data() } as Supervision));
     } else if (userProfile?.role === 'kepsek' && userProfile.schoolId) {
       const qKepsek = query(q, where('schoolId', '==', userProfile.schoolId));
       const snap = await getDocs(qKepsek);
-      return snap.docs.map(d => ({ id: d.id, ...d.data() } as Supervision));
+      return snap.docs.map(d => normalizeSupervisionData({ id: d.id, ...d.data() } as Supervision));
     } else {
       // Admin sees all
       const snap = await getDocs(q);
-      return snap.docs.map(d => ({ id: d.id, ...d.data() } as Supervision));
+      return snap.docs.map(d => normalizeSupervisionData({ id: d.id, ...d.data() } as Supervision));
     }
   } catch (err) {
     console.warn('Notice on fetching supervisions:', err);
@@ -258,7 +297,7 @@ export async function getSupervisionById(id: string): Promise<Supervision | null
   try {
     const snap = await getDoc(doc(db, 'supervisions', id));
     if (snap.exists()) {
-      return { id: snap.id, ...snap.data() } as Supervision;
+      return normalizeSupervisionData({ id: snap.id, ...snap.data() } as Supervision);
     }
     return null;
   } catch (err) {

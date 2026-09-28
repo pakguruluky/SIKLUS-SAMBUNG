@@ -340,7 +340,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                       <div>
                         <p className="text-xs font-bold leading-tight">{sup.teacherName}</p>
                         <p className={`text-[10px] leading-tight ${isSelected ? 'text-indigo-100' : 'text-slate-500'}`}>
-                          {sup.subject} &bull; {sup.schoolName.replace('Kota Bandung', 'Bdg')}
+                          {sup.subject} &bull; {sup.schoolName}
                         </p>
                       </div>
                     </button>

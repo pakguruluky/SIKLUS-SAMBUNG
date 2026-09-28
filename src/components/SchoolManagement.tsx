@@ -231,7 +231,7 @@ export const SchoolManagement: React.FC<SchoolManagementProps> = ({
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Contoh: SMAN 1 Kota Bandung"
+                  placeholder="Contoh: SMA Negeri 4 Bogor"
                   className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-indigo-600"
                 />
               </div>
@@ -246,7 +246,7 @@ export const SchoolManagement: React.FC<SchoolManagementProps> = ({
                     required
                     value={npsn}
                     onChange={(e) => setNpsn(e.target.value)}
-                    placeholder="Contoh: 20219801"
+                    placeholder="Contoh: 20220304"
                     className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-indigo-600"
                   />
                 </div>
@@ -289,7 +289,7 @@ export const SchoolManagement: React.FC<SchoolManagementProps> = ({
                   rows={2}
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
-                  placeholder="Contoh: Jl. Ir. H. Juanda No. 93, Kota Bandung"
+                  placeholder="Contoh: Jl. Dreded No. 36, Empang, Kota Bogor"
                   className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-indigo-600"
                 />
               </div>

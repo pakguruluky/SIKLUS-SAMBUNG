@@ -602,7 +602,7 @@ export const SambungPrintModal: React.FC<SambungPrintModalProps> = ({
                 <p className="text-[11px] text-slate-500">NIP. {supervision.teacherNip || '-'}</p>
               </div>
               <div>
-                <p className="text-slate-600 mb-12">Bandung, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}<br/>Pengawas Sekolah Pembina SMA,</p>
+                <p className="text-slate-600 mb-12">Bogor, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}<br/>Pengawas Sekolah Pembina SMA,</p>
                 <p className="font-bold underline text-slate-900">Kusnandar, M.Si</p>
                 <p className="text-[11px] text-slate-500">Pengawas Pembina Disdik Prov. Jawa Barat</p>
               </div>

@@ -91,7 +91,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 
   // Teacher approval state tracker
   const [approvedTeachersLocal, setApprovedTeachersLocal] = useState<Record<string, boolean>>({
-    'teacher-dewi': true,
+    'teacher-sondang': true,
     'teacher-ahmad': true,
     'teacher-budi': true,
     'teacher-siti': true,
@@ -167,7 +167,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 
       if (isAdmin && selectedSchoolFilter === 'all') {
         // Multi-school comparison
-        const labels = targetSchools.map(s => s.name.replace('Kota Bandung', '').trim());
+        const labels = targetSchools.map(s => s.name);
         
         // 1. Avg Telaah RPP Scores
         const avgTelaahPerSchool = targetSchools.map(sch => {
@@ -335,7 +335,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
       if (completionChartInstance.current) completionChartInstance.current.destroy();
 
       if (isAdmin && selectedSchoolFilter === 'all') {
-        const labels = targetSchools.map(s => s.name.replace('Kota Bandung', '').trim());
+        const labels = targetSchools.map(s => s.name);
 
         const completedCounts = targetSchools.map(sch => 
           supervisions.filter(s => (s.schoolId === sch.id || s.schoolName === sch.name) && s.status === 'completed').length

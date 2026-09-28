@@ -131,23 +131,23 @@ export default function App() {
       const firstSchool = schools[0];
       mockProfile = {
         uid: 'kepsek-yeni',
-        email: 'kepsek@sman1bdg.sch.id',
+        email: 'kepsek@sman4bogor.sch.id',
         displayName: firstSchool?.principalName || 'Dra. Hj. Yeni Suryani, M.Pd.',
         role: 'kepsek',
-        schoolId: firstSchool?.id || 'sch-sman1',
-        schoolName: firstSchool?.name || 'SMAN 1 Kota Bandung',
+        schoolId: firstSchool?.id || 'sch-sman4',
+        schoolName: firstSchool?.name || 'SMA Negeri 4 Bogor',
         nip: '19680315 199303 2 004',
         createdAt: new Date().toISOString(),
       };
     } else {
       const firstSchool = schools[0];
       mockProfile = {
-        uid: 'teacher-dewi',
-        email: 'dewikartika@sman1bdg.sch.id',
-        displayName: 'Dewi Kartika, S.Pd., M.Pfis.',
+        uid: 'teacher-sondang',
+        email: 'sondangasih@sman4bogor.sch.id',
+        displayName: 'Sondang Asih Januarti, S.Pd.',
         role: 'guru',
-        schoolId: firstSchool?.id || 'sch-sman1',
-        schoolName: firstSchool?.name || 'SMAN 1 Kota Bandung',
+        schoolId: firstSchool?.id || 'sch-sman4',
+        schoolName: firstSchool?.name || 'SMA Negeri 4 Bogor',
         nip: '19840512 200801 2 007',
         subject: 'Fisika',
         approvalStatus: 'approved',

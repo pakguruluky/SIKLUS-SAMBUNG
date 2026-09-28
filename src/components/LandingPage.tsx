@@ -95,7 +95,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   <span className="text-xs font-bold text-white group-hover:text-emerald-300">Kepala Sekolah</span>
                   <Users className="w-4 h-4 text-emerald-400" />
                 </div>
-                <p className="text-[11px] text-slate-400 mt-1">Dra. Hj. Yeni Suryani (SMAN 1)</p>
+                <p className="text-[11px] text-slate-400 mt-1">Dra. Hj. Yeni Suryani (SMAN 4 Bogor)</p>
               </button>
 
               <button
@@ -106,7 +106,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   <span className="text-xs font-bold text-white group-hover:text-blue-300">Guru Mata Pelajaran</span>
                   <GraduationCap className="w-4 h-4 text-blue-400" />
                 </div>
-                <p className="text-[11px] text-slate-400 mt-1">Dewi Kartika, S.Pd. (Fisika)</p>
+                <p className="text-[11px] text-slate-400 mt-1">Sondang Asih Januarti, S.Pd. (Fisika)</p>
               </button>
             </div>
           </div>

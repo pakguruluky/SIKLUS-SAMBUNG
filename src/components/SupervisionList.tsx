@@ -14,7 +14,8 @@ import {
   Clock, 
   AlertCircle,
   ExternalLink,
-  ShieldAlert
+  ShieldAlert,
+  Sparkles
 } from 'lucide-react';
 
 interface SupervisionListProps {
@@ -24,6 +25,7 @@ interface SupervisionListProps {
   onOpenForm: (supervision: Supervision, stage: 'perangkat' | 'pra' | 'observasi' | 'pasca' | 'evaluasi') => void;
   onOpenPrint: (supervision: Supervision) => void;
   onNewSupervision: () => void;
+  onOpenSambung?: (supervisionId?: string) => void;
 }
 
 export const SupervisionList: React.FC<SupervisionListProps> = ({
@@ -33,6 +35,7 @@ export const SupervisionList: React.FC<SupervisionListProps> = ({
   onOpenForm,
   onOpenPrint,
   onNewSupervision,
+  onOpenSambung,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -333,6 +336,18 @@ export const SupervisionList: React.FC<SupervisionListProps> = ({
                     <span className="text-[10px]">Tahunan</span>
                   </button>
                 </div>
+
+                {/* Instrumen SAMBUNG Button */}
+                {onOpenSambung && (
+                  <button
+                    onClick={() => onOpenSambung(sup.id)}
+                    className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-all shrink-0"
+                    title="Buka Siklus Instrumen SAMBUNG (S-A-M-B-U-N-G) untuk guru ini"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                    <span>SAMBUNG</span>
+                  </button>
+                )}
 
                 {/* Print Report Trigger Button */}
                 <button

@@ -148,4 +148,152 @@ export interface Supervision {
     summaryNotes: string;
     completedAt?: string;
   };
+
+  // F. Instrumen Strategi SAMBUNG (Apresiasi GTK 2026 Pengawas SMA)
+  sambung?: SambungData;
+}
+
+// ==========================================
+// TIPE DATA LENGKAP STRATEGI SAMBUNG
+// ==========================================
+
+export interface SambungAspekPemetaan {
+  id: number;
+  aspek: string;
+  kondisiAwal: string;
+  bukti: string;
+  kebutuhanPembinaan: string;
+  isPrioritas?: boolean;
+}
+
+export interface SambungKegiatanAksi {
+  id: number;
+  kegiatanPembinaan: string;
+  indikatorKeberhasilan: string;
+  waktu: string;
+  penanggungJawab: string;
+}
+
+export interface SambungCoachingData {
+  tujuan: string; // Pengalaman belajar seperti apa yang ingin diciptakan untuk murid?
+  realitas: string; // Apa yang sudah berjalan baik? Bagaimana kita tahu murid benar-benar belajar?
+  opsi: string; // Apa yang membuat pembelajaran bermakna bagi murid? Apa yang bisa dicoba?
+  komitmen: string; // Langkah kecil apa yang akan dicoba? Dukungan apa yang dibutuhkan? Kapan kita tinjau?
+}
+
+export interface SambungSiklusBerdayakan {
+  siklus: number;
+  rancanganDanUjiCoba: string; // Rancangan dan hasil uji coba pada murid
+  refleksi: string; // Refleksi (berhasil / belum, mengapa)
+  perbaikanBerikutnya: string; // Perbaikan berikutnya
+}
+
+export interface SambungObservasiIndikator {
+  id: number;
+  indikator: string;
+  dimensi: string;
+  score: 1 | 2 | 3 | 4;
+  catatan: string;
+}
+
+export interface SambungAngketMuridItem {
+  id: number;
+  pernyataan: string;
+  skorRataRata: number; // 1 to 4
+  persentaseSetuju: number; // % murid memilih 3 atau 4
+}
+
+export interface SambungBeforeAfterItem {
+  aspek: string;
+  sebelumSambung: string;
+  setelahSambung: string;
+  buktiKode: string;
+}
+
+export interface SambungDataDampakItem {
+  indikator: string;
+  awal: string;
+  akhir: string;
+  selisih: string;
+  sumber: string;
+}
+
+export interface SambungTindakLanjutItem {
+  id: number;
+  temuanSupervisi: string;
+  tindakLanjut: string;
+  penanggungJawab: string;
+  waktu: string;
+  hasil: string;
+}
+
+export interface SambungPengimbasanItem {
+  id: number;
+  praktikBaik: string;
+  sasaran: string;
+  bentuk: string; // MGMP, berbagi, publikasi
+  waktu: string;
+}
+
+export interface SambungData {
+  // S - SELIDIKI
+  selidiki: {
+    tanggal: string;
+    items: SambungAspekPemetaan[];
+    catatanPrioritas?: string;
+  };
+  // A - ARAHKAN
+  arahkan: {
+    periode: string;
+    fokusPerubahan: string; // satu kalimat: berdasarkan kebutuhan, realistis, terukur, berdampak pada murid
+    kegiatan: SambungKegiatanAksi[];
+    tandaTangan?: {
+      pengawas: string; // Kusnandar, M.Si
+      kepalaSekolah: string;
+      guru: string;
+      tanggalDisepakati: string;
+    };
+  };
+  // M - MAKNAI
+  maknai: {
+    tanggal: string;
+    coaching: SambungCoachingData;
+  };
+  // B - BERDAYAKAN
+  berdayakan: {
+    siklusList: SambungSiklusBerdayakan[];
+  };
+  // U - UJI
+  uji: {
+    u1_observasi: {
+      tanggal: string;
+      hariTanggal: string;
+      tahapObservasi: 'awal' | 'siklus' | 'akhir';
+      kelas: string;
+      indikatorList: SambungObservasiIndikator[];
+      totalSkor: number; // max 40
+      persentaseCapaian: number; // totalSkor / 40 * 100
+      apaYangDialamiMurid: string;
+      kekuatanDanRekomendasi: string;
+    };
+    u2_angketMurid: {
+      kodeMuridKelas: string;
+      tanggal: string;
+      jumlahResponden: number;
+      items: SambungAngketMuridItem[];
+      halPalingBermakna: string;
+      kesulitanMurid: string;
+    };
+  };
+  // N - NYATAKAN
+  nyatakan: {
+    beforeAfter: SambungBeforeAfterItem[];
+    dataDampak: SambungDataDampakItem[];
+  };
+  // G - GERAKKAN
+  gerakkan: {
+    tindakLanjut: SambungTindakLanjutItem[];
+    pengimbasan: SambungPengimbasanItem[];
+  };
+  lastUpdated?: string;
 }

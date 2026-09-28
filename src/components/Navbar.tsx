@@ -10,7 +10,9 @@ import {
   LogIn, 
   ShieldCheck, 
   UserCheck, 
-  BookOpen
+  BookOpen,
+  Sparkles,
+  Compass
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -107,6 +109,23 @@ export const Navbar: React.FC<NavbarProps> = ({
                 {currentUser.role === 'guru' ? 'Hasil Penilaian Saya' : 'Daftar Supervisi Guru'}
               </button>
 
+              <button
+                onClick={() => setActiveTab('sambung')}
+                className={`px-3 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 ${
+                  activeTab === 'sambung'
+                    ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-xs'
+                    : 'text-slate-700 hover:text-indigo-600 hover:bg-indigo-50'
+                }`}
+              >
+                <Sparkles className={`w-4 h-4 ${activeTab === 'sambung' ? 'text-amber-300' : 'text-indigo-600'}`} />
+                <span>Instrumen SAMBUNG</span>
+                <span className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded ${
+                  activeTab === 'sambung' ? 'bg-white/20 text-white' : 'bg-indigo-100 text-indigo-800'
+                }`}>
+                  S-G
+                </span>
+              </button>
+
               {currentUser.role === 'admin' && (
                 <button
                   onClick={() => setActiveTab('schools')}
@@ -196,6 +215,13 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <FileText className="w-4 h-4" />
             <span>{currentUser.role === 'guru' ? 'Hasil Nilai' : 'Supervisi'}</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('sambung')}
+            className={`flex flex-col items-center gap-1 ${activeTab === 'sambung' ? 'text-indigo-600 font-bold' : 'text-slate-600'}`}
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>SAMBUNG</span>
           </button>
           {currentUser.role === 'admin' && (
             <button

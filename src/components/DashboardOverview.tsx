@@ -58,6 +58,7 @@ interface DashboardOverviewProps {
   onOpenForm?: (supervision: Supervision, stage: 'perangkat' | 'pra' | 'observasi' | 'pasca' | 'evaluasi') => void;
   onOpenPrint?: (supervision: Supervision) => void;
   onApproveTeacher?: (uid: string) => void;
+  onOpenSambung?: (supervisionId?: string) => void;
   users?: UserProfile[];
 }
 
@@ -70,6 +71,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   onNewSupervision,
   onOpenForm,
   onApproveTeacher,
+  onOpenSambung,
   users = [],
 }) => {
   const scoresChartRef = useRef<HTMLCanvasElement | null>(null);
@@ -552,6 +554,15 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            {onOpenSambung && (
+              <button
+                onClick={() => onOpenSambung()}
+                className="px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs sm:text-sm shadow-md transition-all flex items-center gap-1.5"
+              >
+                <Sparkles className="w-4 h-4 text-slate-950" />
+                <span>Instrumen SAMBUNG</span>
+              </button>
+            )}
             {!isGuru && (
               <button
                 onClick={onNewSupervision}
@@ -709,6 +720,36 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                 {mySingleSupervision.evaluasiTahunan?.summaryNotes || 'Rekap portofolio tahunan terintegrasi'}
               </p>
             </div>
+          </div>
+
+          {/* SAMBUNG Banner card for Guru */}
+          <div className="bg-gradient-to-r from-indigo-900 via-indigo-800 to-purple-900 text-white p-5 rounded-2xl border border-indigo-700 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-white/10 backdrop-blur-xs flex items-center justify-center font-black text-amber-300 text-lg">
+                S-G
+              </div>
+              <div>
+                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 font-bold text-[10px] mb-1">
+                  <Sparkles className="w-3 h-3" />
+                  <span>Apresiasi GTK 2026</span>
+                </div>
+                <h3 className="font-bold text-sm sm:text-base">
+                  Instrumen Strategi SAMBUNG Pembelajaran Anda
+                </h3>
+                <p className="text-xs text-indigo-200 mt-0.5">
+                  Akses instrumen 7 tahap: <strong>S</strong>elidiki, <strong>A</strong>rahkan, <strong>M</strong>aknai, <strong>B</strong>erdayakan, <strong>U</strong>ji, <strong>N</strong>yatakan, dan <strong>G</strong>erakkan.
+                </p>
+              </div>
+            </div>
+            {onOpenSambung && (
+              <button
+                onClick={() => onOpenSambung(mySingleSupervision?.id)}
+                className="px-5 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs shadow-md transition-all shrink-0 flex items-center gap-2 self-stretch sm:self-auto justify-center"
+              >
+                <Sparkles className="w-4 h-4 text-slate-950" />
+                <span>Buka Portofolio SAMBUNG Saya</span>
+              </button>
+            )}
           </div>
         </div>
       )}

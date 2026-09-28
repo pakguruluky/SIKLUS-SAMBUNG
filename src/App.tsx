@@ -13,6 +13,7 @@ import { ObservasiKelasModal } from './components/forms/ObservasiKelasModal';
 import { PascaObservasiModal } from './components/forms/PascaObservasiModal';
 import { EvaluasiTahunanModal } from './components/forms/EvaluasiTahunanModal';
 import { NewSupervisionModal } from './components/forms/NewSupervisionModal';
+import { SambungInstrumentView } from './components/SambungInstrumentView';
 
 import { 
   auth, 
@@ -41,6 +42,7 @@ export default function App() {
   const [selectedSupervision, setSelectedSupervision] = useState<Supervision | null>(null);
   const [activeFormStage, setActiveFormStage] = useState<'perangkat' | 'pra' | 'observasi' | 'pasca' | 'evaluasi' | null>(null);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [selectedSambungId, setSelectedSambungId] = useState<string | undefined>(undefined);
 
   // Initialize app data
   useEffect(() => {
@@ -177,6 +179,13 @@ export default function App() {
     setIsPrintModalOpen(true);
   };
 
+  const handleOpenSambung = (supervisionId?: string) => {
+    if (supervisionId) {
+      setSelectedSambungId(supervisionId);
+    }
+    setActiveTab('sambung');
+  };
+
   const handleUpdateSupervision = (updated: Supervision) => {
     setSupervisions(prev => prev.map(s => (s.id === updated.id ? updated : s)));
     setSelectedSupervision(updated);
@@ -228,6 +237,7 @@ export default function App() {
                 onOpenForm={handleOpenForm}
                 onOpenPrint={handleOpenPrint}
                 onApproveTeacher={handleApproveTeacher}
+                onOpenSambung={handleOpenSambung}
               />
             )}
 
@@ -239,6 +249,17 @@ export default function App() {
                 onOpenForm={handleOpenForm}
                 onOpenPrint={handleOpenPrint}
                 onNewSupervision={() => setIsNewSupervisionModalOpen(true)}
+                onOpenSambung={handleOpenSambung}
+              />
+            )}
+
+            {activeTab === 'sambung' && (
+              <SambungInstrumentView
+                supervisions={visibleSupervisions}
+                currentUser={currentUser}
+                schools={schools}
+                initialSupervisionId={selectedSambungId}
+                onUpdateSupervision={handleUpdateSupervision}
               />
             )}
 

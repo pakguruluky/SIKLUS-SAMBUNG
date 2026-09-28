@@ -1,4 +1,9 @@
 import { Supervision } from '../types';
+import { 
+  SEED_SAMBUNG_DEWI, 
+  SEED_SAMBUNG_AHMAD, 
+  SEED_SAMBUNG_SITI 
+} from './sambungSeed';
 
 export const SAMPLE_SUPERVISIONS: Supervision[] = [
   {
@@ -19,6 +24,7 @@ export const SAMPLE_SUPERVISIONS: Supervision[] = [
     supervisorRole: 'admin',
     createdAt: '2026-09-01T08:00:00.000Z',
     updatedAt: '2026-09-20T10:00:00.000Z',
+    sambung: SEED_SAMBUNG_DEWI,
 
     perangkatAjar: {
       driveLinks: {
@@ -103,6 +109,7 @@ export const SAMPLE_SUPERVISIONS: Supervision[] = [
     supervisorRole: 'admin',
     createdAt: '2025-08-15T08:30:00.000Z',
     updatedAt: '2025-09-10T11:45:00.000Z',
+    sambung: SEED_SAMBUNG_DEWI,
 
     perangkatAjar: {
       driveLinks: {
@@ -245,8 +252,8 @@ export const SAMPLE_SUPERVISIONS: Supervision[] = [
     id: 'sup-demo-02',
     schoolId: 'sch-sman2',
     schoolName: 'SMAN 2 Kota Bandung',
-    teacherId: 'teacher-budi',
-    teacherName: 'Budi Santoso, S.Pd.',
+    teacherId: 'teacher-ahmad',
+    teacherName: 'Ahmad Fauzi, S.Pd.',
     teacherNip: '19890214 201502 1 004',
     subject: 'Bahasa Indonesia',
     classGrade: 'Fase E / Kelas X-3',
@@ -259,6 +266,7 @@ export const SAMPLE_SUPERVISIONS: Supervision[] = [
     supervisorRole: 'admin',
     createdAt: '2025-08-18T09:00:00.000Z',
     updatedAt: '2025-09-12T14:20:00.000Z',
+    sambung: SEED_SAMBUNG_AHMAD,
 
     perangkatAjar: {
       driveLinks: {
@@ -396,11 +404,11 @@ export const SAMPLE_SUPERVISIONS: Supervision[] = [
   },
   {
     id: 'sup-demo-03',
-    schoolId: 'sch-sman1',
-    schoolName: 'SMAN 1 Kota Bandung',
-    teacherId: 'teacher-ahmad',
-    teacherName: 'Ahmad Fauzi, M.Pd.',
-    teacherNip: '19790623 200501 1 008',
+    schoolId: 'sch-sman3',
+    schoolName: 'SMAN 3 Kota Bandung',
+    teacherId: 'teacher-siti',
+    teacherName: 'Siti Nurhaliza, M.Pd.',
+    teacherNip: '19860418 201001 2 015',
     subject: 'Matematika',
     classGrade: 'Fase E / Kelas X-A',
     semester: 'Ganjil',
@@ -412,6 +420,7 @@ export const SAMPLE_SUPERVISIONS: Supervision[] = [
     supervisorRole: 'admin',
     createdAt: '2025-09-01T08:00:00.000Z',
     updatedAt: '2025-09-20T10:00:00.000Z',
+    sambung: SEED_SAMBUNG_SITI,
 
     perangkatAjar: {
       driveLinks: {

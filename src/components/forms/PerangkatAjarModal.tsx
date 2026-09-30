@@ -237,12 +237,17 @@ export const PerangkatAjarModal: React.FC<PerangkatAjarModalProps> = ({
         </div>
 
         {/* Status Banners */}
-        {/* 1. Notice for Supervisor (Hanya Melihat Berkas Guru) */}
+        {/* 1. Notice for Supervisor & Guru (Kolaboratif) */}
         {isSupervisor && (
-          <div className="bg-indigo-50 border-b border-indigo-200 px-5 py-2.5 text-xs text-indigo-900 flex items-center gap-2">
-            <Eye className="w-4 h-4 text-indigo-600 shrink-0" />
-            <span>
-              <strong>Kewenangan Pengawas &amp; Kepala Sekolah:</strong> Anda <strong>hanya dapat melihat &amp; membuka berkas</strong> yang diunggah oleh guru (read-only). Supervisor bertugas memberikan penilaian skor pada 22 aspek instrumen dan catatan umpan balik.
+          <div className="bg-indigo-50 border-b border-indigo-200 px-5 py-2.5 text-xs text-indigo-900 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Eye className="w-4 h-4 text-indigo-600 shrink-0" />
+              <span>
+                <strong>Kewenangan Pengawas &amp; Kepala Sekolah:</strong> Anda dapat <strong>menambahkan, menempelkan (*paste*), atau memperbarui tautan Google Drive</strong> dokumen pembelajaran guru di bawah ini, serta memberikan skor telaah dan rekomendasi.
+              </span>
+            </div>
+            <span className="text-[11px] font-bold text-indigo-800 bg-white px-2.5 py-1 rounded-full border border-indigo-200 shrink-0 self-start sm:self-auto">
+              {uploadedFilesCount} dari 4 Berkas Terhubung
             </span>
           </div>
         )}
@@ -285,24 +290,20 @@ export const PerangkatAjarModal: React.FC<PerangkatAjarModalProps> = ({
                   Berkas Perencanaan Pembelajaran Awal Guru
                 </h3>
                 <p className="text-[11px] text-slate-600 mt-0.5">
-                  {isSupervisor
-                    ? 'Pengawas dan Kepala Sekolah hanya melihat dan menelaah tautan Google Drive yang diunggah oleh guru di bawah ini.'
-                    : 'Guru dapat menempelkan tautan Google Drive atau memilih berkas dokumen pembelajaran. Tautan dapat diperbarui kapan saja sebelum dinilai pengawas.'}
+                  Pengawas, Kepala Sekolah, dan Guru dapat menambahkan, menempelkan (*paste*), atau memperbarui tautan Google Drive dokumen pembelajaran di bawah ini.
                 </p>
               </div>
 
-              {/* Progress Bar for Guru */}
-              {isGuru && (
-                <div className="flex items-center gap-2 min-w-[150px] bg-white p-2 rounded-xl border border-slate-200">
-                  <div className="flex-1 bg-slate-200 rounded-full h-2.5 overflow-hidden">
-                    <div 
-                      className="bg-emerald-600 h-full rounded-full transition-all duration-300"
-                      style={{ width: `${uploadProgressPercent}%` }}
-                    />
-                  </div>
-                  <span className="text-xs font-bold text-slate-700">{uploadProgressPercent}%</span>
+              {/* Progress Indicator */}
+              <div className="flex items-center gap-2 min-w-[150px] bg-white p-2 rounded-xl border border-slate-200">
+                <div className="flex-1 bg-slate-200 rounded-full h-2.5 overflow-hidden">
+                  <div 
+                    className="bg-emerald-600 h-full rounded-full transition-all duration-300"
+                    style={{ width: `${uploadProgressPercent}%` }}
+                  />
                 </div>
-              )}
+                <span className="text-xs font-bold text-slate-700">{uploadProgressPercent}%</span>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs pt-1">
@@ -325,71 +326,50 @@ export const PerangkatAjarModal: React.FC<PerangkatAjarModalProps> = ({
                   )}
                 </div>
 
-                {isSupervisor ? (
-                  // Supervisor: Read-Only View
-                  <div className="pt-1">
-                    {cpTpAtpUrl ? (
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="url"
+                      value={cpTpAtpUrl}
+                      onChange={(e) => setCpTpAtpUrl(e.target.value)}
+                      placeholder="https://drive.google.com/file/d/..."
+                      className="flex-1 px-3 py-2 rounded-xl border border-slate-300 bg-white focus:outline-indigo-600 text-xs font-mono"
+                    />
+                    {cpTpAtpUrl && (
                       <a
                         href={cpTpAtpUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center gap-2 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-semibold text-xs border border-indigo-200 transition-colors w-full justify-center"
+                        className="inline-flex items-center gap-1 px-3 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 text-xs font-semibold shrink-0 transition-colors"
+                        title="Buka Dokumen di Google Drive"
                       >
                         <ExternalLink className="w-3.5 h-3.5" />
-                        <span>Buka Dokumen CP, TP, ATP di Google Drive</span>
+                        <span className="hidden sm:inline">Buka Drive</span>
                       </a>
-                    ) : (
-                      <p className="text-xs text-slate-400 italic py-2 text-center bg-slate-50 rounded-xl border border-slate-100">
-                        Guru belum mengunggah tautan CP, TP, ATP.
-                      </p>
                     )}
                   </div>
-                ) : (
-                  // Guru: Fully Active Input & Helpers
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-1.5">
+
+                  <div className="flex items-center justify-between text-[11px] pt-0.5">
+                    <button
+                      type="button"
+                      onClick={() => handleUseSampleLink('cp')}
+                      className="text-indigo-600 hover:text-indigo-800 font-semibold underline text-[10px]"
+                    >
+                      + Isi Contoh Tautan
+                    </button>
+
+                    <label className="cursor-pointer text-slate-500 hover:text-slate-700 flex items-center gap-1 text-[10px]">
+                      <UploadCloud className="w-3 h-3 text-slate-400" />
+                      <span>Pilih Berkas Lokal</span>
                       <input
-                        type="url"
-                        value={cpTpAtpUrl}
-                        onChange={(e) => setCpTpAtpUrl(e.target.value)}
-                        placeholder="https://drive.google.com/file/d/..."
-                        className="flex-1 px-3 py-2 rounded-xl border border-slate-300 bg-white focus:outline-indigo-600 text-xs font-mono"
+                        type="file"
+                        accept=".pdf,.doc,.docx"
+                        onChange={(e) => handleSimulatedFileUpload(e, setCpTpAtpUrl)}
+                        className="sr-only"
                       />
-                      {cpTpAtpUrl && (
-                        <a
-                          href={cpTpAtpUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 shrink-0"
-                          title="Buka Drive"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </a>
-                      )}
-                    </div>
-
-                    <div className="flex items-center justify-between text-[11px] pt-0.5">
-                      <button
-                        type="button"
-                        onClick={() => handleUseSampleLink('cp')}
-                        className="text-indigo-600 hover:text-indigo-800 font-semibold underline text-[10px]"
-                      >
-                        + Isi Contoh Tautan
-                      </button>
-
-                      <label className="cursor-pointer text-slate-500 hover:text-slate-700 flex items-center gap-1 text-[10px]">
-                        <UploadCloud className="w-3 h-3 text-slate-400" />
-                        <span>Pilih Berkas Lokal</span>
-                        <input
-                          type="file"
-                          accept=".pdf,.doc,.docx"
-                          onChange={(e) => handleSimulatedFileUpload(e, setCpTpAtpUrl)}
-                          className="sr-only"
-                        />
-                      </label>
-                    </div>
+                    </label>
                   </div>
-                )}
+                </div>
               </div>
 
               {/* Item B: Modul Ajar / RPP Awal */}
@@ -410,71 +390,50 @@ export const PerangkatAjarModal: React.FC<PerangkatAjarModalProps> = ({
                   )}
                 </div>
 
-                {isSupervisor ? (
-                  // Supervisor: Read-Only View
-                  <div className="pt-1">
-                    {modulAjarUrl ? (
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="url"
+                      value={modulAjarUrl}
+                      onChange={(e) => setModulAjarUrl(e.target.value)}
+                      placeholder="https://drive.google.com/file/d/..."
+                      className="flex-1 px-3 py-2 rounded-xl border border-slate-300 bg-white focus:outline-indigo-600 text-xs font-mono"
+                    />
+                    {modulAjarUrl && (
                       <a
                         href={modulAjarUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center gap-2 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-semibold text-xs border border-indigo-200 transition-colors w-full justify-center"
+                        className="inline-flex items-center gap-1 px-3 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 text-xs font-semibold shrink-0 transition-colors"
+                        title="Buka Modul di Google Drive"
                       >
                         <ExternalLink className="w-3.5 h-3.5" />
-                        <span>Buka Modul Ajar / RPP di Google Drive</span>
+                        <span className="hidden sm:inline">Buka Drive</span>
                       </a>
-                    ) : (
-                      <p className="text-xs text-slate-400 italic py-2 text-center bg-slate-50 rounded-xl border border-slate-100">
-                        Guru belum mengunggah tautan Modul Ajar.
-                      </p>
                     )}
                   </div>
-                ) : (
-                  // Guru: Fully Active Input & Helpers
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-1.5">
+
+                  <div className="flex items-center justify-between text-[11px] pt-0.5">
+                    <button
+                      type="button"
+                      onClick={() => handleUseSampleLink('modul')}
+                      className="text-indigo-600 hover:text-indigo-800 font-semibold underline text-[10px]"
+                    >
+                      + Isi Contoh Tautan
+                    </button>
+
+                    <label className="cursor-pointer text-slate-500 hover:text-slate-700 flex items-center gap-1 text-[10px]">
+                      <UploadCloud className="w-3 h-3 text-slate-400" />
+                      <span>Pilih Berkas Lokal</span>
                       <input
-                        type="url"
-                        value={modulAjarUrl}
-                        onChange={(e) => setModulAjarUrl(e.target.value)}
-                        placeholder="https://drive.google.com/file/d/..."
-                        className="flex-1 px-3 py-2 rounded-xl border border-slate-300 bg-white focus:outline-indigo-600 text-xs font-mono"
+                        type="file"
+                        accept=".pdf,.doc,.docx"
+                        onChange={(e) => handleSimulatedFileUpload(e, setModulAjarUrl)}
+                        className="sr-only"
                       />
-                      {modulAjarUrl && (
-                        <a
-                          href={modulAjarUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 shrink-0"
-                          title="Buka Drive"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </a>
-                      )}
-                    </div>
-
-                    <div className="flex items-center justify-between text-[11px] pt-0.5">
-                      <button
-                        type="button"
-                        onClick={() => handleUseSampleLink('modul')}
-                        className="text-indigo-600 hover:text-indigo-800 font-semibold underline text-[10px]"
-                      >
-                        + Isi Contoh Tautan
-                      </button>
-
-                      <label className="cursor-pointer text-slate-500 hover:text-slate-700 flex items-center gap-1 text-[10px]">
-                        <UploadCloud className="w-3 h-3 text-slate-400" />
-                        <span>Pilih Berkas Lokal</span>
-                        <input
-                          type="file"
-                          accept=".pdf,.doc,.docx"
-                          onChange={(e) => handleSimulatedFileUpload(e, setModulAjarUrl)}
-                          className="sr-only"
-                        />
-                      </label>
-                    </div>
+                    </label>
                   </div>
-                )}
+                </div>
               </div>
 
               {/* Item C: Bahan Ajar / Media */}
@@ -495,71 +454,50 @@ export const PerangkatAjarModal: React.FC<PerangkatAjarModalProps> = ({
                   )}
                 </div>
 
-                {isSupervisor ? (
-                  // Supervisor: Read-Only View
-                  <div className="pt-1">
-                    {bahanAjarUrl ? (
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="url"
+                      value={bahanAjarUrl}
+                      onChange={(e) => setBahanAjarUrl(e.target.value)}
+                      placeholder="https://drive.google.com/file/d/..."
+                      className="flex-1 px-3 py-2 rounded-xl border border-slate-300 bg-white focus:outline-indigo-600 text-xs font-mono"
+                    />
+                    {bahanAjarUrl && (
                       <a
                         href={bahanAjarUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center gap-2 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-semibold text-xs border border-indigo-200 transition-colors w-full justify-center"
+                        className="inline-flex items-center gap-1 px-3 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 text-xs font-semibold shrink-0 transition-colors"
+                        title="Buka Bahan Ajar di Google Drive"
                       >
                         <ExternalLink className="w-3.5 h-3.5" />
-                        <span>Buka Bahan Ajar di Google Drive</span>
+                        <span className="hidden sm:inline">Buka Drive</span>
                       </a>
-                    ) : (
-                      <p className="text-xs text-slate-400 italic py-2 text-center bg-slate-50 rounded-xl border border-slate-100">
-                        Tidak ada tautan bahan ajar opsional.
-                      </p>
                     )}
                   </div>
-                ) : (
-                  // Guru: Fully Active Input & Helpers
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-1.5">
+
+                  <div className="flex items-center justify-between text-[11px] pt-0.5">
+                    <button
+                      type="button"
+                      onClick={() => handleUseSampleLink('bahan')}
+                      className="text-indigo-600 hover:text-indigo-800 font-semibold underline text-[10px]"
+                    >
+                      + Isi Contoh Tautan
+                    </button>
+
+                    <label className="cursor-pointer text-slate-500 hover:text-slate-700 flex items-center gap-1 text-[10px]">
+                      <UploadCloud className="w-3 h-3 text-slate-400" />
+                      <span>Pilih Berkas Lokal</span>
                       <input
-                        type="url"
-                        value={bahanAjarUrl}
-                        onChange={(e) => setBahanAjarUrl(e.target.value)}
-                        placeholder="https://drive.google.com/..."
-                        className="flex-1 px-3 py-2 rounded-xl border border-slate-300 bg-white focus:outline-indigo-600 text-xs font-mono"
+                        type="file"
+                        accept=".pdf,.doc,.docx,.ppt,.pptx"
+                        onChange={(e) => handleSimulatedFileUpload(e, setBahanAjarUrl)}
+                        className="sr-only"
                       />
-                      {bahanAjarUrl && (
-                        <a
-                          href={bahanAjarUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 shrink-0"
-                          title="Buka Drive"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </a>
-                      )}
-                    </div>
-
-                    <div className="flex items-center justify-between text-[11px] pt-0.5">
-                      <button
-                        type="button"
-                        onClick={() => handleUseSampleLink('bahan')}
-                        className="text-indigo-600 hover:text-indigo-800 font-semibold underline text-[10px]"
-                      >
-                        + Isi Contoh Tautan
-                      </button>
-
-                      <label className="cursor-pointer text-slate-500 hover:text-slate-700 flex items-center gap-1 text-[10px]">
-                        <UploadCloud className="w-3 h-3 text-slate-400" />
-                        <span>Pilih Berkas Lokal</span>
-                        <input
-                          type="file"
-                          accept=".pdf,.doc,.docx,.ppt,.pptx"
-                          onChange={(e) => handleSimulatedFileUpload(e, setBahanAjarUrl)}
-                          className="sr-only"
-                        />
-                      </label>
-                    </div>
+                    </label>
                   </div>
-                )}
+                </div>
               </div>
 
               {/* Item D: Asesmen & Rubrik KKTP */}
@@ -580,71 +518,50 @@ export const PerangkatAjarModal: React.FC<PerangkatAjarModalProps> = ({
                   )}
                 </div>
 
-                {isSupervisor ? (
-                  // Supervisor: Read-Only View
-                  <div className="pt-1">
-                    {asesmenUrl ? (
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="url"
+                      value={asesmenUrl}
+                      onChange={(e) => setAsesmenUrl(e.target.value)}
+                      placeholder="https://drive.google.com/file/d/..."
+                      className="flex-1 px-3 py-2 rounded-xl border border-slate-300 bg-white focus:outline-indigo-600 text-xs font-mono"
+                    />
+                    {asesmenUrl && (
                       <a
                         href={asesmenUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center gap-2 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-semibold text-xs border border-indigo-200 transition-colors w-full justify-center"
+                        className="inline-flex items-center gap-1 px-3 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 text-xs font-semibold shrink-0 transition-colors"
+                        title="Buka Asesmen di Google Drive"
                       >
                         <ExternalLink className="w-3.5 h-3.5" />
-                        <span>Buka Lembar Asesmen &amp; KKTP di Google Drive</span>
+                        <span className="hidden sm:inline">Buka Drive</span>
                       </a>
-                    ) : (
-                      <p className="text-xs text-slate-400 italic py-2 text-center bg-slate-50 rounded-xl border border-slate-100">
-                        Tidak ada tautan asesmen opsional.
-                      </p>
                     )}
                   </div>
-                ) : (
-                  // Guru: Fully Active Input & Helpers
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-1.5">
+
+                  <div className="flex items-center justify-between text-[11px] pt-0.5">
+                    <button
+                      type="button"
+                      onClick={() => handleUseSampleLink('asesmen')}
+                      className="text-indigo-600 hover:text-indigo-800 font-semibold underline text-[10px]"
+                    >
+                      + Isi Contoh Tautan
+                    </button>
+
+                    <label className="cursor-pointer text-slate-500 hover:text-slate-700 flex items-center gap-1 text-[10px]">
+                      <UploadCloud className="w-3 h-3 text-slate-400" />
+                      <span>Pilih Berkas Lokal</span>
                       <input
-                        type="url"
-                        value={asesmenUrl}
-                        onChange={(e) => setAsesmenUrl(e.target.value)}
-                        placeholder="https://drive.google.com/..."
-                        className="flex-1 px-3 py-2 rounded-xl border border-slate-300 bg-white focus:outline-indigo-600 text-xs font-mono"
+                        type="file"
+                        accept=".pdf,.doc,.docx"
+                        onChange={(e) => handleSimulatedFileUpload(e, setAsesmenUrl)}
+                        className="sr-only"
                       />
-                      {asesmenUrl && (
-                        <a
-                          href={asesmenUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 shrink-0"
-                          title="Buka Drive"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </a>
-                      )}
-                    </div>
-
-                    <div className="flex items-center justify-between text-[11px] pt-0.5">
-                      <button
-                        type="button"
-                        onClick={() => handleUseSampleLink('asesmen')}
-                        className="text-indigo-600 hover:text-indigo-800 font-semibold underline text-[10px]"
-                      >
-                        + Isi Contoh Tautan
-                      </button>
-
-                      <label className="cursor-pointer text-slate-500 hover:text-slate-700 flex items-center gap-1 text-[10px]">
-                        <UploadCloud className="w-3 h-3 text-slate-400" />
-                        <span>Pilih Berkas Lokal</span>
-                        <input
-                          type="file"
-                          accept=".pdf,.doc,.docx,.xls,.xlsx"
-                          onChange={(e) => handleSimulatedFileUpload(e, setAsesmenUrl)}
-                          className="sr-only"
-                        />
-                      </label>
-                    </div>
+                    </label>
                   </div>
-                )}
+                </div>
               </div>
             </div>
 
@@ -990,15 +907,28 @@ export const PerangkatAjarModal: React.FC<PerangkatAjarModalProps> = ({
 
               {/* SUPERVISOR ACTION BUTTON */}
               {isSupervisor && (
-                <button
-                  type="button"
-                  disabled={saving}
-                  onClick={() => handleSaveData(false)}
-                  className="px-6 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-indigo-200 disabled:opacity-50 transition-colors"
-                >
-                  <Save className="w-4 h-4" />
-                  <span>{saving ? 'Menyimpan...' : 'Simpan Penilaian & Rekomendasi'}</span>
-                </button>
+                <>
+                  <button
+                    type="button"
+                    disabled={saving}
+                    onClick={() => handleSaveData(true)}
+                    className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-xs flex items-center justify-center gap-1.5 border border-slate-300 disabled:opacity-50 transition-colors"
+                    title="Simpan tautan Drive dan catatan draf sementara tanpa menutup modal"
+                  >
+                    <Save className="w-3.5 h-3.5 text-slate-600" />
+                    <span>Simpan Draf Berkas</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={saving}
+                    onClick={() => handleSaveData(false)}
+                    className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-indigo-200 disabled:opacity-50 transition-colors"
+                  >
+                    <Save className="w-4 h-4" />
+                    <span>{saving ? 'Menyimpan...' : 'Simpan Berkas, Telaah & Rekomendasi'}</span>
+                  </button>
+                </>
               )}
             </div>
           </div>

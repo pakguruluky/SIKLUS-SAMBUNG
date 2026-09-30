@@ -17,7 +17,9 @@ import {
   Filter,
   BarChart3,
   Layers,
-  PieChart
+  PieChart,
+  PlusCircle,
+  BookOpen
 } from 'lucide-react';
 import { 
   Chart as ChartJS, 
@@ -532,50 +534,52 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   return (
     <div className="space-y-6">
       {/* Welcome Banner */}
-      <div className="bg-gradient-to-r from-indigo-900 via-indigo-800 to-slate-900 rounded-3xl p-5 sm:p-8 text-white shadow-md relative overflow-hidden">
-        <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-[radial-gradient(#818cf8_1px,transparent_1px)] [background-size:14px_14px] opacity-15 pointer-events-none"></div>
-
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-indigo-200 text-xs font-semibold mb-3 backdrop-blur-xs">
-              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-              <span>SIKLUS SAMBUNG &bull; Pendampingan Mutu Guru SMA</span>
-            </div>
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold tracking-tight">
-              Selamat Datang, {currentUser.displayName}!
-            </h1>
-            <p className="text-xs sm:text-sm text-indigo-100 mt-1 max-w-2xl leading-relaxed">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-7 text-white shadow-xs">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+          <div className="space-y-1">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-400 block">
               {isAdmin
-                ? 'Portal Pengawasan & Pembinaan Akademik SMA binaan Kusnandar, M.Si'
+                ? 'Pengawasan Pembina SMA · Kota Bogor'
                 : isKepsek
-                ? `Dashboard Supervisi Akademik Internal ${currentUser.schoolName || 'Satuan Pendidikan'}.`
-                : `Ruang Kerja Guru & Portofolio Supervisi Pembelajaran ${currentUser.subject || ''} (${currentUser.schoolName || ''}).`}
+                ? `Kepala Sekolah · ${currentUser.schoolName || 'Satuan Pendidikan'}`
+                : `Guru Mata Pelajaran ${currentUser.subject || ''} · ${currentUser.schoolName || ''}`}
+            </span>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
+              Selamat Datang, {currentUser.displayName}
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-400 max-w-2xl leading-relaxed">
+              {isAdmin
+                ? 'Portal Supervisi Akademik & Pendampingan Mutu 7 Satuan Pendidikan SMA Binaan Resmi.'
+                : isKepsek
+                ? `Dashboard supervisi akademik dan pemantauan kinerja guru di ${currentUser.schoolName || 'satuan pendidikan'}.`
+                : `Ruang kerja dan portofolio supervisi pembelajaran Kurikulum Merdeka.`}
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            {onOpenSambung && (
-              <button
-                onClick={() => onOpenSambung()}
-                className="px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs sm:text-sm shadow-md transition-all flex items-center gap-1.5"
-              >
-                <Sparkles className="w-4 h-4 text-slate-950" />
-                <span>Instrumen SAMBUNG</span>
-              </button>
-            )}
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
             {!isGuru && (
               <button
                 onClick={onNewSupervision}
-                className="px-4 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white font-semibold text-xs sm:text-sm shadow-md transition-all flex items-center gap-1.5"
+                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition-colors flex items-center gap-1.5 shadow-sm"
               >
-                <span>+ Mulai Supervisi</span>
+                <PlusCircle className="w-3.5 h-3.5" />
+                <span>Mulai Supervisi</span>
+              </button>
+            )}
+            {onOpenSambung && (
+              <button
+                onClick={() => onOpenSambung()}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs transition-colors flex items-center gap-1.5"
+              >
+                <BookOpen className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Instrumen SAMBUNG</span>
               </button>
             )}
             <button
               onClick={onNavigateSupervisions}
-              className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-semibold text-xs sm:text-sm backdrop-blur-xs border border-white/20 transition-all flex items-center gap-1.5"
+              className="px-3.5 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 font-semibold text-xs transition-colors flex items-center gap-1.5"
             >
-              <span>{isGuru ? 'Lihat Portofolio Saya' : 'Lihat Semua Berkas'}</span>
+              <span>{isGuru ? 'Lihat Portofolio Saya' : 'Lihat Berkas'}</span>
             </button>
           </div>
         </div>
@@ -723,31 +727,30 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
           </div>
 
           {/* SAMBUNG Banner card for Guru */}
-          <div className="bg-gradient-to-r from-indigo-900 via-indigo-800 to-purple-900 text-white p-5 rounded-2xl border border-indigo-700 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-white/10 backdrop-blur-xs flex items-center justify-center font-black text-amber-300 text-lg">
-                S-G
+          <div className="bg-slate-900 text-white p-5 sm:p-6 rounded-2xl border border-slate-800 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="w-10 h-10 rounded-xl bg-indigo-600/30 border border-indigo-500/40 flex items-center justify-center font-bold text-indigo-400 text-sm shrink-0">
+                <BookOpen className="w-5 h-5 text-indigo-400" />
               </div>
               <div>
-                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 font-bold text-[10px] mb-1">
-                  <Sparkles className="w-3 h-3" />
-                  <span>Apresiasi GTK 2026</span>
-                </div>
-                <h3 className="font-bold text-sm sm:text-base">
-                  Instrumen Strategi SAMBUNG Pembelajaran Anda
+                <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-400 block">
+                  Instrumen Strategi SAMBUNG
+                </span>
+                <h3 className="font-bold text-sm sm:text-base text-white">
+                  Portofolio Supervisi Klinis 7 Tahap
                 </h3>
-                <p className="text-xs text-indigo-200 mt-0.5">
-                  Akses instrumen 7 tahap: <strong>S</strong>elidiki, <strong>A</strong>rahkan, <strong>M</strong>aknai, <strong>B</strong>erdayakan, <strong>U</strong>ji, <strong>N</strong>yatakan, dan <strong>G</strong>erakkan.
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Selidiki, Arahkan, Maknai, Berdayakan, Uji, Nyatakan, dan Gerakkan.
                 </p>
               </div>
             </div>
             {onOpenSambung && (
               <button
                 onClick={() => onOpenSambung(mySingleSupervision?.id)}
-                className="px-5 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs shadow-md transition-all shrink-0 flex items-center gap-2 self-stretch sm:self-auto justify-center"
+                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition-colors shrink-0 flex items-center gap-1.5 self-stretch sm:self-auto justify-center shadow-xs"
               >
-                <Sparkles className="w-4 h-4 text-slate-950" />
-                <span>Buka Portofolio SAMBUNG Saya</span>
+                <BookOpen className="w-4 h-4 text-white" />
+                <span>Buka Portofolio SAMBUNG</span>
               </button>
             )}
           </div>

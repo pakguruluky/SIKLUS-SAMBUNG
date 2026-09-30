@@ -95,7 +95,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   <span className="text-xs font-bold text-white group-hover:text-emerald-300">Kepala Sekolah</span>
                   <Users className="w-4 h-4 text-emerald-400" />
                 </div>
-                <p className="text-[11px] text-slate-400 mt-1">Dra. Hj. Yeni Suryani (SMAN 4 Bogor)</p>
+                <p className="text-[11px] text-slate-400 mt-1">Yulianti Rosdian, M.Pd. (SMAN 4 Bogor)</p>
               </button>
 
               <button

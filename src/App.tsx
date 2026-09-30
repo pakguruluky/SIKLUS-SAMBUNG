@@ -128,26 +128,26 @@ export default function App() {
         createdAt: new Date().toISOString(),
       };
     } else if (role === 'kepsek') {
-      const firstSchool = schools[0];
+      const sman4 = schools.find(s => s.id === 'sch-sman4') || schools[0];
       mockProfile = {
-        uid: 'kepsek-yeni',
+        uid: 'kepsek-yulianti',
         email: 'kepsek@sman4bogor.sch.id',
-        displayName: firstSchool?.principalName || 'Dra. Hj. Yeni Suryani, M.Pd.',
+        displayName: sman4?.principalName || 'Yulianti Rosdian, M.Pd.',
         role: 'kepsek',
-        schoolId: firstSchool?.id || 'sch-sman4',
-        schoolName: firstSchool?.name || 'SMA Negeri 4 Bogor',
-        nip: '19680315 199303 2 004',
+        schoolId: sman4?.id || 'sch-sman4',
+        schoolName: sman4?.name || 'SMAN 4 Bogor',
+        nip: '19720518 199802 2 003',
         createdAt: new Date().toISOString(),
       };
     } else {
-      const firstSchool = schools[0];
+      const sman4 = schools.find(s => s.id === 'sch-sman4') || schools[0];
       mockProfile = {
         uid: 'teacher-sondang',
         email: 'sondangasih@sman4bogor.sch.id',
         displayName: 'Sondang Asih Januarti, S.Pd.',
         role: 'guru',
-        schoolId: firstSchool?.id || 'sch-sman4',
-        schoolName: firstSchool?.name || 'SMA Negeri 4 Bogor',
+        schoolId: sman4?.id || 'sch-sman4',
+        schoolName: sman4?.name || 'SMAN 4 Bogor',
         nip: '19840512 200801 2 007',
         subject: 'Fisika',
         approvalStatus: 'approved',

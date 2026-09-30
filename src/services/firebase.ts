@@ -17,6 +17,7 @@ import {
   updateDoc, 
   collection, 
   getDocs, 
+  deleteDoc,
   query, 
   where,
   getDocFromServer
@@ -31,31 +32,71 @@ export const auth = getAuth(app);
 
 export const DEFAULT_SCHOOLS: School[] = [
   {
-    id: 'sch-sman4',
-    npsn: '20220304',
-    name: 'SMA Negeri 4 Bogor',
-    address: 'Jl. Dreded No. 36, Empang, Kec. Bogor Selatan, Kota Bogor, Jawa Barat 16132',
-    principalName: 'Dra. Hj. Yeni Suryani, M.Pd.',
-    accreditation: 'A',
-    createdAt: new Date().toISOString(),
-    createdBy: 'system'
-  },
-  {
-    id: 'sch-umul-quro',
-    npsn: '20220315',
-    name: 'SMA Umul Quro',
-    address: 'Jl. KH. Sholeh Iskandar No. 1, Parakan Jaya, Kemang, Kota Bogor, Jawa Barat 16164',
-    principalName: 'Dr. H. Asep Kurnia, M.M.Pd.',
-    accreditation: 'A',
-    createdAt: new Date().toISOString(),
-    createdBy: 'system'
-  },
-  {
     id: 'sch-sman2',
-    npsn: '20220302',
-    name: 'SMA Negeri 2 Bogor',
-    address: 'Jl. Keranji Ujung No. 1, Budi Agung, Kedungbadak, Kec. Tanah Sereal, Kota Bogor, Jawa Barat 16166',
-    principalName: 'H. Suherman, S.Pd., M.M.',
+    npsn: '20238516',
+    name: 'SMAN 2 Bogor',
+    address: 'Jl. Keranji Ujung No. 1, Budi Agung, Sukaresmi, Kec. Tanah Sareal, Kota Bogor',
+    principalName: 'Nevy Vilanti Kusdinan, M.Pd.',
+    accreditation: 'A',
+    createdAt: new Date().toISOString(),
+    createdBy: 'system'
+  },
+  {
+    id: 'sch-sman4',
+    npsn: '20220334',
+    name: 'SMAN 4 Bogor',
+    address: 'Jl. Dreded V No. 36, Empang, Kec. Kota Bogor Selatan, Kota Bogor',
+    principalName: 'Yulianti Rosdian, M.Pd.',
+    accreditation: 'A',
+    createdAt: new Date().toISOString(),
+    createdBy: 'system'
+  },
+  {
+    id: 'sch-ummul-quro',
+    npsn: '69775444',
+    name: 'SMAS IT Ummul Quro',
+    address: 'Jl. Pool Bina Marga Perumahan Kayu Manis Boulevard No. 3Rt 006 RW 005 Kayu Manis Tanah Sareal Kota Bogor - 16169',
+    principalName: 'Hildawati, S.T.',
+    accreditation: 'A',
+    createdAt: new Date().toISOString(),
+    createdBy: 'system'
+  },
+  {
+    id: 'sch-yphb',
+    npsn: '20220330',
+    name: 'SMAS YPHB',
+    address: 'Jl. Pajajaran Nomor 234 A Kota Bogor',
+    principalName: 'Joko Pitoyo, S.Pd., M.M.',
+    accreditation: 'A',
+    createdAt: new Date().toISOString(),
+    createdBy: 'system'
+  },
+  {
+    id: 'sch-rimba-madya',
+    npsn: '20220344',
+    name: 'SMAS Rimba Madya',
+    address: 'Jl. Rimba Mulya II Pasir Mulya Bogor Barat',
+    principalName: 'Pajar Hariyanto, S.Pd.',
+    accreditation: 'A',
+    createdAt: new Date().toISOString(),
+    createdBy: 'system'
+  },
+  {
+    id: 'sch-yza-1',
+    npsn: '20220350',
+    name: 'SMA YZA 1',
+    address: 'Jl. Raya Ciawi KM. 09, Kel. Sindangsari, Kec. Bogor Timur, Kota Bogor',
+    principalName: 'TB.Agung Hartawan, SE',
+    accreditation: 'B',
+    createdAt: new Date().toISOString(),
+    createdBy: 'system'
+  },
+  {
+    id: 'sch-pgri-1',
+    npsn: '20220317',
+    name: 'SMAS PGRI 1',
+    address: 'Jl. Bina Marga I No.17 Bogor Timur',
+    principalName: 'Evi Jalinar, S.Pd., M.Si',
     accreditation: 'A',
     createdAt: new Date().toISOString(),
     createdBy: 'system'
@@ -121,12 +162,12 @@ export async function testFirestoreConnection() {
 // Helper to normalize school and teacher data from DB
 function normalizeSchoolData(sch: School): School {
   let name = sch.name;
-  if (name === 'SMAN 1 Kota Bandung' || name.toLowerCase().includes('sman 1')) {
-    name = 'SMA Negeri 4 Bogor';
-  } else if (name === 'SMAN 2 Kota Bandung') {
-    name = 'SMA Negeri 2 Bogor';
-  } else if (name === 'SMAN 3 Kota Bandung' || name.toLowerCase().includes('sman 3')) {
-    name = 'SMA Umul Quro';
+  if (name.includes('Kota Bandung') || name === 'SMA Negeri 4 Bogor') {
+    name = 'SMAN 4 Bogor';
+  } else if (name === 'SMA Negeri 2 Bogor') {
+    name = 'SMAN 2 Bogor';
+  } else if (name === 'SMA Umul Quro') {
+    name = 'SMAS IT Ummul Quro';
   }
   return { ...sch, name };
 }
@@ -137,21 +178,21 @@ function normalizeSupervisionData(sup: Supervision): Supervision {
   let subject = sup.subject;
   let lessonTitle = sup.lessonTitle;
 
-  if (teacherName.toLowerCase().includes('dewi kartika')) {
+  if (teacherName.toLowerCase().includes('dewi kartika') || teacherName.toLowerCase().includes('sondang')) {
     teacherName = 'Sondang Asih Januarti, S.Pd.';
-    schoolName = 'SMA Negeri 4 Bogor';
+    schoolName = 'SMAN 4 Bogor';
     subject = 'Fisika';
     if (!lessonTitle || lessonTitle.toLowerCase().includes('termodinamika')) {
       lessonTitle = 'Listrik Arus Searah: Rangkaian Tertutup & Analisis Hukum Kirchhoff';
     }
   }
 
-  if (schoolName === 'SMAN 1 Kota Bandung' || schoolName.toLowerCase().includes('sman 1')) {
-    schoolName = 'SMA Negeri 4 Bogor';
-  } else if (schoolName === 'SMAN 2 Kota Bandung') {
-    schoolName = 'SMA Negeri 2 Bogor';
-  } else if (schoolName === 'SMAN 3 Kota Bandung' || schoolName.toLowerCase().includes('sman 3')) {
-    schoolName = 'SMA Umul Quro';
+  if (schoolName === 'SMA Negeri 4 Bogor') {
+    schoolName = 'SMAN 4 Bogor';
+  } else if (schoolName === 'SMA Negeri 2 Bogor') {
+    schoolName = 'SMAN 2 Bogor';
+  } else if (schoolName === 'SMA Umul Quro') {
+    schoolName = 'SMAS IT Ummul Quro';
   }
 
   return { ...sup, teacherName, schoolName, subject, lessonTitle };
@@ -161,20 +202,23 @@ function normalizeSupervisionData(sup: Supervision): Supervision {
 export async function ensureInitialSchools(): Promise<School[]> {
   try {
     const schoolsSnap = await getDocs(collection(db, 'schools'));
-    if (!schoolsSnap.empty) {
+    if (!schoolsSnap.empty && schoolsSnap.docs.length >= DEFAULT_SCHOOLS.length) {
       return schoolsSnap.docs.map(d => normalizeSchoolData({ id: d.id, ...d.data() } as School));
     }
 
-    // If signed in as user or admin, write defaults to Firestore
-    if (auth.currentUser) {
-      const seeded: School[] = [];
+    // Sync the 7 default schools to Firestore
+    try {
       for (const sch of DEFAULT_SCHOOLS) {
         const { id, ...data } = sch;
         const docRef = doc(db, 'schools', id);
-        await setDoc(docRef, data);
-        seeded.push(sch);
+        await setDoc(docRef, data, { merge: true });
       }
-      return seeded;
+      const updatedSnap = await getDocs(collection(db, 'schools'));
+      if (!updatedSnap.empty) {
+        return updatedSnap.docs.map(d => normalizeSchoolData({ id: d.id, ...d.data() } as School));
+      }
+    } catch (writeErr) {
+      console.warn('Could not sync default schools to Firestore, fallback to local defaults', writeErr);
     }
 
     return DEFAULT_SCHOOLS;
@@ -182,6 +226,24 @@ export async function ensureInitialSchools(): Promise<School[]> {
     console.warn('Using default schools due to offline or uninitialized state', err);
     return DEFAULT_SCHOOLS;
   }
+}
+
+// Reset/Sync all 7 official schools explicitly
+export async function resetToDefaultSchools(): Promise<School[]> {
+  const allowedIds = new Set(DEFAULT_SCHOOLS.map(s => s.id));
+  const currentSnap = await getDocs(collection(db, 'schools'));
+  for (const d of currentSnap.docs) {
+    if (!allowedIds.has(d.id)) {
+      await deleteDoc(d.ref);
+    }
+  }
+  for (const sch of DEFAULT_SCHOOLS) {
+    const { id, ...data } = sch;
+    const docRef = doc(db, 'schools', id);
+    await setDoc(docRef, data, { merge: true });
+  }
+  const snap = await getDocs(collection(db, 'schools'));
+  return snap.docs.map(d => normalizeSchoolData({ id: d.id, ...d.data() } as School));
 }
 
 // Schools CRUD

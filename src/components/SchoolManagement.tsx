@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { School, UserProfile } from '../types';
-import { Building2, Plus, Edit2, Check, X, Search, ShieldCheck, MapPin, School as SchoolIcon } from 'lucide-react';
-import { addSchool, updateSchool } from '../services/firebase';
+import { Building2, Plus, Edit2, Check, X, Search, ShieldCheck, MapPin, School as SchoolIcon, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { addSchool, updateSchool, resetToDefaultSchools } from '../services/firebase';
 
 interface SchoolManagementProps {
   schools: School[];
@@ -17,6 +17,8 @@ export const SchoolManagement: React.FC<SchoolManagementProps> = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSchool, setEditingSchool] = useState<School | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [syncingDefaults, setSyncingDefaults] = useState(false);
+  const [syncSuccessMsg, setSyncSuccessMsg] = useState('');
 
   // Form states
   const [name, setName] = useState('');
@@ -26,6 +28,22 @@ export const SchoolManagement: React.FC<SchoolManagementProps> = ({
   const [accreditation, setAccreditation] = useState<'A' | 'B' | 'C' | 'Belum Terakreditasi'>('A');
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  const handleSyncDefaults = async () => {
+    try {
+      setSyncingDefaults(true);
+      setSyncSuccessMsg('');
+      await resetToDefaultSchools();
+      await onRefreshSchools();
+      setSyncSuccessMsg('7 Satuan Pendidikan Binaan Resmi berhasil disinkronkan ke basis data!');
+      setTimeout(() => setSyncSuccessMsg(''), 5000);
+    } catch (err: any) {
+      console.error(err);
+      setErrorMsg('Gagal menyinkronkan data default: ' + (err.message || ''));
+    } finally {
+      setSyncingDefaults(false);
+    }
+  };
 
   const handleOpenAdd = () => {
     setEditingSchool(null);
@@ -113,14 +131,33 @@ export const SchoolManagement: React.FC<SchoolManagementProps> = ({
           </p>
         </div>
 
-        <button
-          onClick={handleOpenAdd}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs sm:text-sm shadow-md shadow-indigo-200 transition-all shrink-0"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Tambah Sekolah Target</span>
-        </button>
+        <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+          <button
+            onClick={handleSyncDefaults}
+            disabled={syncingDefaults}
+            className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-indigo-200 bg-indigo-50/80 hover:bg-indigo-100 text-indigo-700 font-semibold text-xs sm:text-sm transition-all disabled:opacity-50"
+            title="Sinkronkan seluruh 7 SMA Binaan Resmi sesuai daftar tabel"
+          >
+            <RefreshCw className={`w-4 h-4 ${syncingDefaults ? 'animate-spin' : ''}`} />
+            <span>{syncingDefaults ? 'Menyinkronkan...' : 'Sinkronkan 7 SMA Resmi'}</span>
+          </button>
+
+          <button
+            onClick={handleOpenAdd}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs sm:text-sm shadow-md shadow-indigo-200 transition-all shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Tambah Sekolah Target</span>
+          </button>
+        </div>
       </div>
+
+      {syncSuccessMsg && (
+        <div className="flex items-center gap-2.5 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold animate-fadeIn">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span>{syncSuccessMsg}</span>
+        </div>
+      )}
 
       {/* Filter / Search Bar */}
       <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">

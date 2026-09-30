@@ -24,6 +24,13 @@ import {
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 import { School, UserProfile, Supervision, Role } from '../types';
+import { 
+  saveSingleLocalSupervision, 
+  saveLocalSupervisions, 
+  saveLocalSchools, 
+  loadLocalSupervisions, 
+  loadLocalSchools 
+} from './localStorageService';
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
@@ -333,24 +340,36 @@ export async function fetchUsersBySchool(schoolId?: string): Promise<UserProfile
 // Supervisions CRUD
 export async function fetchSupervisions(userProfile?: UserProfile | null): Promise<Supervision[]> {
   const path = 'supervisions';
+  let results: Supervision[] = [];
   try {
     const q = collection(db, path);
     if (userProfile?.role === 'guru') {
       const qGuru = query(q, where('teacherId', '==', userProfile.uid));
       const snap = await getDocs(qGuru);
-      return snap.docs.map(d => normalizeSupervisionData({ id: d.id, ...d.data() } as Supervision));
+      results = snap.docs.map(d => normalizeSupervisionData({ id: d.id, ...d.data() } as Supervision));
     } else if (userProfile?.role === 'kepsek' && userProfile.schoolId) {
       const qKepsek = query(q, where('schoolId', '==', userProfile.schoolId));
       const snap = await getDocs(qKepsek);
-      return snap.docs.map(d => normalizeSupervisionData({ id: d.id, ...d.data() } as Supervision));
+      results = snap.docs.map(d => normalizeSupervisionData({ id: d.id, ...d.data() } as Supervision));
     } else {
       // Admin sees all
       const snap = await getDocs(q);
-      return snap.docs.map(d => normalizeSupervisionData({ id: d.id, ...d.data() } as Supervision));
+      results = snap.docs.map(d => normalizeSupervisionData({ id: d.id, ...d.data() } as Supervision));
     }
+
+    if (results.length > 0) {
+      saveLocalSupervisions(results);
+    } else {
+      const localCached = loadLocalSupervisions();
+      if (localCached && localCached.length > 0) {
+        return localCached;
+      }
+    }
+    return results;
   } catch (err) {
-    console.warn('Notice on fetching supervisions:', err);
-    return [];
+    console.warn('Notice on fetching supervisions, falling back to device local storage:', err);
+    const localCached = loadLocalSupervisions();
+    return localCached || [];
   }
 }
 
@@ -359,43 +378,58 @@ export async function getSupervisionById(id: string): Promise<Supervision | null
   try {
     const snap = await getDoc(doc(db, 'supervisions', id));
     if (snap.exists()) {
-      return normalizeSupervisionData({ id: snap.id, ...snap.data() } as Supervision);
+      const sup = normalizeSupervisionData({ id: snap.id, ...snap.data() } as Supervision);
+      saveSingleLocalSupervision(sup);
+      return sup;
     }
-    return null;
   } catch (err) {
-    console.warn('Notice getting supervision by id:', err);
-    return null;
+    console.warn('Notice getting supervision by id from Firestore, checking device local storage:', err);
   }
+
+  // Fallback to local storage
+  const localList = loadLocalSupervisions() || [];
+  return localList.find(s => s.id === id) || null;
 }
 
 export async function saveSupervision(supervision: Partial<Supervision> & { id?: string }): Promise<string> {
   const isNew = !supervision.id;
+  const targetId = supervision.id || `sup-local-${Date.now()}`;
+  const now = new Date().toISOString();
 
-  // If not signed in with Firebase Auth (e.g. Quick Demo Mode), do not attempt an unauthorized Firestore network write
+  const fullData: Supervision = {
+    ...supervision,
+    id: targetId,
+    createdAt: (supervision as any).createdAt || now,
+    updatedAt: now,
+  } as Supervision;
+
+  // 1. ALWAYS persist to device local storage immediately!
+  saveSingleLocalSupervision(fullData);
+
+  // 2. If not signed in with Firebase Auth (e.g. Quick Demo Mode), retained safely in local storage
   if (!auth.currentUser) {
-    const id = supervision.id || `sup-demo-${Date.now()}`;
-    return id;
+    return targetId;
   }
 
+  // 3. Attempt Firestore cloud sync
   try {
     if (isNew) {
       const newDoc = doc(collection(db, 'supervisions'));
-      const fullData = {
-        ...supervision,
+      const firestoreData = {
+        ...fullData,
         id: newDoc.id,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
       };
-      await setDoc(newDoc, fullData);
+      saveSingleLocalSupervision(firestoreData);
+      await setDoc(newDoc, firestoreData);
       return newDoc.id;
     } else {
       const docRef = doc(db, 'supervisions', supervision.id!);
-      await setDoc(docRef, { ...supervision, updatedAt: new Date().toISOString() }, { merge: true });
+      await setDoc(docRef, { ...supervision, updatedAt: now }, { merge: true });
       return supervision.id!;
     }
   } catch (err) {
-    console.warn('Firestore write warning:', err);
-    return supervision.id || `sup-${Date.now()}`;
+    console.warn('Firestore write notice (data safely saved in device local storage):', err);
+    return targetId;
   }
 }
 

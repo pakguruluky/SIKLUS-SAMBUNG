@@ -14,6 +14,7 @@ import { PascaObservasiModal } from './components/forms/PascaObservasiModal';
 import { EvaluasiTahunanModal } from './components/forms/EvaluasiTahunanModal';
 import { NewSupervisionModal } from './components/forms/NewSupervisionModal';
 import { SambungInstrumentView } from './components/SambungInstrumentView';
+import { LocalStorageBackupModal } from './components/LocalStorageBackupModal';
 
 import { 
   auth, 
@@ -26,19 +27,28 @@ import {
   saveSupervision,
   updateUserApprovalStatus
 } from './services/firebase';
+import { 
+  loadLocalSupervisions, 
+  saveLocalSupervisions, 
+  loadLocalSchools, 
+  saveLocalSchools, 
+  loadLocalUser, 
+  saveLocalUser 
+} from './services/localStorageService';
 import { School, Supervision, UserProfile, Role } from './types';
 import { SAMPLE_SUPERVISIONS } from './data/seedData';
 import { onAuthStateChanged } from 'firebase/auth';
 
 export default function App() {
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
-  const [schools, setSchools] = useState<School[]>([]);
-  const [supervisions, setSupervisions] = useState<Supervision[]>(SAMPLE_SUPERVISIONS);
-  const [activeTab, setActiveTab] = useState<string>('landing');
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => loadLocalUser());
+  const [schools, setSchools] = useState<School[]>(() => loadLocalSchools() || []);
+  const [supervisions, setSupervisions] = useState<Supervision[]>(() => loadLocalSupervisions() || SAMPLE_SUPERVISIONS);
+  const [activeTab, setActiveTab] = useState<string>(() => loadLocalUser() ? 'dashboard' : 'landing');
 
   // Modals
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isNewSupervisionModalOpen, setIsNewSupervisionModalOpen] = useState(false);
+  const [isLocalStorageModalOpen, setIsLocalStorageModalOpen] = useState(false);
   const [selectedSupervision, setSelectedSupervision] = useState<Supervision | null>(null);
   const [activeFormStage, setActiveFormStage] = useState<'perangkat' | 'pra' | 'observasi' | 'pasca' | 'evaluasi' | null>(null);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
@@ -51,12 +61,14 @@ export default function App() {
       const loadedSchools = await ensureInitialSchools();
       if (loadedSchools.length > 0) {
         setSchools(loadedSchools);
+        saveLocalSchools(loadedSchools);
       } else {
         const fallbackSchools = await fetchAllSchools();
         setSchools(fallbackSchools);
+        saveLocalSchools(fallbackSchools);
       }
 
-      // Check persistent supervisions from Firestore
+      // Check persistent supervisions from Firestore & sync with device local storage
       try {
         const firestoreSupervisions = await fetchSupervisions();
         if (firestoreSupervisions && firestoreSupervisions.length > 0) {
@@ -64,9 +76,19 @@ export default function App() {
           const existingIds = new Set(firestoreSupervisions.map(s => s.id));
           const merged = [...firestoreSupervisions, ...SAMPLE_SUPERVISIONS.filter(s => !existingIds.has(s.id))];
           setSupervisions(merged);
+          saveLocalSupervisions(merged);
+        } else {
+          const localCached = loadLocalSupervisions();
+          if (localCached && localCached.length > 0) {
+            setSupervisions(localCached);
+          } else {
+            saveLocalSupervisions(SAMPLE_SUPERVISIONS);
+          }
         }
       } catch (e) {
         console.warn('Using local seed supervisions', e);
+        const localCached = loadLocalSupervisions();
+        if (localCached) setSupervisions(localCached);
       }
     };
 
@@ -78,6 +100,7 @@ export default function App() {
         const profile = await getUserProfile(user.uid);
         if (profile) {
           setCurrentUser(profile);
+          saveLocalUser(profile);
           setActiveTab('dashboard');
         } else {
           // Default profile if newly signed in
@@ -90,11 +113,15 @@ export default function App() {
             createdAt: new Date().toISOString(),
           };
           setCurrentUser(defaultProfile);
+          saveLocalUser(defaultProfile);
           setActiveTab('dashboard');
         }
       } else {
-        // If not logged in and currently in private dashboard, switch to landing
-        setCurrentUser(null);
+        // If not logged in and no local session, switch to landing
+        const localUser = loadLocalUser();
+        if (!localUser) {
+          setCurrentUser(null);
+        }
       }
     });
 
@@ -105,6 +132,7 @@ export default function App() {
     try {
       const refreshed = await fetchAllSchools();
       setSchools(refreshed);
+      saveLocalSchools(refreshed);
     } catch (err) {
       console.error(err);
     }
@@ -113,6 +141,7 @@ export default function App() {
   const handleLogout = async () => {
     await fbSignOut(auth);
     setCurrentUser(null);
+    saveLocalUser(null);
     setActiveTab('landing');
   };
 
@@ -156,6 +185,7 @@ export default function App() {
     }
 
     setCurrentUser(mockProfile);
+    saveLocalUser(mockProfile);
     setActiveTab('dashboard');
   };
 
@@ -187,13 +217,32 @@ export default function App() {
   };
 
   const handleUpdateSupervision = (updated: Supervision) => {
-    setSupervisions(prev => prev.map(s => (s.id === updated.id ? updated : s)));
+    setSupervisions(prev => {
+      const next = prev.map(s => (s.id === updated.id ? updated : s));
+      saveLocalSupervisions(next);
+      return next;
+    });
     setSelectedSupervision(updated);
   };
 
   const handleCreateSupervision = (newSup: Supervision) => {
-    setSupervisions(prev => [newSup, ...prev]);
+    setSupervisions(prev => {
+      const next = [newSup, ...prev];
+      saveLocalSupervisions(next);
+      return next;
+    });
     setActiveTab('supervisions');
+  };
+
+  const handleRestoreData = (restoredSupervisions: Supervision[], restoredSchools: School[]) => {
+    if (restoredSupervisions.length > 0) {
+      setSupervisions(restoredSupervisions);
+      saveLocalSupervisions(restoredSupervisions);
+    }
+    if (restoredSchools.length > 0) {
+      setSchools(restoredSchools);
+      saveLocalSchools(restoredSchools);
+    }
   };
 
   // Requirement 1: Guru yang satu tidak dapat melihat hasil supervisi guru yang lain
@@ -213,6 +262,7 @@ export default function App() {
         onOpenAuth={() => setIsAuthModalOpen(true)}
         onLogout={handleLogout}
         onNewSupervision={() => setIsNewSupervisionModalOpen(true)}
+        onOpenLocalStorageModal={() => setIsLocalStorageModalOpen(true)}
       />
 
       {/* Main Content Area */}
@@ -238,6 +288,7 @@ export default function App() {
                 onOpenPrint={handleOpenPrint}
                 onApproveTeacher={handleApproveTeacher}
                 onOpenSambung={handleOpenSambung}
+                onOpenStorageModal={() => setIsLocalStorageModalOpen(true)}
               />
             )}
 
@@ -358,6 +409,16 @@ export default function App() {
           onClose={() => setIsPrintModalOpen(false)}
         />
       )}
+
+      {/* Local Storage & Device Backup Modal */}
+      <LocalStorageBackupModal
+        isOpen={isLocalStorageModalOpen}
+        onClose={() => setIsLocalStorageModalOpen(false)}
+        supervisions={supervisions}
+        schools={schools}
+        currentUser={currentUser}
+        onRestoreData={handleRestoreData}
+      />
     </div>
   );
 }

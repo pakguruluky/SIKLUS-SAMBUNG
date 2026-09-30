@@ -19,7 +19,8 @@ import {
   Layers,
   PieChart,
   PlusCircle,
-  BookOpen
+  BookOpen,
+  HardDrive
 } from 'lucide-react';
 import { 
   Chart as ChartJS, 
@@ -61,6 +62,7 @@ interface DashboardOverviewProps {
   onOpenPrint?: (supervision: Supervision) => void;
   onApproveTeacher?: (uid: string) => void;
   onOpenSambung?: (supervisionId?: string) => void;
+  onOpenStorageModal?: () => void;
   users?: UserProfile[];
 }
 
@@ -74,6 +76,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   onOpenForm,
   onApproveTeacher,
   onOpenSambung,
+  onOpenStorageModal,
   users = [],
 }) => {
   const scoresChartRef = useRef<HTMLCanvasElement | null>(null);
@@ -573,6 +576,16 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
               >
                 <BookOpen className="w-3.5 h-3.5 text-indigo-400" />
                 <span>Instrumen SAMBUNG</span>
+              </button>
+            )}
+            {onOpenStorageModal && (
+              <button
+                onClick={onOpenStorageModal}
+                title="Penyimpanan Lokal & Cadangan Perangkat"
+                className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs transition-colors flex items-center gap-1.5"
+              >
+                <HardDrive className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Memori Device</span>
               </button>
             )}
             <button

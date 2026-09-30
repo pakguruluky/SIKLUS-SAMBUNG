@@ -8,7 +8,8 @@ import {
   PlusCircle, 
   LogOut, 
   LogIn, 
-  BookOpen
+  BookOpen,
+  HardDrive
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -18,6 +19,7 @@ interface NavbarProps {
   onOpenAuth: () => void;
   onLogout: () => void;
   onNewSupervision: () => void;
+  onOpenLocalStorageModal?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -27,6 +29,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenAuth,
   onLogout,
   onNewSupervision,
+  onOpenLocalStorageModal,
 }) => {
   const getRoleLabel = (role: Role) => {
     switch (role) {
@@ -132,6 +135,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <PlusCircle className="w-3.5 h-3.5" />
                   <span>Supervisi Baru</span>
                 </button>
+
+                {onOpenLocalStorageModal && (
+                  <button
+                    onClick={onOpenLocalStorageModal}
+                    title="Penyimpanan Lokal & Cadangan Perangkat"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50/50 text-xs font-semibold transition-colors"
+                  >
+                    <HardDrive className="w-3.5 h-3.5 text-emerald-600" />
+                    <span className="hidden sm:inline">Memori Device</span>
+                  </button>
+                )}
 
                 <div className="hidden lg:flex flex-col items-end leading-tight pl-3 border-l border-slate-200">
                   <span className="text-xs font-bold text-slate-900">{currentUser.displayName}</span>

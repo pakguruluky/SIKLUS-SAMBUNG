@@ -15,8 +15,11 @@ import {
   AlertCircle,
   ExternalLink,
   ShieldAlert,
-  Sparkles
+  Sparkles,
+  Download,
+  HardDrive
 } from 'lucide-react';
+import { exportDataToLocalFile } from '../services/localStorageService';
 
 interface SupervisionListProps {
   supervisions: Supervision[];
@@ -80,15 +83,26 @@ export const SupervisionList: React.FC<SupervisionListProps> = ({
           </p>
         </div>
 
-        {!isGuru && (
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <button
-            onClick={onNewSupervision}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs sm:text-sm shadow-md shadow-indigo-200 transition-all shrink-0 w-full sm:w-auto"
+            onClick={() => exportDataToLocalFile(authorizedSupervisions, schools, currentUser)}
+            title="Unduh Salinan Berkas ke Perangkat Lokal (.JSON)"
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs border border-slate-200 transition-colors shadow-xs"
           >
-            <PlusCircle className="w-4 h-4" />
-            <span>Mulai Supervisi Baru</span>
+            <Download className="w-3.5 h-3.5 text-slate-500" />
+            <span>Simpan ke Device (.JSON)</span>
           </button>
-        )}
+
+          {!isGuru && (
+            <button
+              onClick={onNewSupervision}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs sm:text-sm shadow-sm transition-all shrink-0"
+            >
+              <PlusCircle className="w-4 h-4" />
+              <span>Mulai Supervisi Baru</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Filter and Search Bar (Only shown for admin or kepsek, or if guru has multiple years) */}

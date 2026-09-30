@@ -2,7 +2,8 @@ import { Supervision } from '../types';
 import { 
   SEED_SAMBUNG_DEWI, 
   SEED_SAMBUNG_AHMAD, 
-  SEED_SAMBUNG_SITI 
+  SEED_SAMBUNG_SITI,
+  createDefaultSambungForTeacher 
 } from './sambungSeed';
 
 export const SAMPLE_SUPERVISIONS: Supervision[] = [
@@ -928,6 +929,315 @@ export const SAMPLE_SUPERVISIONS: Supervision[] = [
       finalAverageScore: 96.8,
       finalGrade: 'Amat Baik (A)',
       summaryNotes: 'Kinerja unggul, kreatif, dan berdampak nyata bagi karakter kemandirian murid.'
+    }
+  },
+  {
+    id: 'sup-demo-ummul-sani',
+    schoolId: 'sch-ummul-quro',
+    schoolName: 'SMAS IT Ummul Quro',
+    teacherId: 'teacher-sani',
+    teacherName: 'Sani Ramadhanti Noor, S.E.',
+    teacherNip: '19910418 201802 2 004',
+    subject: 'Ekonomi',
+    classGrade: 'Fase E / Kelas X-1',
+    semester: 'Ganjil',
+    schoolYear: '2025/2026',
+    lessonTitle: 'Kelangkaan Sumber Daya, Biaya Peluang dan Literasi Keuangan Syariah',
+    status: 'completed',
+    supervisorId: 'admin-kusnandar',
+    supervisorName: 'Kusnandar, M.Si',
+    supervisorRole: 'admin',
+    createdAt: '2025-08-20T08:00:00.000Z',
+    updatedAt: '2025-09-15T11:00:00.000Z',
+    sambung: createDefaultSambungForTeacher('Sani Ramadhanti Noor, S.E.', 'SMAS IT Ummul Quro', 'Ekonomi'),
+    perangkatAjar: {
+      driveLinks: {
+        cpTpAtpUrl: 'https://drive.google.com/file/d/1DemoCPTPEkonomiUmmulQuro/view?usp=sharing',
+        modulAjarUrl: 'https://drive.google.com/file/d/1DemoModulEkonomiKelangkaan/view?usp=sharing',
+        bahanAjarUrl: 'https://drive.google.com/file/d/1DemoMediaLiterasiFinansial/view?usp=sharing',
+        asesmenUrl: 'https://drive.google.com/file/d/1DemoRubrikStudiKasusEkonomi/view?usp=sharing',
+      },
+      submittedAt: '2025-08-24T09:30:00.000Z',
+      telaahScores: {
+        1: 2, 2: 2, 3: 2, 4: 2, 5: 2, 6: 2, 7: 2, 8: 2, 9: 2, 10: 2, 11: 2,
+        12: 2, 13: 2, 14: 2, 15: 2, 16: 2, 17: 2, 18: 2, 19: 2, 20: 2, 21: 2, 22: 2
+      },
+      telaahComments: {
+        1: 'Identitas modul ajar ekonomi fase E sangat lengkap, terintegrasi nilai keislaman dan etika.',
+        6: 'Profil Pelajar Pancasila Bernalar Kritis dan Mandiri tergambar jelas dalam lembar studi kasus.',
+        12: 'Pendekatan kontekstual pengelolaan uang saku dan literasi investasi syariah sangat relevan.',
+        21: 'Asesmen otentik berupa penyusunan skala prioritas kebutuhan siswa dengan rubrik jelas.'
+      },
+      telaahSummary: {
+        totalScore: 44,
+        maxPossibleScore: 44,
+        finalScore: 100,
+        predicate: 'Sangat Baik'
+      },
+      feedback: {
+        kelebihan: 'Modul ajar mengaitkan teori kelangkaan dengan fenomena riil gaya hidup konsumtif remaja serta solusinya dalam perspektif ekonomi berkelanjutan.',
+        perbaikan: 'Dapat ditambahkan simulasi aplikasi pencatat keuangan digital (fintech sehat).',
+        rekomendasi: 'Sangat layak dijadikan rujukan modul ekonomi inspiratif di wilayah binaan.'
+      },
+      reviewedAt: '2025-08-28T13:00:00.000Z',
+      reviewedBy: 'Kusnandar, M.Si',
+      revisi: {
+        modulAjarRevisiUrl: 'https://drive.google.com/file/d/1DemoModulEkonomiRevisi/view?usp=sharing',
+        catatanRevisiGuru: 'Telah ditambahkan lembar simulasi aplikasi pencatatan keuangan pribadi.',
+        revisiSubmittedAt: '2025-08-30T10:00:00.000Z',
+        revisiStatus: 'disetujui'
+      }
+    },
+    praObservasi: {
+      interviewDurationMinutes: 30,
+      q1_kd_indikator: 'Menganalisis konsep kelangkaan dan menentukan skala prioritas kebutuhan dalam kehidupan sehari-hari.',
+      q2_metode: 'Case-Based Learning dipadukan dengan diskusi kelompok terarah (FGD).',
+      q3_alat_bahan: 'Lembar Studi Kasus riil, video fenomena panic buying, aplikasi budgeting digital.',
+      q4_tahapan: 'Pendahuluan (Tanya jawab uang saku), Analisis Kasus Kelangkaan, Perumusan Solusi Skala Prioritas, Presentasi & Refleksi.',
+      q5_persiapan: 'Menyiapkan modul, skenario studi kasus pasar, dan rubrik kolaborasi.',
+      q6_materi_sulit: 'Membedakan antara konsep keinginan dan kebutuhan pokok.',
+      q7_target_kompetensi: 'Murid mampu menyusun anggaran pribadi berbasis skala prioritas.',
+      q8_perhatian_khusus: 'Memfasilitasi murid yang masih ragu berpendapat dalam diskusi.',
+      supervisorNotes: 'Rencana pembelajaran dirancang dengan sangat matang dan berpusat pada murid.',
+      completedAt: '2025-08-29T10:30:00.000Z'
+    },
+    observasiKelas: {
+      items: {},
+      totalYa: 24,
+      totalAspek: 24,
+      score: 100,
+      predicate: 'Amat Baik (A)',
+      feedbackNotes: 'Interaksi kelas sangat aktif, siswa mendiskusikan anggaran belanja dengan antusias dan bernalar kritis.'
+    },
+    pascaObservasi: {
+      q1_kesan: 'Suasana kelas sangat dinamis, seluruh murid berpartisipasi aktif dalam kelompok.',
+      q2_sesuai_rencana: 'Ya, seluruh tahapan terlaksana sesuai alokasi waktu 2 jam pelajaran.',
+      q3_hal_memuaskan: 'Murid mampu mengidentifikasi ilusi kebutuhan dan membuat skala prioritas yang realistis.',
+      q4_hal_kurang: 'Waktu presentasi kelompok sedikit tergeser karena antusiasme tanya jawab.',
+      q5_ketercapaian_tujuan: '95% siswa mencapai kriteria ketuntasan tujuan pembelajaran (KKTP).',
+      q6_kesulitan_siswa: 'Menentukan pos tabungan darurat dalam anggaran kecil.',
+      q7_alternatif_solusi: 'Memberikan formula persentase 50-30-20 yang disederhanakan.',
+      q8_rencana_tindak_lanjut: 'Projek mini pencatatan arus kas pribadi selama 2 pekan.',
+      q9_pengembangan_diri: 'Mengikuti pelatihan Certified Financial Literacy Educator untuk guru SMA.',
+      generalImpression: 'Pembelajaran bermakna yang langsung dapat dipraktikkan murid dalam kehidupan nyata.',
+      recommendations: 'Kembangkan projek pencatatan keuangan ini menjadi pameran portofolio literasi finansial.',
+      completedAt: '2025-09-03T11:30:00.000Z'
+    },
+    evaluasiTahunan: {
+      hasilBelajar: { evidence: 'Ketuntasan 95%, portofolio perencanaan anggaran siswa lengkap', note: 'Sangat Baik', score: 95 },
+      administrasi: { evidence: 'Perangkat ajar lengkap dan tertata rapi di Google Drive', note: 'Lengkap', score: 96 },
+      pengembanganDiri: { evidence: 'Sertifikat Bimtek Kurikulum Merdeka & Webinar Ekonomi Kreatif', note: 'Aktif', score: 94 },
+      kedisiplinan: { evidence: 'Kehadiran 100%, konsisten membimbing siswa', note: 'Teladan', score: 98 },
+      rekomendasi: { notes: 'Pertahankan inovasi pembelajaran berbasis masalah kontekstual', tindakLanjut: 'Diseminasikan ke MGMP Ekonomi SMA Kota Bogor', score: 96 },
+      finalAverageScore: 95.8,
+      finalGrade: 'Amat Baik (A)',
+      summaryNotes: 'Guru berdedikasi tinggi dengan penguasaan pedagogi dan materi ekonomi yang sangat kuat.'
+    }
+  },
+  {
+    id: 'sup-demo-ummul-kirana',
+    schoolId: 'sch-ummul-quro',
+    schoolName: 'SMAS IT Ummul Quro',
+    teacherId: 'teacher-kirana',
+    teacherName: 'Kirana Mahardhika, S.Pd, Gr.',
+    teacherNip: '19930825 201903 2 009',
+    subject: 'Kimia',
+    classGrade: 'Fase F / Kelas XI-IPA',
+    semester: 'Ganjil',
+    schoolYear: '2025/2026',
+    lessonTitle: 'Termokimia: Penentuan Perubahan Entalpi Reaksi Melalui Eksperimen Kalorimeter Sederhana Ramah Lingkungan',
+    status: 'completed',
+    supervisorId: 'admin-kusnandar',
+    supervisorName: 'Kusnandar, M.Si',
+    supervisorRole: 'admin',
+    createdAt: '2025-08-22T08:30:00.000Z',
+    updatedAt: '2025-09-18T10:00:00.000Z',
+    sambung: createDefaultSambungForTeacher('Kirana Mahardhika, S.Pd, Gr.', 'SMAS IT Ummul Quro', 'Kimia'),
+    perangkatAjar: {
+      driveLinks: {
+        cpTpAtpUrl: 'https://drive.google.com/file/d/1DemoCPTPKimiaUmmulQuro/view?usp=sharing',
+        modulAjarUrl: 'https://drive.google.com/file/d/1DemoModulKimiaTermokimia/view?usp=sharing',
+        bahanAjarUrl: 'https://drive.google.com/file/d/1DemoMediaPraktikumKimia/view?usp=sharing',
+        asesmenUrl: 'https://drive.google.com/file/d/1DemoRubrikPraktikumKalorimeter/view?usp=sharing',
+      },
+      submittedAt: '2025-08-25T10:00:00.000Z',
+      telaahScores: {
+        1: 2, 2: 2, 3: 2, 4: 2, 5: 2, 6: 2, 7: 2, 8: 2, 9: 2, 10: 2, 11: 2,
+        12: 2, 13: 2, 14: 2, 15: 2, 16: 2, 17: 2, 18: 2, 19: 2, 20: 2, 21: 2, 22: 2
+      },
+      telaahComments: {
+        1: 'Identitas modul terstruktur sangat baik, mencakup keselamatan kerja laboratorium (K3).',
+        8: 'Model Inquiry-Based Learning dirancang runtut memandu penemuan konsep entalpi.',
+        13: 'Prinsip Kimia Hijau (Green Chemistry) terintegrasi pada pemilihan bahan praktikum aman.',
+        21: 'Rubrik penilaian kinerja praktikum memuat indikator keterampilan proses sains yang jelas.'
+      },
+      telaahSummary: {
+        totalScore: 44,
+        maxPossibleScore: 44,
+        finalScore: 100,
+        predicate: 'Sangat Baik'
+      },
+      feedback: {
+        kelebihan: 'Pemanfaatan kalorimeter bahan daur ulang (cangkir styrofoam tertutup) mengedukasi siswa bahwa praktikum kimia akurat dapat dilakukan secara hemat dan ramah lingkungan.',
+        perbaikan: 'Sediakan grafik digital suhu vs waktu menggunakan sensor termokopel atau smartphone.',
+        rekomendasi: 'Direkomendasikan sebagai praktik baik inovasi praktikum Kimia Kurikulum Merdeka.'
+      },
+      reviewedAt: '2025-08-29T14:30:00.000Z',
+      reviewedBy: 'Kusnandar, M.Si',
+      revisi: {
+        modulAjarRevisiUrl: 'https://drive.google.com/file/d/1DemoModulKimiaRevisi/view?usp=sharing',
+        catatanRevisiGuru: 'Telah dilengkapi panduan pencatatan data suhu digital menggunakan aplikasi mobile logger.',
+        revisiSubmittedAt: '2025-09-01T08:00:00.000Z',
+        revisiStatus: 'disetujui'
+      }
+    },
+    praObservasi: {
+      interviewDurationMinutes: 30,
+      q1_kd_indikator: 'Menjelaskan konsep perubahan entalpi reaksi pada tekanan tetap dan menentukan delta H reaksi melalui percobaan kalorimetri.',
+      q2_metode: 'Inquiry-Based Learning berbasis Eksperimen Hands-on di Laboratorium Kimia.',
+      q3_alat_bahan: 'Kalorimeter sederhana, Termometer presisi 0.1°C, Larutan NaOH 1 M, Larutan HCl 1 M, Stopwatch, LKPD praktikum.',
+      q4_tahapan: 'Pra-lab (Keselamatan kerja & apersepsi), Pelaksanaan Eksperimen terpandu, Pengolahan Data & Perhitungan q larutan, Diskusi & Penarikan Kesimpulan.',
+      q5_persiapan: 'Standardisasi larutan uji, penyiapan alat ukur, dan briefing keselamatan laboratorium.',
+      q6_materi_sulit: 'Konversi tanda positif/negatif entalpi reaksi dan perhitungan kapasitas kalorimeter.',
+      q7_target_kompetensi: 'Siswa terampil merangkai alat kalorimeter dan menghitung nilai kalor reaksi penetralan.',
+      q8_perhatian_khusus: 'Memastikan penanganan larutan asam dan basa dilakukan dengan sarung tangan dan kacamata pengaman.',
+      supervisorNotes: 'Prosedur keselamatan kerja dan tujuan pembelajaran sangat rinci dan terstandar.',
+      completedAt: '2025-08-31T09:00:00.000Z'
+    },
+    observasiKelas: {
+      items: {},
+      totalYa: 24,
+      totalAspek: 24,
+      score: 100,
+      predicate: 'Amat Baik (A)',
+      feedbackNotes: 'Praktikum berjalan sangat tertib, kolaborasi kelompok solid, dan siswa antusias menganalisis data kenaikan suhu.'
+    },
+    pascaObservasi: {
+      q1_kesan: 'Sangat puas, data eksperimen seluruh kelompok menunjukkan galat kurang dari 5% dari nilai teoritis.',
+      q2_sesuai_rencana: 'Ya, seluruh rangkaian eksperimen dan pembersihan lab selesai tepat waktu.',
+      q3_hal_memuaskan: 'Keterampilan psikomotorik siswa dalam membaca miniskus termometer sangat teliti.',
+      q4_hal_kurang: 'Pengadukan larutan pada kelompok 3 sempat kurang merata sehingga kenaikan suhu agak lambat.',
+      q5_ketercapaian_tujuan: '97% siswa tuntas memahami konsep eksoterm dan perhitungan kalor penetralan.',
+      q6_kesulitan_siswa: 'Menghubungkan kenaikan suhu larutan dengan pelepasan kalor sistem ke lingkungan.',
+      q7_alternatif_solusi: 'Menggunakan diagram energi animasi untuk memperjelas konsep arah perpindahan kalor.',
+      q8_rencana_tindak_lanjut: 'Membahas hukum Hess dan energi ikatan pada pertemuan berikutnya.',
+      q9_pengembangan_diri: 'Pelatihan Instrumentasi Spektrofotometri dan Kimia Komputasi Guru SMA.',
+      generalImpression: 'Pembelajaran sains yang otentik dan menumbuhkan nalar kritis siswa.',
+      recommendations: 'Tuliskan modul praktikum ini menjadi artikel ilmiah tindakan kelas.',
+      completedAt: '2025-09-05T13:00:00.000Z'
+    },
+    evaluasiTahunan: {
+      hasilBelajar: { evidence: 'Ketuntasan 97%, nilai praktikum rata-rata 93', note: 'Sangat Unggul', score: 96 },
+      administrasi: { evidence: 'Portofolio laporan praktikum dan modul ajar tersimpan rapi', note: 'Sangat Tertib', score: 97 },
+      pengembanganDiri: { evidence: 'Lulus Sertifikasi Guru Penggerak & Pemakalah Seminar Sains', note: 'Berprestasi', score: 98 },
+      kedisiplinan: { evidence: 'Hadir tepat waktu, teladan dalam tata tertib laboratorium', note: 'Teladan', score: 99 },
+      rekomendasi: { notes: 'Pertahankan kepemimpinan pembelajaran sains yang inovatif', tindakLanjut: 'Koordinator Laboratorium IPA SMAS IT Ummul Quro', score: 98 },
+      finalAverageScore: 97.6,
+      finalGrade: 'Amat Baik (A)',
+      summaryNotes: 'Sosok guru pembelajar sejati, profesional, inovatif, dan menjadi inspirasi bagi siswa dan rekan sejawat.'
+    }
+  },
+  {
+    id: 'sup-demo-rimba-atik',
+    schoolId: 'sch-rimba-madya',
+    schoolName: 'SMAS Rimba Madya',
+    teacherId: 'teacher-atik',
+    teacherName: 'Atik Dwi Larasati, S.Pd.',
+    teacherNip: '19891105 201504 2 003',
+    subject: 'Ekonomi',
+    classGrade: 'Fase F / Kelas XI-IPS',
+    semester: 'Ganjil',
+    schoolYear: '2025/2026',
+    lessonTitle: 'Pendapatan Nasional: Menghitung PDB, PNB, Pendapatan Perkapita & Analisis Indeks Gini',
+    status: 'completed',
+    supervisorId: 'admin-kusnandar',
+    supervisorName: 'Kusnandar, M.Si',
+    supervisorRole: 'admin',
+    createdAt: '2025-08-25T08:00:00.000Z',
+    updatedAt: '2025-09-16T12:00:00.000Z',
+    sambung: createDefaultSambungForTeacher('Atik Dwi Larasati, S.Pd.', 'SMAS Rimba Madya', 'Ekonomi'),
+    perangkatAjar: {
+      driveLinks: {
+        cpTpAtpUrl: 'https://drive.google.com/file/d/1DemoCPTPEkonomiRimbaMadya/view?usp=sharing',
+        modulAjarUrl: 'https://drive.google.com/file/d/1DemoModulPendapatanNasional/view?usp=sharing',
+        bahanAjarUrl: 'https://drive.google.com/file/d/1DemoMediaInfografisBPS/view?usp=sharing',
+        asesmenUrl: 'https://drive.google.com/file/d/1DemoRubrikAnalisisDataEkonomi/view?usp=sharing',
+      },
+      submittedAt: '2025-08-28T09:00:00.000Z',
+      telaahScores: {
+        1: 2, 2: 2, 3: 2, 4: 2, 5: 2, 6: 2, 7: 2, 8: 2, 9: 2, 10: 1, 11: 2,
+        12: 2, 13: 2, 14: 2, 15: 2, 16: 2, 17: 2, 18: 2, 19: 2, 20: 2, 21: 2, 22: 2
+      },
+      telaahComments: {
+        1: 'Identitas modul jelas, indikator ketercapaian tujuan pembelajaran terukur.',
+        4: 'Menggunakan data riil Badan Pusat Statistik (BPS) Kota Bogor dan Nasional terbaru.',
+        12: 'Siswa dilatih menganalisis kurva Lorenz dan rasio Gini secara kritis.',
+        21: 'Rubrik asesmen tugas analisis komparasi pendapatan perkapita negara ASEAN sangat baik.'
+      },
+      telaahSummary: {
+        totalScore: 43,
+        maxPossibleScore: 44,
+        finalScore: 97.7,
+        predicate: 'Sangat Baik'
+      },
+      feedback: {
+        kelebihan: 'Pemanfaatan data statistik resmi BPS menjadikan pembelajaran ekonomi sangat kontekstual dan faktual.',
+        perbaikan: 'Sajikan komparasi dampak pandemi dan pemulihan ekonomi pada pendapatan masyarakat.',
+        rekomendasi: 'Dapat diteruskan ke tahapan observasi tatap muka.'
+      },
+      reviewedAt: '2025-08-31T11:00:00.000Z',
+      reviewedBy: 'Kusnandar, M.Si',
+      revisi: {
+        modulAjarRevisiUrl: 'https://drive.google.com/file/d/1DemoModulRimbaEkonomiRevisi/view?usp=sharing',
+        catatanRevisiGuru: 'Telah ditambahkan grafik tren pemulihan ekonomi nasional pasca-pandemi.',
+        revisiSubmittedAt: '2025-09-02T10:00:00.000Z',
+        revisiStatus: 'disetujui'
+      }
+    },
+    praObservasi: {
+      interviewDurationMinutes: 25,
+      q1_kd_indikator: 'Menganalisis konsep dan metode penghitungan pendapatan nasional serta mendeskripsikan distribusi pendapatan.',
+      q2_metode: 'Problem-Based Learning dengan pendekatan studi data statistik BPS.',
+      q3_alat_bahan: 'Infografis BPS, LKPD analisis data PDB, kalkulator, proyektor interaktif.',
+      q4_tahapan: 'Apersepsi perbedaan pendapatan individu vs nasional, Pembagian kelompok analisis komponen PDB, Presentasi kurva Lorenz, Penguatan konsep.',
+      q5_persiapan: 'Menyiapkan kumpulan data rilis PDB dan materi presentasi interaktif.',
+      q6_materi_sulit: 'Menghitung pendapatan disposibel (DI) dan memahami makna angka koefisien Gini.',
+      q7_target_kompetensi: 'Siswa mampu membedakan metode pendekatan produksi, pendapatan, dan pengeluaran.',
+      q8_perhatian_khusus: 'Membimbing siswa yang membutuhkan pendampingan perhitungan matematis.',
+      supervisorNotes: 'Kesiapan mengajar sangat baik, media berbasis data autentik.',
+      completedAt: '2025-09-02T14:00:00.000Z'
+    },
+    observasiKelas: {
+      items: {},
+      totalYa: 24,
+      totalAspek: 24,
+      score: 100,
+      predicate: 'Amat Baik (A)',
+      feedbackNotes: 'Pengelolaan kelas sangat efektif, siswa antusias berdiskusi mengkaji ketimpangan ekonomi.'
+    },
+    pascaObservasi: {
+      q1_kesan: 'Siswa sangat aktif saat menganalisis perbandingan PDB Indonesia dengan negara tetangga.',
+      q2_sesuai_rencana: 'Ya, seluruh skenario pembelajaran berjalan lancar.',
+      q3_hal_memuaskan: 'Pemahaman siswa tentang penyebab ketimpangan distribusi pendapatan sangat mendalam.',
+      q4_hal_kurang: 'Waktu untuk menghitung 3 metode PDB sekaligus agak padat.',
+      q5_ketercapaian_tujuan: '94% siswa tuntas menyelesaikan soal latihan PDB dan NNI.',
+      q6_kesulitan_siswa: 'Menghafal rumus komponen transfer payment dan pajak langsung.',
+      q7_alternatif_solusi: 'Membuat jembatan keledai alur dari PDB menuju Pendapatan Disposibel.',
+      q8_rencana_tindak_lanjut: 'Melanjutkan ke materi pertumbuhan dan pembangunan ekonomi.',
+      q9_pengembangan_diri: 'Mengikuti seminar literasi ekonomi dan kebijakan fiskal Kemenkeu.',
+      generalImpression: 'Guru mengajar dengan penguasaan materi yang runtut, lugas, dan komunikatif.',
+      recommendations: 'Tingkatkan keterlibatan siswa dalam mengusulkan solusi kebijakan pengurangan kemiskinan.',
+      completedAt: '2025-09-08T11:00:00.000Z'
+    },
+    evaluasiTahunan: {
+      hasilBelajar: { evidence: 'Ketuntasan 94%, nilai asesmen sumatif memuaskan', note: 'Baik Sekali', score: 94 },
+      administrasi: { evidence: 'Kelengkapan administrasi pembelajaran sangat tertib', note: 'Lengkap', score: 95 },
+      pengembanganDiri: { evidence: 'Aktif MGMP Ekonomi dan pelatihan pembelajaran digital', note: 'Aktif', score: 95 },
+      kedisiplinan: { evidence: 'Kehadiran 100%, berintegritas tinggi', note: 'Sangat Disiplin', score: 98 },
+      rekomendasi: { notes: 'Guru berpotensi besar memimpin MGMP tingkat wilayah', tindakLanjut: 'Ikutsertakan dalam pelatihan penyusunan soal HOTS provinsi', score: 95 },
+      finalAverageScore: 95.4,
+      finalGrade: 'Amat Baik (A)',
+      summaryNotes: 'Kinerja pengajaran sangat baik, teliti dalam asesmen, dan disenangi para peserta didik.'
     }
   }
 ];

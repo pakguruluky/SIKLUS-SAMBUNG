@@ -42,7 +42,12 @@ import { onAuthStateChanged } from 'firebase/auth';
 export default function App() {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => loadLocalUser());
   const [schools, setSchools] = useState<School[]>(() => loadLocalSchools() || []);
-  const [supervisions, setSupervisions] = useState<Supervision[]>(() => loadLocalSupervisions() || SAMPLE_SUPERVISIONS);
+  const [supervisions, setSupervisions] = useState<Supervision[]>(() => {
+    const cached = loadLocalSupervisions() || [];
+    const cachedIds = new Set(cached.map(s => s.id));
+    const missing = SAMPLE_SUPERVISIONS.filter(s => !cachedIds.has(s.id));
+    return [...cached, ...missing];
+  });
   const [activeTab, setActiveTab] = useState<string>(() => loadLocalUser() ? 'dashboard' : 'landing');
 
   // Modals
@@ -71,24 +76,22 @@ export default function App() {
       // Check persistent supervisions from Firestore & sync with device local storage
       try {
         const firestoreSupervisions = await fetchSupervisions();
-        if (firestoreSupervisions && firestoreSupervisions.length > 0) {
-          // Merge with sample supervisions to ensure rich analytics demo
-          const existingIds = new Set(firestoreSupervisions.map(s => s.id));
-          const merged = [...firestoreSupervisions, ...SAMPLE_SUPERVISIONS.filter(s => !existingIds.has(s.id))];
-          setSupervisions(merged);
-          saveLocalSupervisions(merged);
-        } else {
-          const localCached = loadLocalSupervisions();
-          if (localCached && localCached.length > 0) {
-            setSupervisions(localCached);
-          } else {
-            saveLocalSupervisions(SAMPLE_SUPERVISIONS);
-          }
-        }
+        const localCached = loadLocalSupervisions() || [];
+        const base = firestoreSupervisions && firestoreSupervisions.length > 0
+          ? firestoreSupervisions
+          : localCached;
+
+        const existingIds = new Set(base.map(s => s.id));
+        const merged = [...base, ...SAMPLE_SUPERVISIONS.filter(s => !existingIds.has(s.id))];
+        setSupervisions(merged);
+        saveLocalSupervisions(merged);
       } catch (e) {
         console.warn('Using local seed supervisions', e);
-        const localCached = loadLocalSupervisions();
-        if (localCached) setSupervisions(localCached);
+        const localCached = loadLocalSupervisions() || [];
+        const existingIds = new Set(localCached.map(s => s.id));
+        const merged = [...localCached, ...SAMPLE_SUPERVISIONS.filter(s => !existingIds.has(s.id))];
+        setSupervisions(merged);
+        saveLocalSupervisions(merged);
       }
     };
 

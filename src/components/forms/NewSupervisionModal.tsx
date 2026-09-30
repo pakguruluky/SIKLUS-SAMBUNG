@@ -11,6 +11,30 @@ interface NewSupervisionModalProps {
   onCreated: (newSup: Supervision) => void;
 }
 
+const PRESET_TEACHERS: Record<string, Array<{ name: string; nip?: string; subject: string; classGrade: string }>> = {
+  'sch-ummul-quro': [
+    { name: 'Sani Ramadhanti Noor, S.E.', nip: '19910418 201802 2 004', subject: 'Ekonomi', classGrade: 'Fase E / Kelas X-1' },
+    { name: 'Kirana Mahardhika, S.Pd, Gr.', nip: '19930825 201903 2 009', subject: 'Kimia', classGrade: 'Fase F / Kelas XI-IPA' },
+  ],
+  'sch-rimba-madya': [
+    { name: 'Atik Dwi Larasati, S.Pd.', nip: '19891105 201504 2 003', subject: 'Ekonomi', classGrade: 'Fase F / Kelas XI-IPS' },
+    { name: 'Ivany Ratna Ekandini, S.Pd.', nip: '19870614 201203 2 006', subject: 'Bahasa Indonesia', classGrade: 'Fase E / Kelas X-1' },
+  ],
+  'sch-sman4': [
+    { name: 'Sondang Asih Januarti, S.Pd.', nip: '19840512 200801 2 007', subject: 'Fisika', classGrade: 'Fase F / Kelas XI-Fisika 1' },
+    { name: 'Risna Aryanti, M.Pd.', nip: '19820315 200604 2 011', subject: 'Biologi', classGrade: 'Fase F / Kelas XI-Biologi' },
+    { name: 'Hilmia Fitriyani, S.Pd.', nip: '19900821 201503 2 005', subject: 'Matematika', classGrade: 'Fase E / Kelas X-5' },
+  ],
+  'sch-sman2': [
+    { name: 'Alline Novianti, S.Pd.', nip: '19861112 201001 2 008', subject: 'Bahasa Inggris', classGrade: 'Fase E / Kelas X-B' },
+    { name: 'Mega Nur Alfira, S.Pd.', nip: '19920114 201602 2 003', subject: 'Sosiologi', classGrade: 'Fase F / Kelas XI-Sains Sosial' },
+  ],
+  'sch-pgri-1': [
+    { name: 'Iqbal Aziz Andrianto', nip: '19940710 202012 1 002', subject: 'Informatika', classGrade: 'Fase E / Kelas X-RPL' },
+    { name: 'Fatma Rita, S.Si.', nip: '19810915 200501 2 009', subject: 'Prakarya & Kewirausahaan', classGrade: 'Fase F / Kelas XI-PKWU' },
+  ],
+};
+
 export const NewSupervisionModal: React.FC<NewSupervisionModalProps> = ({
   isOpen,
   onClose,
@@ -188,6 +212,27 @@ export const NewSupervisionModal: React.FC<NewSupervisionModalProps> = ({
                 <option key={s.id} value={s.id}>{s.name} (NPSN: {s.npsn})</option>
               ))}
             </select>
+
+            {PRESET_TEACHERS[schoolId] && currentUser.role !== 'guru' && (
+              <div className="flex flex-wrap items-center gap-1.5 pt-2">
+                <span className="text-[10px] text-slate-400 font-medium">Pilih Cepat Guru Sasaran:</span>
+                {PRESET_TEACHERS[schoolId].map((t) => (
+                  <button
+                    key={t.name}
+                    type="button"
+                    onClick={() => {
+                      setTeacherName(t.name);
+                      setTeacherNip(t.nip || '');
+                      setSubject(t.subject);
+                      setClassGrade(t.classGrade);
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[11px] font-semibold border border-indigo-200 transition-colors"
+                  >
+                    + {t.name} ({t.subject})
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">

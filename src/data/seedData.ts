@@ -336,6 +336,7 @@ export const SAMPLE_SUPERVISIONS: Supervision[] = [
     supervisorRole: 'admin',
     createdAt: '2025-09-02T08:00:00.000Z',
     updatedAt: '2025-09-18T10:00:00.000Z',
+    sambung: createDefaultSambungForTeacher('Alline Novianti, S.Pd.', 'SMAN 2 Bogor', 'Kimia'),
     perangkatAjar: {
       driveLinks: {
         cpTpAtpUrl: 'https://drive.google.com/file/d/1DemoKimiaCPTP/view?usp=sharing',
@@ -489,6 +490,7 @@ export const SAMPLE_SUPERVISIONS: Supervision[] = [
     supervisorRole: 'admin',
     createdAt: '2025-09-03T08:00:00.000Z',
     updatedAt: '2025-09-19T11:00:00.000Z',
+    sambung: createDefaultSambungForTeacher('Mega Nur Alfira, S.Pd.', 'SMAN 2 Bogor', 'Sejarah'),
     perangkatAjar: {
       driveLinks: {
         cpTpAtpUrl: 'https://drive.google.com/file/d/1DemoSejarahCPTP/view?usp=sharing',

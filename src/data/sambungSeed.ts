@@ -197,11 +197,28 @@ export function createDefaultSambungForTeacher(
       matriksAfter: { ...DEFAULT_MATRIKS_AFTER },
     },
     nyatakan: {
-      beforeAfter: BEFORE_AFTER_ASPEK_DEFAULT.map(aspek => ({
-        aspek,
-        sebelumSambung: 'Pendekatan konvensional yang berpusat pada instruksi guru.',
-        setelahSambung: 'Pendekatan berpusat pada murid dengan eksplorasi bermakna.',
-      })),
+      beforeAfter: [
+        {
+          aspek: 'Peran guru',
+          sebelumSambung: DEFAULT_MATRIKS_BEFORE.peranGuru,
+          setelahSambung: DEFAULT_MATRIKS_AFTER.peranGuru,
+        },
+        {
+          aspek: 'Aktivitas murid',
+          sebelumSambung: DEFAULT_MATRIKS_BEFORE.aktivitasMurid,
+          setelahSambung: DEFAULT_MATRIKS_AFTER.aktivitasMurid,
+        },
+        {
+          aspek: 'Konteks kehidupan nyata',
+          sebelumSambung: DEFAULT_MATRIKS_BEFORE.konteksNyata,
+          setelahSambung: DEFAULT_MATRIKS_AFTER.konteksNyata,
+        },
+        {
+          aspek: 'Refleksi murid',
+          sebelumSambung: DEFAULT_MATRIKS_BEFORE.refleksiMurid,
+          setelahSambung: DEFAULT_MATRIKS_AFTER.refleksiMurid,
+        },
+      ],
       dataDampak: DEFAULT_DATA_DAMPAK.map(d => ({ ...d })),
     },
     gerakkan: {
@@ -786,7 +803,7 @@ export const SEED_SAMBUNG_SITI: SambungData = {
         kegiatanPembinaan: 'Penyusunan modul ajar matematika diferensiasi dengan Lembar Kerja GeoGebra Classroom',
         indikatorKeberhasilan: 'Modul ajar dilengkapi tautan simulasi interaktif yang siap pakai di gawai murid',
         waktu: '05 September 2025',
-        penanggungJawab: 'Kusnandar, M.Si & Siti Nurhaliza',
+        penanggungJawab: 'Kusnandar, M.Si & Siti Salma, S.Pd',
       },
       {
         id: 2,
@@ -805,8 +822,8 @@ export const SEED_SAMBUNG_SITI: SambungData = {
     ],
     tandaTangan: {
       pengawas: 'Kusnandar, M.Si',
-      kepalaSekolah: 'Drs. H. Suherman, M.M.Pd.',
-      guru: 'Siti Nurhaliza, M.Pd.',
+      kepalaSekolah: 'Joko Pitoyo, S.Pd., M.M.',
+      guru: 'Siti Salma, S.Pd',
       tanggalDisepakati: '2025-09-12',
     },
   },

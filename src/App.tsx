@@ -38,14 +38,25 @@ import { School, Supervision, UserProfile, Role } from './types';
 import { SAMPLE_SUPERVISIONS } from './data/seedData';
 import { onAuthStateChanged } from 'firebase/auth';
 
+const EXCLUDED_SUPERVISION_IDS = new Set(['sup-demo-dewi-awal', 'sup-demo-03', 'sup-demo-08']);
+const filterValidSupervisions = (list: Supervision[]): Supervision[] => {
+  return list.filter(s => {
+    if (EXCLUDED_SUPERVISION_IDS.has(s.id)) return false;
+    if (s.teacherName && (s.teacherName.toLowerCase().includes('risna') || s.teacherName.toLowerCase().includes('fatma rita'))) return false;
+    return true;
+  });
+};
+
 export default function App() {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => loadLocalUser());
   const [schools, setSchools] = useState<School[]>(() => loadLocalSchools() || []);
   const [supervisions, setSupervisions] = useState<Supervision[]>(() => {
-    const cached = loadLocalSupervisions() || [];
+    const cached = filterValidSupervisions(loadLocalSupervisions() || []);
     const cachedIds = new Set(cached.map(s => s.id));
     const missing = SAMPLE_SUPERVISIONS.filter(s => !cachedIds.has(s.id));
-    return [...cached, ...missing];
+    const initialList = filterValidSupervisions([...cached, ...missing]);
+    saveLocalSupervisions(initialList);
+    return initialList;
   });
   const [activeTab, setActiveTab] = useState<string>(() => loadLocalUser() ? 'dashboard' : 'landing');
 
@@ -74,8 +85,9 @@ export default function App() {
 
       // Check persistent supervisions from Firestore & sync with device local storage
       const mergeWithSeeds = (baseList: Supervision[], seedList: Supervision[]): Supervision[] => {
+        const filteredBase = filterValidSupervisions(baseList);
         const seedMap = new Map(seedList.map(s => [s.id, s]));
-        const mergedBase = baseList.map(item => {
+        const mergedBase = filteredBase.map(item => {
           const seed = seedMap.get(item.id);
           if (!seed) return item;
           return {
@@ -104,9 +116,9 @@ export default function App() {
           };
         });
 
-        const baseIds = new Set(baseList.map(s => s.id));
+        const baseIds = new Set(filteredBase.map(s => s.id));
         const newSeeds = seedList.filter(s => !baseIds.has(s.id));
-        return [...mergedBase, ...newSeeds];
+        return filterValidSupervisions([...mergedBase, ...newSeeds]);
       };
 
       try {

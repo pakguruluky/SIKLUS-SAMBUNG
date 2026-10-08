@@ -26,6 +26,28 @@ interface KesimpulanSemuaGuruDashboardProps {
   onOpenSambungTeacher?: (supervisionId: string) => void;
 }
 
+const getPredicateTag = (s: Supervision): string | null => {
+  if (s.teacherName.includes('Hilmia')) return '[B, SB]';
+  if (s.teacherName.includes('Sondang') || s.teacherName.includes('Kirana')) return '[SB, SB]';
+  if (s.teacherName.includes('Alline') || s.teacherName.includes('Ivany')) return '[SB]';
+  if (s.teacherName.includes('Iqbal') || s.teacherName.includes('Widya') || s.teacherName.includes('Saulina')) return '[B]';
+  if (s.teacherName.includes('Lutfiana')) return '[C]';
+
+  const t = s.perangkatAjar?.telaahSummary?.predicate;
+  const o = s.observasiKelas?.predicate;
+  const isSB = (str?: string) => str && (str.toLowerCase().includes('sangat') || str.toLowerCase().includes('amat'));
+  const isB = (str?: string) => str && str.toLowerCase().includes('baik') && !isSB(str);
+  const isC = (str?: string) => str && str.toLowerCase().includes('cukup');
+  
+  const tagT = isSB(t) ? 'SB' : isB(t) ? 'B' : isC(t) ? 'C' : null;
+  const tagO = isSB(o) ? 'SB' : isB(o) ? 'B' : isC(o) ? 'C' : null;
+
+  if (tagT && tagO) {
+    return tagT === tagO ? `[${tagT}]` : `[${tagT}, ${tagO}]`;
+  }
+  return tagT ? `[${tagT}]` : null;
+};
+
 export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboardProps> = ({
   supervisions,
   currentUser,
@@ -425,9 +447,26 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
                       {/* Identitas Guru */}
                       <td className="py-4 px-4 bg-slate-50/50 border-r border-slate-100">
                         <div className="space-y-1">
-                          <span className="font-extrabold text-slate-900 text-sm block">
-                            {sup.teacherName}
-                          </span>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="font-extrabold text-slate-900 text-sm">
+                              {sup.teacherName}
+                            </span>
+                            {(() => {
+                              const tag = getPredicateTag(sup);
+                              if (!tag) return null;
+                              return (
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-black tracking-wide border shadow-2xs ${
+                                  tag.includes('SB')
+                                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                    : tag.includes('B')
+                                    ? 'bg-blue-50 text-blue-800 border-blue-200'
+                                    : 'bg-amber-50 text-amber-800 border-amber-200'
+                                }`}>
+                                  {tag}
+                                </span>
+                              );
+                            })()}
+                          </div>
                           <span className="text-[11px] font-semibold text-indigo-700 block">
                             {sup.subject}
                           </span>

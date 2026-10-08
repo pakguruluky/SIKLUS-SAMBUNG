@@ -22,6 +22,7 @@ import {
   BookOpen,
   HardDrive
 } from 'lucide-react';
+import { KesimpulanSemuaGuruDashboard } from './KesimpulanSemuaGuruDashboard';
 import { 
   Chart as ChartJS, 
   CategoryScale, 
@@ -79,6 +80,14 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   onOpenStorageModal,
   users = [],
 }) => {
+  const getPredicateTag = (s: Supervision): string | null => {
+    if (s.teacherName.includes('Hilmia')) return '[B, SB]';
+    if (s.teacherName.includes('Sondang') || s.teacherName.includes('Kirana')) return '[SB, SB]';
+    if (s.teacherName.includes('Alline') || s.teacherName.includes('Ivany')) return '[SB]';
+    if (s.teacherName.includes('Iqbal') || s.teacherName.includes('Widya') || s.teacherName.includes('Saulina')) return '[B]';
+    if (s.teacherName.includes('Lutfiana')) return '[C]';
+    return null;
+  };
   const scoresChartRef = useRef<HTMLCanvasElement | null>(null);
   const completionChartRef = useRef<HTMLCanvasElement | null>(null);
   const statusDoughnutRef = useRef<HTMLCanvasElement | null>(null);
@@ -90,6 +99,9 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   const isAdmin = currentUser.role === 'admin';
   const isKepsek = currentUser.role === 'kepsek';
   const isGuru = currentUser.role === 'guru';
+
+  // Active view tab: Kesimpulan Semua Guru (default) or Analitik Mutu Supervisi
+  const [dashboardTab, setDashboardTab] = useState<'kesimpulan' | 'analitik'>('kesimpulan');
 
   // Selected school filter for charts (Admin can filter specific school or All)
   const [selectedSchoolFilter, setSelectedSchoolFilter] = useState<string>('all');
@@ -598,6 +610,57 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
         </div>
       </div>
 
+      {/* DASHBOARD VIEW SWITCHER (Kesimpulan Semua Guru vs Analitik Mutu) */}
+      <div className="bg-white rounded-2xl p-2 border border-slate-200 shadow-xs flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setDashboardTab('kesimpulan')}
+          className={`flex-1 min-w-[260px] py-3 px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2.5 transition-all ${
+            dashboardTab === 'kesimpulan'
+              ? 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-md'
+              : 'bg-slate-50 hover:bg-slate-100 text-slate-700'
+          }`}
+        >
+          <Sparkles className={`w-4 h-4 ${dashboardTab === 'kesimpulan' ? 'text-amber-300' : 'text-amber-500'}`} />
+          <span>Dashboard Kesimpulan Semua Guru</span>
+          <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold ${
+            dashboardTab === 'kesimpulan' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800'
+          }`}>
+            Tabel Dampak &amp; Perubahan
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setDashboardTab('analitik')}
+          className={`flex-1 min-w-[260px] py-3 px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2.5 transition-all ${
+            dashboardTab === 'analitik'
+              ? 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-md'
+              : 'bg-slate-50 hover:bg-slate-100 text-slate-700'
+          }`}
+        >
+          <BarChart3 className="w-4 h-4" />
+          <span>Ringkasan Supervisi &amp; Analitik Mutu Sekolah</span>
+          <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold ${
+            dashboardTab === 'analitik' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+          }`}>
+            Statistik &amp; Chart
+          </span>
+        </button>
+      </div>
+
+      {/* VIEW 1: DASHBOARD KESIMPULAN DARI SEMUA GURU */}
+      {dashboardTab === 'kesimpulan' && (
+        <KesimpulanSemuaGuruDashboard
+          supervisions={supervisions}
+          currentUser={currentUser}
+          onOpenSambungTeacher={onOpenSambung}
+        />
+      )}
+
+      {/* VIEW 2: ANALITIK KINERJA SUPERVISI & REKAP */}
+      {dashboardTab === 'analitik' && (
+        <div className="space-y-6">
       {/* SPECIAL GURU VIEW: Individual Status & Revision Notice */}
       {isGuru && mySingleSupervision && (
         <div className="space-y-4">
@@ -951,7 +1014,17 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                   return (
                     <div key={sup.id} className="p-3 hover:bg-slate-50 flex items-center justify-between gap-3">
                       <div>
-                        <p className="font-bold text-slate-900">{sup.teacherName}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="font-bold text-slate-900">{sup.teacherName}</p>
+                          {(() => {
+                            const tag = getPredicateTag(sup);
+                            return tag ? (
+                              <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                {tag}
+                              </span>
+                            ) : null;
+                          })()}
+                        </div>
                         <p className="text-[11px] text-slate-500">{sup.subject} &bull; {sup.schoolName}</p>
                       </div>
 
@@ -1030,7 +1103,17 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                   return (
                     <tr key={sup.id} className="hover:bg-slate-50/60 transition-colors">
                       <td className="py-3 px-4">
-                        <p className="font-bold text-slate-900">{sup.teacherName}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="font-bold text-slate-900">{sup.teacherName}</p>
+                          {(() => {
+                            const tag = getPredicateTag(sup);
+                            return tag ? (
+                              <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                {tag}
+                              </span>
+                            ) : null;
+                          })()}
+                        </div>
                         <p className="text-[11px] text-slate-500">{sup.subject}</p>
                       </td>
                       <td className="py-3 px-4 text-slate-700">{sup.schoolName}</td>
@@ -1078,6 +1161,8 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
               </tbody>
             </table>
           </div>
+        </div>
+      )}
         </div>
       )}
     </div>

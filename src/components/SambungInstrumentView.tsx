@@ -8,6 +8,7 @@ import {
 } from '../data/sambungSeed';
 import { saveSupervision } from '../services/firebase';
 import { SambungPrintModal } from './SambungPrintModal';
+import { KesimpulanSemuaGuruDashboard } from './KesimpulanSemuaGuruDashboard';
 import { PerangkatAjarModal } from './forms/PerangkatAjarModal';
 import { PraObservasiModal } from './forms/PraObservasiModal';
 import { ObservasiKelasModal } from './forms/ObservasiKelasModal';
@@ -21,6 +22,7 @@ import {
   Trash2, 
   Sparkles, 
   User, 
+  Users,
   School as SchoolIcon, 
   BookOpen, 
   Calendar,
@@ -96,6 +98,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
   } | null>(null);
   const [teacherSearch, setTeacherSearch] = useState('');
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [showAllTeachersModal, setShowAllTeachersModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveToast, setSaveToast] = useState<string | null>(null);
 
@@ -153,6 +156,19 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
             refleksiMurid: refleksi || DEFAULT_MATRIKS_AFTER.refleksiMurid,
           };
         }
+
+        // Always synchronize Nyatakan Before-After from Selidiki & Uji conclusions
+        const beforeSync = cloned.selidiki.matriksBefore;
+        const afterSync = cloned.uji.matriksAfter;
+        cloned.nyatakan = {
+          ...cloned.nyatakan,
+          beforeAfter: [
+            { aspek: 'Peran guru', sebelumSambung: beforeSync.peranGuru, setelahSambung: afterSync.peranGuru },
+            { aspek: 'Aktivitas murid', sebelumSambung: beforeSync.aktivitasMurid, setelahSambung: afterSync.aktivitasMurid },
+            { aspek: 'Konteks kehidupan nyata', sebelumSambung: beforeSync.konteksNyata, setelahSambung: afterSync.konteksNyata },
+            { aspek: 'Refleksi murid', sebelumSambung: beforeSync.refleksiMurid, setelahSambung: afterSync.refleksiMurid },
+          ],
+        };
 
         // Ensure dataDampak has the 4 standard indicators if not yet set or outdated
         if (
@@ -339,7 +355,15 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
             </p>
           </div>
 
-          <div className="flex items-center gap-2 self-stretch sm:self-auto">
+          <div className="flex flex-wrap items-center gap-2 self-stretch sm:self-auto">
+            <button
+              type="button"
+              onClick={() => setShowAllTeachersModal(true)}
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-500/30 hover:bg-indigo-500/50 text-white rounded-xl text-xs font-semibold backdrop-blur-xs transition-colors border border-indigo-400/40 shadow-xs"
+            >
+              <Sparkles className="w-4 h-4 text-amber-300" />
+              <span>Dashboard Kesimpulan Semua Guru</span>
+            </button>
             <button
               onClick={() => setIsPrintModalOpen(true)}
               className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-semibold backdrop-blur-xs transition-colors border border-white/20"
@@ -3186,33 +3210,43 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                     Otomatis terhubung dengan kesimpulan Tahap Selidiki (Before) dan Tahap Uji (After) untuk {currentSupervision.teacherName}.
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const before = sambungDraft.selidiki.matriksBefore || { ...DEFAULT_MATRIKS_BEFORE };
-                    const after = sambungDraft.uji.matriksAfter || { ...DEFAULT_MATRIKS_AFTER };
-                    setSambungDraft({
-                      ...sambungDraft,
-                      selidiki: { ...sambungDraft.selidiki, matriksBefore: before },
-                      uji: { ...sambungDraft.uji, matriksAfter: after },
-                      nyatakan: {
-                        ...sambungDraft.nyatakan,
-                        beforeAfter: [
-                          { aspek: 'Peran guru', sebelumSambung: before.peranGuru, setelahSambung: after.peranGuru },
-                          { aspek: 'Aktivitas murid', sebelumSambung: before.aktivitasMurid, setelahSambung: after.aktivitasMurid },
-                          { aspek: 'Konteks kehidupan nyata', sebelumSambung: before.konteksNyata, setelahSambung: after.konteksNyata },
-                          { aspek: 'Refleksi murid', sebelumSambung: before.refleksiMurid, setelahSambung: after.refleksiMurid },
-                        ],
-                      },
-                    });
-                    setSaveToast('Data deskripsi Before-After berhasil disinkronkan dari Selidiki & Uji!');
-                    setTimeout(() => setSaveToast(null), 3000);
-                  }}
-                  className="px-3 py-1.5 rounded-xl border border-indigo-200 bg-indigo-50/60 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold flex items-center gap-1.5 transition-colors shrink-0 self-start sm:self-auto"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" />
-                  <span>Sinkronkan Ulang dari Selidiki &amp; Uji</span>
-                </button>
+                <div className="flex flex-wrap items-center gap-2 shrink-0 self-start sm:self-auto">
+                  <button
+                    type="button"
+                    onClick={() => setShowAllTeachersModal(true)}
+                    className="px-3 py-1.5 rounded-xl border border-rose-200 bg-rose-50/70 hover:bg-rose-100 text-rose-800 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                    <span>Dashboard Kesimpulan Semua Guru</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const before = sambungDraft.selidiki.matriksBefore || { ...DEFAULT_MATRIKS_BEFORE };
+                      const after = sambungDraft.uji.matriksAfter || { ...DEFAULT_MATRIKS_AFTER };
+                      setSambungDraft({
+                        ...sambungDraft,
+                        selidiki: { ...sambungDraft.selidiki, matriksBefore: before },
+                        uji: { ...sambungDraft.uji, matriksAfter: after },
+                        nyatakan: {
+                          ...sambungDraft.nyatakan,
+                          beforeAfter: [
+                            { aspek: 'Peran guru', sebelumSambung: before.peranGuru, setelahSambung: after.peranGuru },
+                            { aspek: 'Aktivitas murid', sebelumSambung: before.aktivitasMurid, setelahSambung: after.aktivitasMurid },
+                            { aspek: 'Konteks kehidupan nyata', sebelumSambung: before.konteksNyata, setelahSambung: after.konteksNyata },
+                            { aspek: 'Refleksi murid', sebelumSambung: before.refleksiMurid, setelahSambung: after.refleksiMurid },
+                          ],
+                        },
+                      });
+                      setSaveToast('Data deskripsi Before-After berhasil disinkronkan dari Selidiki & Uji!');
+                      setTimeout(() => setSaveToast(null), 3000);
+                    }}
+                    className="px-3 py-1.5 rounded-xl border border-indigo-200 bg-indigo-50/60 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>Sinkronkan Ulang dari Selidiki &amp; Uji</span>
+                  </button>
+                </div>
               </div>
 
               <div className="overflow-x-auto">
@@ -4008,6 +4042,37 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
             setTimeout(() => setSaveToast(null), 3000);
           }}
         />
+      )}
+
+      {/* MODAL DASHBOARD KESIMPULAN SEMUA GURU */}
+      {showAllTeachersModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6">
+          <div className="bg-slate-50 rounded-3xl w-full max-w-6xl max-h-[92vh] overflow-y-auto border border-slate-200 shadow-2xl p-5 sm:p-8 space-y-6 relative">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+              <div className="flex items-center gap-2 text-indigo-700 font-bold text-sm">
+                <Sparkles className="w-5 h-5 text-amber-500" />
+                <span>Dashboard Kesimpulan Transformasi Seluruh Guru Pasca Siklus SAMBUNG</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAllTeachersModal(false)}
+                className="w-8 h-8 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold flex items-center justify-center transition-colors text-base"
+                title="Tutup"
+              >
+                &times;
+              </button>
+            </div>
+
+            <KesimpulanSemuaGuruDashboard
+              supervisions={supervisions}
+              currentUser={currentUser}
+              onOpenSambungTeacher={(teacherId) => {
+                setSelectedId(teacherId);
+                setShowAllTeachersModal(false);
+              }}
+            />
+          </div>
+        </div>
       )}
     </div>
   );

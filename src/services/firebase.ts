@@ -62,7 +62,7 @@ export const DEFAULT_SCHOOLS: School[] = [
     id: 'sch-ummul-quro',
     npsn: '69775444',
     name: 'SMAS IT Ummul Quro',
-    address: 'Jl. Pool Bina Marga Perumahan Kayu Manis Boulevard No. 3Rt 006 RW 005 Kayu Manis Tanah Sareal Kota Bogor - 16169',
+    address: 'Jl. Pool Bina Marga Perumahan Kayu Manis Boulevard No. 3, RT 006 / RW 005, Kayu Manis, Tanah Sareal, Kota Bogor - 16169',
     principalName: 'Hildawati, S.T.',
     accreditation: 'A',
     createdAt: new Date().toISOString(),
@@ -72,7 +72,7 @@ export const DEFAULT_SCHOOLS: School[] = [
     id: 'sch-yphb',
     npsn: '20220330',
     name: 'SMAS YPHB',
-    address: 'Jl. Pajajaran Nomor 234 A Kota Bogor',
+    address: 'Jl. Pajajaran Nomor 234 A, Kota Bogor',
     principalName: 'Joko Pitoyo, S.Pd., M.M.',
     accreditation: 'A',
     createdAt: new Date().toISOString(),
@@ -82,7 +82,7 @@ export const DEFAULT_SCHOOLS: School[] = [
     id: 'sch-rimba-madya',
     npsn: '20220344',
     name: 'SMAS Rimba Madya',
-    address: 'Jl. Rimba Mulya II Pasir Mulya Bogor Barat',
+    address: 'Jl. Rimba Mulya II, Pasir Mulya, Bogor Barat',
     principalName: 'Pajar Hariyanto, S.Pd.',
     accreditation: 'A',
     createdAt: new Date().toISOString(),
@@ -93,7 +93,7 @@ export const DEFAULT_SCHOOLS: School[] = [
     npsn: '20220350',
     name: 'SMA YZA 1',
     address: 'Jl. Raya Ciawi KM. 09, Kel. Sindangsari, Kec. Bogor Timur, Kota Bogor',
-    principalName: 'TB.Agung Hartawan, SE',
+    principalName: 'TB. Agung Hartawan, SE',
     accreditation: 'B',
     createdAt: new Date().toISOString(),
     createdBy: 'system'
@@ -102,7 +102,7 @@ export const DEFAULT_SCHOOLS: School[] = [
     id: 'sch-pgri-1',
     npsn: '20220317',
     name: 'SMAS PGRI 1',
-    address: 'Jl. Bina Marga I No.17 Bogor Timur',
+    address: 'Jl. Bina Marga I No. 17, Bogor Timur',
     principalName: 'Evi Jalinar, S.Pd., M.Si',
     accreditation: 'A',
     createdAt: new Date().toISOString(),
@@ -112,8 +112,8 @@ export const DEFAULT_SCHOOLS: School[] = [
     id: 'sch-bhakti-insani',
     npsn: '20220520',
     name: 'SMAS Bhakti Insani',
-    address: 'Jl. Batu Tulis NV Sidik No. 5C Bogor Selatan',
-    principalName: 'Kusmiati, Phd.',
+    address: 'Jl. Batu Tulis NV Sidik No. 5C, Bogor Selatan',
+    principalName: 'Kusmiati, Ph.D.',
     accreditation: 'B',
     createdAt: new Date().toISOString(),
     createdBy: 'system'
@@ -122,7 +122,7 @@ export const DEFAULT_SCHOOLS: School[] = [
     id: 'sch-yasih',
     npsn: '20220349',
     name: 'SMAS Yasih',
-    address: 'Jl. Baranangsiang Indah Kp. Cikeas Kel. Katulampa Kec. Bogor Timur Kota Bogor',
+    address: 'Jl. Baranangsiang Indah Kp. Cikeas, Kel. Katulampa, Kec. Bogor Timur, Kota Bogor',
     principalName: 'M. Fahmi Fauzan Ihsan, S.Pd',
     accreditation: 'B',
     createdAt: new Date().toISOString(),
@@ -132,7 +132,7 @@ export const DEFAULT_SCHOOLS: School[] = [
     id: 'sch-muhammadiyah',
     npsn: '20220314',
     name: 'SMAS Muhammadiyah',
-    address: 'Jl .Merdeka 118 Bogor',
+    address: 'Jl. Merdeka 118, Bogor',
     principalName: 'Nurmawaji, S.Pd.',
     accreditation: 'B',
     createdAt: new Date().toISOString(),
@@ -142,7 +142,7 @@ export const DEFAULT_SCHOOLS: School[] = [
     id: 'sch-ananda',
     npsn: '20220547',
     name: 'SMAS Ananda',
-    address: 'Jl. Lawanggintung Komp. KPKN No.25 Rt.06 Rw.06 Bogor',
+    address: 'Jl. Lawanggintung Komp. KPKN No. 25, RT 06 / RW 06, Bogor',
     principalName: 'Maria, M.Psi.',
     accreditation: 'B',
     createdAt: new Date().toISOString(),
@@ -248,12 +248,16 @@ function normalizeSupervisionData(sup: Supervision): Supervision {
 // Seed initial schools
 export async function ensureInitialSchools(): Promise<School[]> {
   try {
+    const allowedIds = new Set(DEFAULT_SCHOOLS.map(s => s.id));
     const schoolsSnap = await getDocs(collection(db, 'schools'));
-    if (!schoolsSnap.empty && schoolsSnap.docs.length >= DEFAULT_SCHOOLS.length) {
-      return schoolsSnap.docs.map(d => normalizeSchoolData({ id: d.id, ...d.data() } as School));
+    if (!schoolsSnap.empty) {
+      const validDocs = schoolsSnap.docs.filter(d => allowedIds.has(d.id));
+      if (validDocs.length === DEFAULT_SCHOOLS.length) {
+        return validDocs.map(d => normalizeSchoolData({ id: d.id, ...d.data() } as School));
+      }
     }
 
-    // Sync the 7 default schools to Firestore
+    // Sync all 11 default schools to Firestore
     try {
       for (const sch of DEFAULT_SCHOOLS) {
         const { id, ...data } = sch;
@@ -262,7 +266,8 @@ export async function ensureInitialSchools(): Promise<School[]> {
       }
       const updatedSnap = await getDocs(collection(db, 'schools'));
       if (!updatedSnap.empty) {
-        return updatedSnap.docs.map(d => normalizeSchoolData({ id: d.id, ...d.data() } as School));
+        const validUpdated = updatedSnap.docs.filter(d => allowedIds.has(d.id));
+        return validUpdated.map(d => normalizeSchoolData({ id: d.id, ...d.data() } as School));
       }
     } catch (writeErr) {
       console.warn('Could not sync default schools to Firestore, fallback to local defaults', writeErr);

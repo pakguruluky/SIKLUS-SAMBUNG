@@ -8,91 +8,6 @@ import {
 
 export const SAMPLE_SUPERVISIONS: Supervision[] = [
   {
-    id: 'sup-demo-dewi-awal',
-    schoolId: 'sch-sman4',
-    schoolName: 'SMAN 4 Bogor',
-    teacherId: 'teacher-sondang',
-    teacherName: 'Sondang Asih Januarti, S.Pd.',
-    teacherNip: '19840512 200801 2 007',
-    subject: 'Fisika',
-    classGrade: 'Fase F / Kelas XI-Fisika 2',
-    semester: 'Genap',
-    schoolYear: '2025/2026',
-    lessonTitle: 'Listrik Arus Searah (Sebelum Penilaian)',
-    status: 'draft',
-    supervisorId: 'admin-kusnandar',
-    supervisorName: 'Kusnandar, M.Si',
-    supervisorRole: 'admin',
-    createdAt: '2026-09-01T08:00:00.000Z',
-    updatedAt: '2026-09-20T10:00:00.000Z',
-    sambung: SEED_SAMBUNG_DEWI,
-
-    perangkatAjar: {
-      driveLinks: {
-        cpTpAtpUrl: '',
-        modulAjarUrl: '',
-        bahanAjarUrl: '',
-        asesmenUrl: '',
-      },
-      telaahScores: {},
-      telaahComments: {},
-      telaahSummary: {
-        totalScore: 0,
-        maxPossibleScore: 44,
-        finalScore: 0,
-        predicate: 'Perlu Perbaikan'
-      },
-      feedback: {
-        kelebihan: '',
-        perbaikan: '',
-        rekomendasi: ''
-      }
-    },
-    praObservasi: {
-      interviewDurationMinutes: 30,
-      q1_kd_indikator: '',
-      q2_metode: '',
-      q3_alat_bahan: '',
-      q4_tahapan: '',
-      q5_persiapan: '',
-      q6_materi_sulit: '',
-      q7_target_kompetensi: '',
-      q8_perhatian_khusus: '',
-      supervisorNotes: ''
-    },
-    observasiKelas: {
-      items: {},
-      totalYa: 0,
-      totalAspek: 24,
-      score: 0,
-      predicate: '-',
-      feedbackNotes: ''
-    },
-    pascaObservasi: {
-      q1_kesan: '',
-      q2_sesuai_rencana: '',
-      q3_hal_memuaskan: '',
-      q4_hal_kurang: '',
-      q5_ketercapaian_tujuan: '',
-      q6_kesulitan_siswa: '',
-      q7_alternatif_solusi: '',
-      q8_rencana_tindak_lanjut: '',
-      q9_pengembangan_diri: '',
-      generalImpression: '',
-      recommendations: ''
-    },
-    evaluasiTahunan: {
-      hasilBelajar: { evidence: '', note: '', score: 0 },
-      administrasi: { evidence: '', note: '', score: 0 },
-      pengembanganDiri: { evidence: '', note: '', score: 0 },
-      kedisiplinan: { evidence: '', note: '', score: 0 },
-      rekomendasi: { notes: '', tindakLanjut: '', score: 0 },
-      finalAverageScore: 0,
-      finalGrade: '-',
-      summaryNotes: ''
-    }
-  },
-  {
     id: 'sup-demo-01',
     schoolId: 'sch-sman4',
     schoolName: 'SMAN 4 Bogor',
@@ -404,154 +319,6 @@ export const SAMPLE_SUPERVISIONS: Supervision[] = [
     }
   },
   {
-    id: 'sup-demo-03',
-    schoolId: 'sch-sman4',
-    schoolName: 'SMAN 4 Bogor',
-    teacherId: 'teacher-risna',
-    teacherName: 'Risna Aryanti, M.Pd.',
-    teacherNip: '19820418 200801 2 011',
-    subject: 'Matematika',
-    classGrade: 'Fase E / Kelas X-A',
-    semester: 'Ganjil',
-    schoolYear: '2025/2026',
-    lessonTitle: 'Eksplorasi Fungsi Eksponensial dalam Pertumbuhan Mikroorganisme dan Investasi',
-    status: 'in_progress',
-    supervisorId: 'admin-kusnandar',
-    supervisorName: 'Kusnandar, M.Si',
-    supervisorRole: 'admin',
-    createdAt: '2025-09-01T08:00:00.000Z',
-    updatedAt: '2025-09-20T10:00:00.000Z',
-    sambung: SEED_SAMBUNG_SITI,
-
-    perangkatAjar: {
-      driveLinks: {
-        cpTpAtpUrl: 'https://drive.google.com/file/d/1DemoMatematikaCPTP/view?usp=sharing',
-        modulAjarUrl: 'https://drive.google.com/file/d/1DemoModulEksponen/view?usp=sharing',
-        bahanAjarUrl: 'https://drive.google.com/file/d/1DemoGeogebraEksponen/view?usp=sharing',
-        asesmenUrl: 'https://drive.google.com/file/d/1DemoRubrikMatematika/view?usp=sharing',
-      },
-      submittedAt: '2025-09-05T08:30:00.000Z',
-      telaahScores: {
-        1: 2, 2: 2, 3: 2, 4: 2, 5: 2, 6: 2, 7: 2, 8: 2, 9: 2, 10: 2, 11: 2,
-        12: 2, 13: 2, 14: 2, 15: 2, 16: 2, 17: 2, 18: 2, 19: 2, 20: 2, 21: 2, 22: 2
-      },
-      telaahComments: {
-        1: 'Format modul memuat diferensiasi konten dan proses.',
-        8: 'Penggunaan GeoGebra sangat efektif untuk memvisualisasikan kurva grafik eksponensial.',
-        19: 'Asesmen formatif berkala memonitor pemahaman bertahap aljabar.'
-      },
-      telaahSummary: {
-        totalScore: 44,
-        maxPossibleScore: 44,
-        finalScore: 100,
-        predicate: 'Sangat Baik'
-      },
-      feedback: {
-        kelebihan: 'Modul komprehensif, dilengkapi lembar eksplorasi GeoGebra interaktif dan lembar studi kasus investasi perbankan.',
-        perbaikan: 'Sediakan latihan bertingkat (scaffolding) untuk siswa yang masih lambat pada operasi perpangkatan dasar.',
-        rekomendasi: 'Lanjut ke tahap pra-observasi dan kunjungan kelas tatap muka.'
-      },
-      reviewedAt: '2025-09-10T09:00:00.000Z',
-      reviewedBy: 'Kusnandar, M.Si'
-    },
-
-    praObservasi: {
-      interviewDurationMinutes: 30,
-      q1_kd_indikator: 'Mengidentifikasi sifat-sifat eksponen dan menyelesaikan pemodelan masalah pertumbuhan.',
-      q2_metode: 'Discovery Learning berbantuan lembar kerja eksplorasi GeoGebra.',
-      q3_alat_bahan: 'Aplikasi GeoGebra, spreadsheet kalkulasi bunga majemuk, tablet/laptop sekolah.',
-      q4_tahapan: 'Stimulasi pola pembelahan sel, pengumpulan data, pengolahan grafik, pembuktian formula, generalisasi.',
-      q5_persiapan: 'Modul ajar, LKPD grafis, tes diagnostik kognitif awal.',
-      q6_materi_sulit: 'Menghubungkan bentuk eksponen pecahan dengan akar; diantisipasi dengan diagram visual balok.',
-      q7_target_kompetensi: 'Kemampuan bernalar logis kuantitatif dan pemodelan matematis dunia nyata.',
-      q8_perhatian_khusus: 'Kemandirian siswa dalam mencoba mengubah parameter a dan b pada kurva y = a(b)^x.',
-      supervisorNotes: 'Rancangan sangat terstruktur dan siap diobservasi pada sesi kelas minggu depan.',
-      completedAt: '2025-09-15T09:00:00.000Z'
-    },
-
-    observasiKelas: {
-      items: {
-        pendahuluan_1: { status: 'Ya', note: 'Berdoa dan cek kesiapan alat hitung' },
-        pendahuluan_2: { status: 'Ya', note: 'Motivasi melalui video pertumbuhan bakteri E. coli' },
-        pendahuluan_3: { status: 'Ya', note: 'Tujuan dan rubrik disampaikan gamblang' },
-        inti_penguasaan_1: { status: 'Ya', note: 'Materi eksponen dikuasai dengan runtut' },
-        inti_penguasaan_2: { status: 'Ya', note: 'Koneksi dengan bidang biologi dan perbankan sangat kuat' },
-        inti_penguasaan_3: { status: 'Ya', note: 'Sesuai dengan alokasi waktu 2 JP' },
-        inti_penguasaan_4: { status: 'Ya', note: 'Suasana belajar aktif tanpa rasa takut matematika' },
-        pelibatan_1: { status: 'Ya', note: 'Murid berebut menggeser slider GeoGebra di papan interaktif' },
-        pelibatan_2: { status: 'Ya', note: 'Umpan balik personal saat murid menghitung manual' },
-        pelibatan_3: { status: 'Ya', note: 'Pasangan teman sebangku saling mengecek hasil' },
-        integrasi_1: { status: 'Ya', note: '4C tampak saat murid mempresentasikan rumus temuan' },
-        integrasi_2: { status: 'Ya', note: 'Soal prediksi populasi 10 tahun mendatang (HOTS)' },
-        integrasi_3: { status: 'Ya', note: 'Penyelidikan data tabel ke grafik (5M)' },
-        integrasi_4: { status: 'Ya', note: 'Prosedural dan konseptual seimbang' },
-        media_1: { status: 'Ya', note: 'GeoGebra Classroom berjalan lancar' },
-        media_2: { status: 'Ya', note: 'Lembar kerja analog dan digital berdampingan' },
-        media_3: { status: 'Ya', note: 'Murid menyimulasikan data secara mandiri' },
-        penilaian_1: { status: 'Ya', note: 'Guru mencatat lembar observasi partisipasi' },
-        penilaian_2: { status: 'Ya', note: 'Umpan balik konstruktif bila ada kekeliruan tanda minus' },
-        penilaian_3: { status: 'Ya', note: 'Kuis 3 soal dikerjakan di akhir sesi' },
-        bahasa_1: { status: 'Ya', note: 'Bahasa Indonesia baku dan istilah matematis tepat' },
-        bahasa_2: { status: 'Ya', note: 'Artikulasi tenang dan mengayomi' },
-        penutup_1: { status: 'Ya', note: 'Rangkuman disimpulkan bersama dua orang siswa' },
-        penutup_2: { status: 'Ya', note: 'Pemberian tantangan mandiri di rumah' }
-      },
-      totalYa: 24,
-      totalAspek: 24,
-      score: 100,
-      predicate: 'Amat Baik (A)',
-      feedbackNotes: 'Pembelajaran matematika yang kontekstual, membumi, dan berhasil mengubah persepsi siswa bahwa matematika itu rumit menjadi menyenangkan.',
-      completedAt: '2025-09-20T11:00:00.000Z'
-    },
-
-    pascaObservasi: {
-      q1_kesan: 'Cukup puas, respons siswa terhadap penggunaan GeoGebra melebihi ekspektasi.',
-      q2_sesuai_rencana: 'Ya, semua sintaks Discovery Learning terlaksana.',
-      q3_hal_memuaskan: 'Semua kelompok berhasil menemukan konsep basis pertumbuhan b > 1.',
-      q4_hal_kurang: 'Dua siswa perlu bimbingan tambahan saat mengoperasikan aplikasi.',
-      q5_ketercapaian_tujuan: 'Sekitar 88% tuntas kuis pemodelan pertumbuhan.',
-      q6_kesulitan_siswa: 'Menyusun model matematika dari kalimat cerita yang panjang.',
-      q7_alternatif_solusi: 'Membuat peta konsep pengubahan kalimat naratif menjadi simbol aljabar.',
-      q8_rencana_tindak_lanjut: 'Membahas peluruhan radioaktif pada pertemuan berikutnya.',
-      q9_pengembangan_diri: 'Ingin memperdalam integrasi Python untuk visualisasi data sains SMA.',
-      generalImpression: 'Pendekatan mengajar guru sangat inovatif dan berorientasi pemahaman konseptual mendalam.',
-      recommendations: 'Bagikan lembar kerja GeoGebra ini kepada rekan guru matematika dalam forum MGMP.',
-      completedAt: '2025-09-22T13:00:00.000Z'
-    },
-
-    evaluasiTahunan: {
-      hasilBelajar: {
-        evidence: '90% murid mencapai target KKTP, pembimbing klub olimpiade matematika.',
-        note: 'Capaian prestasi membanggakan.',
-        score: 93
-      },
-      administrasi: {
-        evidence: 'Perangkat lengkap CP, TP, ATP, Modul, dan daftar nilai digital.',
-        note: 'Dokumen sangat rapi.',
-        score: 95
-      },
-      pengembanganDiri: {
-        evidence: 'Narasumber workshop GeoGebra tingkat kota dan menyelesaikan aksi nyata PMM.',
-        note: 'Kontribusi luar biasa bagi komunitas guru.',
-        score: 97
-      },
-      kedisiplinan: {
-        evidence: 'Presensi 99%, senantiasa hadir memberikan bimbingan remedial bagi murid.',
-        note: 'Dedikasi tinggi terhadap pelayanan murid.',
-        score: 96
-      },
-      rekomendasi: {
-        notes: 'Direkomendasikan sebagai Instruktur Pembelajaran Digital dan Koordinator Laboratorium Komputer.',
-        tindakLanjut: 'Diusulkan mengikuti seleksi Guru Berprestasi tingkat Provinsi.',
-        score: 95
-      },
-      finalAverageScore: 95.2,
-      finalGrade: 'Amat Baik (A)',
-      summaryNotes: 'Kinerja sangat profesional, berintegritas, dan inovatif.',
-      completedAt: '2025-09-25T10:00:00.000Z'
-    }
-  },
-  {
     id: 'sup-demo-04',
     schoolId: 'sch-sman2',
     schoolName: 'SMAN 2 Bogor',
@@ -639,12 +406,13 @@ export const SAMPLE_SUPERVISIONS: Supervision[] = [
     semester: 'Ganjil',
     schoolYear: '2025/2026',
     lessonTitle: 'Literasi Keuangan dan Kebijakan Fiskal Moneter dalam Perekonomian Digital',
-    status: 'in_progress',
+    status: 'completed',
     supervisorId: 'admin-kusnandar',
     supervisorName: 'Kusnandar, M.Si',
     supervisorRole: 'admin',
     createdAt: '2025-09-05T08:00:00.000Z',
     updatedAt: '2025-09-22T10:00:00.000Z',
+    sambung: createDefaultSambungForTeacher('Hilmia Fitriyani, S.Pd.', 'SMAN 4 Bogor', 'Ekonomi'),
     perangkatAjar: {
       driveLinks: {
         cpTpAtpUrl: 'https://drive.google.com/file/d/1DemoEkonomiCPTP/view?usp=sharing',
@@ -652,9 +420,9 @@ export const SAMPLE_SUPERVISIONS: Supervision[] = [
         bahanAjarUrl: 'https://drive.google.com/file/d/1DemoBahanAjarEkonomi/view?usp=sharing',
         asesmenUrl: 'https://drive.google.com/file/d/1DemoAsesmenEkonomi/view?usp=sharing',
       },
-      telaahScores: { 1: 2, 2: 2, 3: 2, 4: 2, 5: 2, 6: 2, 7: 2, 8: 2, 9: 2, 10: 2, 11: 2, 12: 2, 13: 2, 14: 2, 15: 2, 16: 2, 17: 2, 18: 2, 19: 2, 20: 2, 21: 2, 22: 2 },
+      telaahScores: { 1: 2, 2: 2, 3: 2, 4: 2, 5: 1, 6: 2, 7: 2, 8: 2, 9: 1, 10: 2, 11: 2, 12: 2, 13: 2, 14: 1, 15: 2, 16: 2, 17: 2, 18: 2, 19: 1, 20: 2, 21: 2, 22: 2 },
       telaahComments: { 1: 'Modul terintegrasi kasus riil perbankan', 12: 'Aktivitas kontekstual sangat relevan' },
-      telaahSummary: { totalScore: 43, maxPossibleScore: 44, finalScore: 97.7, predicate: 'Sangat Baik' },
+      telaahSummary: { totalScore: 38, maxPossibleScore: 44, finalScore: 86.4, predicate: 'Baik' },
       feedback: { kelebihan: 'Studi kasus kontekstual perbankan digital dan inflasi riil.', perbaikan: 'Tambahkan diferensiasi untuk siswa dengan minat bisnis.', rekomendasi: 'Dapat dilanjutkan ke observasi tatap muka.' }
     },
     praObservasi: {
@@ -791,12 +559,13 @@ export const SAMPLE_SUPERVISIONS: Supervision[] = [
     semester: 'Ganjil',
     schoolYear: '2025/2026',
     lessonTitle: 'Konsep Dasar Ilmu Sejarah: Manusia, Ruang, dan Waktu',
-    status: 'in_progress',
+    status: 'completed',
     supervisorId: 'admin-kusnandar',
     supervisorName: 'Kusnandar, M.Si',
     supervisorRole: 'admin',
     createdAt: '2025-09-08T08:00:00.000Z',
     updatedAt: '2025-09-24T10:00:00.000Z',
+    sambung: createDefaultSambungForTeacher('Iqbal Aziz Andrianto', 'SMAS PGRI 1', 'Sejarah'),
     perangkatAjar: {
       driveLinks: {
         cpTpAtpUrl: 'https://drive.google.com/file/d/1DemoPGRISejarah/view?usp=sharing',
@@ -804,9 +573,9 @@ export const SAMPLE_SUPERVISIONS: Supervision[] = [
         bahanAjarUrl: 'https://drive.google.com/file/d/1DemoBahanPGRI/view?usp=sharing',
         asesmenUrl: 'https://drive.google.com/file/d/1DemoAsesmenPGRI/view?usp=sharing',
       },
-      telaahScores: { 1: 2, 2: 2, 3: 2, 4: 2, 5: 2, 6: 2, 7: 2, 8: 2, 9: 2, 10: 2, 11: 2, 12: 2, 13: 2, 14: 2, 15: 2, 16: 2, 17: 2, 18: 2, 19: 2, 20: 2, 21: 2, 22: 2 },
+      telaahScores: { 1: 2, 2: 2, 3: 2, 4: 2, 5: 1, 6: 2, 7: 2, 8: 2, 9: 1, 10: 2, 11: 2, 12: 2, 13: 2, 14: 1, 15: 2, 16: 2, 17: 2, 18: 2, 19: 1, 20: 2, 21: 2, 22: 2 },
       telaahComments: { 1: 'Penyusunan modul jelas dan terstruktur' },
-      telaahSummary: { totalScore: 42, maxPossibleScore: 44, finalScore: 95.5, predicate: 'Sangat Baik' },
+      telaahSummary: { totalScore: 37, maxPossibleScore: 44, finalScore: 84.1, predicate: 'Baik' },
       feedback: { kelebihan: 'Koneksi dengan garis waktu sejarah lokal sangat baik.', perbaikan: 'Perkuat kegiatan refleksi murid.', rekomendasi: 'Diteruskan ke observasi kelas.' }
     },
     praObservasi: {
@@ -824,10 +593,10 @@ export const SAMPLE_SUPERVISIONS: Supervision[] = [
     },
     observasiKelas: {
       items: {},
-      totalYa: 23,
+      totalYa: 20,
       totalAspek: 24,
-      score: 95.8,
-      predicate: 'Amat Baik (A)',
+      score: 83.3,
+      predicate: 'Baik (B)',
       feedbackNotes: 'Pengelolaan kelas baik, murid antusias membuat garis waktu digital.'
     },
     pascaObservasi: {
@@ -837,7 +606,7 @@ export const SAMPLE_SUPERVISIONS: Supervision[] = [
       q4_hal_kurang: 'Waktu simpulan akhir perlu dialokasikan lebih longgar.',
       q5_ketercapaian_tujuan: '90% siswa mencapai kriteria ketercapaian tujuan.',
       q6_kesulitan_siswa: 'Mengkaitkan ruang geografis dengan peristiwa sejarah.',
-      q7_alternatif_solusi: 'Memadukan Google Earth dengan narasi sejarah lokal.',
+      q7_alternatif_solusi: 'Mempadukan Google Earth dengan narasi sejarah lokal.',
       q8_rencana_tindak_lanjut: 'Membahas bab cara berpikir sinkronik pada pertemuan berikut.',
       q9_pengembangan_diri: 'Pelatihan pembuatan media visual sejarah berbasis Canva for Education.',
       generalImpression: 'Pendekatan mengajar komunikatif dan bersahabat.',
@@ -853,82 +622,6 @@ export const SAMPLE_SUPERVISIONS: Supervision[] = [
       finalAverageScore: 93.2,
       finalGrade: 'Amat Baik (A)',
       summaryNotes: 'Kinerja guru muda yang energik dan berpotensi besar.'
-    }
-  },
-  {
-    id: 'sup-demo-08',
-    schoolId: 'sch-pgri-1',
-    schoolName: 'SMAS PGRI 1',
-    teacherId: 'teacher-fatma',
-    teacherName: 'Fatma Rita, S.Si.',
-    teacherNip: '19830514 200902 2 004',
-    subject: 'PKWU',
-    classGrade: 'Fase F / Kelas XI',
-    semester: 'Ganjil',
-    schoolYear: '2025/2026',
-    lessonTitle: 'Inovasi Produk Olahan Pangan Nabati Khas Daerah dan Analisis Titik Impas (BEP)',
-    status: 'completed',
-    supervisorId: 'admin-kusnandar',
-    supervisorName: 'Kusnandar, M.Si',
-    supervisorRole: 'admin',
-    createdAt: '2025-09-04T08:00:00.000Z',
-    updatedAt: '2025-09-21T11:30:00.000Z',
-    perangkatAjar: {
-      driveLinks: {
-        cpTpAtpUrl: 'https://drive.google.com/file/d/1DemoPKWUCPTP/view?usp=sharing',
-        modulAjarUrl: 'https://drive.google.com/file/d/1DemoModulPKWU/view?usp=sharing',
-        bahanAjarUrl: 'https://drive.google.com/file/d/1DemoBahanPKWU/view?usp=sharing',
-        asesmenUrl: 'https://drive.google.com/file/d/1DemoAsesmenPKWU/view?usp=sharing',
-      },
-      telaahScores: { 1: 2, 2: 2, 3: 2, 4: 2, 5: 2, 6: 2, 7: 2, 8: 2, 9: 2, 10: 2, 11: 2, 12: 2, 13: 2, 14: 2, 15: 2, 16: 2, 17: 2, 18: 2, 19: 2, 20: 2, 21: 2, 22: 2 },
-      telaahComments: { 1: 'Kewirausahaan kontekstual berbasis potensi lokal Jawa Barat', 12: 'Simulasi perhitungan BEP riil' },
-      telaahSummary: { totalScore: 44, maxPossibleScore: 44, finalScore: 100, predicate: 'Sangat Baik' },
-      feedback: { kelebihan: 'Integrasi konsep sains pangan dan kalkulasi bisnis sangat aplikatif.', perbaikan: 'Tambahkan panduan uji organoleptik makanan.', rekomendasi: 'Model kewirausahaan kreatif yang unggul.' }
-    },
-    praObservasi: {
-      interviewDurationMinutes: 30,
-      q1_kd_indikator: 'Merancang produk pangan bernilai jual dan menghitung break even point.',
-      q2_metode: 'Project-Based Learning dengan unjuk kerja perancangan produk.',
-      q3_alat_bahan: 'Bahan baku pangan lokal, lembar kalkulasi biaya produksi, template kemasan.',
-      q4_tahapan: 'Penentuan tema produk, perancangan prototipe, perhitungan biaya modal & BEP, gelar karya mini.',
-      q5_persiapan: 'Rubrik penilaian produk dan kelayakan bisnis.',
-      q6_materi_sulit: 'Kalkulasi fixed cost vs variable cost dalam produksi skala rumah tangga.',
-      q7_target_kompetensi: 'Jiwa wirausaha mandiri, kolaborasi, dan kecakapan berhitung bisnis.',
-      q8_perhatian_khusus: 'Aspek kebersihan sanitasi dan ketepatan perhitungan margin harga.',
-      supervisorNotes: 'Rancangan sangat berorientasi kemandirian wirausaha murid.',
-      completedAt: '2025-09-09T08:30:00.000Z'
-    },
-    observasiKelas: {
-      items: {},
-      totalYa: 24,
-      totalAspek: 24,
-      score: 100,
-      predicate: 'Amat Baik (A)',
-      feedbackNotes: 'Murid sangat bersemangat mempresentasikan prototipe kemasan dan rincian BEP produk olahan pangan lokal.'
-    },
-    pascaObservasi: {
-      q1_kesan: 'Kreativitas murid dalam mendesain branding dan kemasan produk luar biasa.',
-      q2_sesuai_rencana: 'Ya, seluruh tahapan unjuk kerja terlaksana dengan aman dan higienis.',
-      q3_hal_memuaskan: 'Perhitungan BEP setiap kelompok sangat akurat dan masuk akal.',
-      q4_hal_kurang: 'Ruang pameran gelar karya mini terasa sempit karena banyaknya produk murid.',
-      q5_ketercapaian_tujuan: '96% siswa menguasai formula penentuan harga jual dan titik impas.',
-      q6_kesulitan_siswa: 'Menghitung penyusutan alat dalam biaya operasional.',
-      q7_alternatif_solusi: 'Memberikan lembar spreadsheet otomatis dengan formula siap pakai.',
-      q8_rencana_tindak_lanjut: 'Bazar kewirausahaan sekolah pada hari ulang tahun satuan pendidikan.',
-      q9_pengembangan_diri: 'Pelatihan sertifikasi halal dan izin P-IRT untuk UMKM sekolah.',
-      generalImpression: 'Pembelajaran PKWU yang sangat aplikatif, melatih murid berjiwa wirausaha mandiri.',
-      recommendations: 'Daftarkan karya kemasan terbaik murid ke pameran karya siswa tingkat kota.',
-      completedAt: '2025-09-17T11:30:00.000Z'
-    },
-    evaluasiTahunan: {
-      hasilBelajar: { evidence: 'Ketuntasan 96%, produk murid dipasarkan di koperasi sekolah', note: 'Sangat membanggakan', score: 96 },
-      administrasi: { evidence: 'Lengkap CP, TP, Modul Projek, dan daftar nilai otentik', note: 'Tertib', score: 96 },
-      pengembanganDiri: { evidence: 'Koordinator Bazar Kreatif Siswa dan lulus modul PMM Kewirausahaan', note: 'Inovatif', score: 97 },
-      kedisiplinan: { evidence: 'Presensi 100%, teladan dalam ketertiban', note: 'Sangat disiplin', score: 98 },
-      rekomendasi: { notes: 'Koordinator Inkubator Bisnis dan Koperasi Siswa', tindakLanjut: 'Bimtek kewirausahaan digital provinsi', score: 97 },
-      finalAverageScore: 96.8,
-      finalGrade: 'Amat Baik (A)',
-      summaryNotes: 'Kinerja unggul, kreatif, dan berdampak nyata bagi karakter kemandirian murid.'
     }
   },
   {
@@ -1102,24 +795,24 @@ export const SAMPLE_SUPERVISIONS: Supervision[] = [
     teacherId: 'teacher-kirana',
     teacherName: 'Kirana Mahardhika, S.Pd, Gr.',
     teacherNip: '19930825 201903 2 009',
-    subject: 'Kimia',
+    subject: 'Fisika',
     classGrade: 'Fase F / Kelas XI-IPA',
     semester: 'Ganjil',
     schoolYear: '2025/2026',
-    lessonTitle: 'Termokimia: Penentuan Perubahan Entalpi Reaksi Melalui Eksperimen Kalorimeter Sederhana Ramah Lingkungan',
+    lessonTitle: 'Hukum Gravitasi Newton dan Dinamika Gerak Planet Melalui Eksperimen Interaktif',
     status: 'completed',
     supervisorId: 'admin-kusnandar',
     supervisorName: 'Kusnandar, M.Si',
     supervisorRole: 'admin',
     createdAt: '2025-08-22T08:30:00.000Z',
     updatedAt: '2025-09-18T10:00:00.000Z',
-    sambung: createDefaultSambungForTeacher('Kirana Mahardhika, S.Pd, Gr.', 'SMAS IT Ummul Quro', 'Kimia'),
+    sambung: createDefaultSambungForTeacher('Kirana Mahardhika, S.Pd, Gr.', 'SMAS IT Ummul Quro', 'Fisika'),
     perangkatAjar: {
       driveLinks: {
-        cpTpAtpUrl: 'https://drive.google.com/file/d/1DemoCPTPKimiaUmmulQuro/view?usp=sharing',
-        modulAjarUrl: 'https://drive.google.com/file/d/1DemoModulKimiaTermokimia/view?usp=sharing',
-        bahanAjarUrl: 'https://drive.google.com/file/d/1DemoMediaPraktikumKimia/view?usp=sharing',
-        asesmenUrl: 'https://drive.google.com/file/d/1DemoRubrikPraktikumKalorimeter/view?usp=sharing',
+        cpTpAtpUrl: 'https://drive.google.com/file/d/1DemoCPTPFisikaUmmulQuro/view?usp=sharing',
+        modulAjarUrl: 'https://drive.google.com/file/d/1DemoModulFisikaGravitasi/view?usp=sharing',
+        bahanAjarUrl: 'https://drive.google.com/file/d/1DemoMediaPraktikumFisika/view?usp=sharing',
+        asesmenUrl: 'https://drive.google.com/file/d/1DemoRubrikPraktikumFisika/view?usp=sharing',
       },
       submittedAt: '2025-08-25T10:00:00.000Z',
       telaahScores: {
@@ -1299,6 +992,474 @@ export const SAMPLE_SUPERVISIONS: Supervision[] = [
       finalAverageScore: 95.4,
       finalGrade: 'Amat Baik (A)',
       summaryNotes: 'Kinerja pengajaran sangat baik, teliti dalam asesmen, dan disenangi para peserta didik.'
+    }
+  },
+  {
+    id: 'sup-demo-yphb-sihana',
+    schoolId: 'sch-yphb',
+    schoolName: 'SMAS YPHB',
+    teacherId: 'teacher-sihana',
+    teacherName: 'Sihana, S.Pd.Gr.',
+    teacherNip: '19880415 201502 1 004',
+    subject: 'Penjasorkes',
+    classGrade: 'Fase E / Kelas X-A',
+    semester: 'Ganjil',
+    schoolYear: '2025/2026',
+    lessonTitle: 'Kebugaran Jasmani dan Pola Hidup Sehat Berkelanjutan Melalui Aktivitas Sirkuit Training',
+    status: 'completed',
+    supervisorId: 'admin-kusnandar',
+    supervisorName: 'Kusnandar, M.Si',
+    supervisorRole: 'admin',
+    createdAt: '2025-08-26T08:00:00.000Z',
+    updatedAt: '2025-09-17T11:00:00.000Z',
+    sambung: createDefaultSambungForTeacher('Sihana, S.Pd.Gr.', 'SMAS YPHB', 'Penjasorkes'),
+    perangkatAjar: {
+      driveLinks: {
+        cpTpAtpUrl: 'https://drive.google.com/file/d/1DemoCPTPPenjasYPHB/view?usp=sharing',
+        modulAjarUrl: 'https://drive.google.com/file/d/1DemoModulPenjasYPHB/view?usp=sharing',
+        bahanAjarUrl: 'https://drive.google.com/file/d/1DemoMediaPenjasYPHB/view?usp=sharing',
+        asesmenUrl: 'https://drive.google.com/file/d/1DemoRubrikPenjasYPHB/view?usp=sharing',
+      },
+      submittedAt: '2025-08-28T09:00:00.000Z',
+      telaahScores: { 1: 2, 2: 2, 3: 2, 4: 2, 5: 2, 6: 2, 7: 2, 8: 2, 9: 2, 10: 2, 11: 2, 12: 2, 13: 2, 14: 2, 15: 2, 16: 2, 17: 2, 18: 2, 19: 2, 20: 2, 21: 2, 22: 2 },
+      telaahComments: { 1: 'Modul ajar Penjasorkes sangat lengkap, memperhatikan prinsip keselamatan dan inklusivitas fisik murid.' },
+      telaahSummary: { totalScore: 42, maxPossibleScore: 44, finalScore: 95.5, predicate: 'Sangat Baik' },
+      feedback: { kelebihan: 'Sirkuit training dengan variasi intensitas melatih kemandirian kebugaran murid.', perbaikan: 'Tambahkan lembar pencatatan denyut nadi mandiri.', rekomendasi: 'Siap untuk observasi kelas tatap muka di lapangan.' }
+    },
+    praObservasi: {
+      interviewDurationMinutes: 30,
+      q1_kd_indikator: 'Mempraktikkan dan menganalisis konsep latihan sirkuit training untuk peningkatan kebugaran jasmani.',
+      q2_metode: 'Demonstrasi kolaboratif dipadukan Circuit Training dan Peer-Assessment.',
+      q3_alat_bahan: 'Cone penanda pos, matras senam, stopwatch digital, lembar monitor denyut nadi.',
+      q4_tahapan: 'Pemanasan dinamis, Pengenalan 5 pos latihan, Rotasi sirkuit kelompok, Pendinginan dan refleksi denyut nadi.',
+      q5_persiapan: 'Peralatan lapangan tertata aman, modul ajar terdistribusi.',
+      q6_materi_sulit: 'Menghitung zona denyut nadi latihan (Training Heart Rate).',
+      q7_target_kompetensi: 'Kebugaran fisik, sportivitas, dan kesadaran gaya hidup sehat.',
+      q8_perhatian_khusus: 'Memperhatikan murid yang memiliki riwayat asma atau kelelahan berlebih.',
+      supervisorNotes: 'Rancangan aktivitas jasmani sangat memperhatikan standar keselamatan dan kesehatan murid.',
+      completedAt: '2025-09-02T08:00:00.000Z'
+    },
+    observasiKelas: {
+      items: {},
+      totalYa: 23,
+      totalAspek: 24,
+      score: 95.8,
+      predicate: 'Amat Baik (A)',
+      feedbackNotes: 'Pengelolaan murid di lapangan sangat tertib, suasana menyenangkan dan penuh antusiasme.'
+    },
+    pascaObservasi: {
+      q1_kesan: 'Sangat senang karena seluruh murid antusias menyelesaikan tantangan di setiap pos kebugaran.',
+      q2_sesuai_rencana: 'Ya, seluruh tahapan sirkuit terlaksana tepat waktu.',
+      q3_hal_memuaskan: 'Kekompakan antarteman saling menyemangati saat menyelesaikan pos latihan fisik.',
+      q4_hal_kurang: 'Dibutuhkan cadangan air minum tambahan di dekat pos latihan luar ruangan.',
+      q5_ketercapaian_tujuan: '95% murid memahami cara mengukur kebugaran dan denyut nadi mandiri.',
+      q6_kesulitan_siswa: 'Menjaga ritme pernapasan yang stabil saat pos push-up dan lari zig-zag.',
+      q7_alternatif_solusi: 'Pemberian aba-aba irama musik tempo sedang sebagai pemandu ritme gerak.',
+      q8_rencana_tindak_lanjut: 'Penyusunan target program latihan kebugaran mandiri di rumah selama 2 pekan.',
+      q9_pengembangan_diri: 'Mengikuti pelatihan sertifikasi pelatih kebugaran remaja tingkat regional.',
+      generalImpression: 'Instruktur pembelajaran jasmani yang energik, mengedepankan nilai sportivitas dan kesehatan mental murid.',
+      recommendations: 'Kembangkan video tutorial sirkuit training mandiri untuk dibagikan di kanal edukasi sekolah.',
+      completedAt: '2025-09-08T10:00:00.000Z'
+    },
+    evaluasiTahunan: {
+      hasilBelajar: { evidence: '95% murid mencapai kriteria kebugaran jasmani baik, juara lomba senam kota', note: 'Sangat Baik', score: 95 },
+      administrasi: { evidence: 'Modul ajar dan kartu catatan kebugaran murid terarsip rapi', note: 'Tertib', score: 95 },
+      pengembanganDiri: { evidence: 'Aktif di MGMP PJOK Kota Bogor dan lulus modul pelatihan mandiri', note: 'Inovatif', score: 96 },
+      kedisiplinan: { evidence: 'Presensi 100%, selalu hadir lebih awal mempersiapkan lapangan', note: 'Teladan', score: 98 },
+      rekomendasi: { notes: 'Koordinator Pembina Prestasi Olahraga Sekolah', tindakLanjut: 'Bimtek manajemen keolahragaan sekolah', score: 96 },
+      finalAverageScore: 96.0,
+      finalGrade: 'Amat Baik (A)',
+      summaryNotes: 'Kinerja sangat profesional, berdedikasi membina fisik dan karakter murid.'
+    }
+  },
+  {
+    id: 'sup-demo-yphb-salma',
+    schoolId: 'sch-yphb',
+    schoolName: 'SMAS YPHB',
+    teacherId: 'teacher-siti-salma',
+    teacherName: 'Siti Salma, S.Pd',
+    teacherNip: '19910712 201703 2 008',
+    subject: 'Fisika',
+    classGrade: 'Fase F / Kelas XI-MIPA',
+    semester: 'Ganjil',
+    schoolYear: '2025/2026',
+    lessonTitle: 'Gelombang Mekanik dan Resonansi Bunyi dalam Teknologi Audio',
+    status: 'completed',
+    supervisorId: 'admin-kusnandar',
+    supervisorName: 'Kusnandar, M.Si',
+    supervisorRole: 'admin',
+    createdAt: '2025-08-27T08:00:00.000Z',
+    updatedAt: '2025-09-18T10:00:00.000Z',
+    sambung: SEED_SAMBUNG_SITI,
+    perangkatAjar: {
+      driveLinks: {
+        cpTpAtpUrl: 'https://drive.google.com/file/d/1DemoCPTPFisikaYPHB/view?usp=sharing',
+        modulAjarUrl: 'https://drive.google.com/file/d/1DemoModulFisikaYPHB/view?usp=sharing',
+        bahanAjarUrl: 'https://drive.google.com/file/d/1DemoMediaFisikaYPHB/view?usp=sharing',
+        asesmenUrl: 'https://drive.google.com/file/d/1DemoRubrikFisikaYPHB/view?usp=sharing',
+      },
+      submittedAt: '2025-08-30T09:00:00.000Z',
+      telaahScores: { 1: 2, 2: 2, 3: 2, 4: 2, 5: 2, 6: 2, 7: 2, 8: 2, 9: 2, 10: 2, 11: 2, 12: 2, 13: 2, 14: 2, 15: 2, 16: 2, 17: 2, 18: 2, 19: 2, 20: 2, 21: 2, 22: 2 },
+      telaahComments: { 1: 'Penyusunan modul fisika gelombang sangat kontekstual mengaitkan prinsip audio smartphone.' },
+      telaahSummary: { totalScore: 43, maxPossibleScore: 44, finalScore: 97.7, predicate: 'Sangat Baik' },
+      feedback: { kelebihan: 'Integrasi simulasi gelombang visual membantu siswa memahami perambatan bunyi.', perbaikan: 'Tambahkan pengayaan resonansi tabung pipa organa.', rekomendasi: 'Sangat siap dilanjutkan ke observasi tatap muka.' }
+    },
+    praObservasi: {
+      interviewDurationMinutes: 30,
+      q1_kd_indikator: 'Menganalisis karakteristik gelombang mekanik dan resonansi bunyi dalam kehidupan sehari-hari.',
+      q2_metode: 'Inquiry-Based Learning berbasis Eksperimen Virtual dan Demonstrasi Garpu Tala.',
+      q3_alat_bahan: 'Aplikasi Sound Generator di smartphone, garpu tala, tabung resonansi, LKPD digital.',
+      q4_tahapan: 'Apersepsi fenomena kaca bergetar akibat petir, Eksperimen frekuensi nada, Analisis data, Simpulan.',
+      q5_persiapan: 'Menyiapkan modul ajar interaktif dan alat peraga akustik.',
+      q6_materi_sulit: 'Menghitung hubungan antara frekuensi, panjang gelombang, dan cepat rambat bunyi.',
+      q7_target_kompetensi: 'Kemampuan bernalar analitis sains dan pemecahan masalah fenomena gelombang.',
+      q8_perhatian_khusus: 'Membimbing murid yang membutuhkan penguatan perhitungan matematis gelombang.',
+      supervisorNotes: 'Rancangan pembelajaran fisika yang inovatif dan relevan dengan teknologi audio modern.',
+      completedAt: '2025-09-03T09:00:00.000Z'
+    },
+    observasiKelas: {
+      items: {},
+      totalYa: 23,
+      totalAspek: 24,
+      score: 95.8,
+      predicate: 'Amat Baik (A)',
+      feedbackNotes: 'Interaksi pembelajaran sangat hidup, murid antusias mencoba frekuensi audio pada smartphone masing-masing.'
+    },
+    pascaObservasi: {
+      q1_kesan: 'Murid sangat takjub saat melihat resonansi bunyi mampu menggetarkan partikel garam pada membran speaker.',
+      q2_sesuai_rencana: 'Ya, seluruh tahapan terlaksana sesuai skenario RPP.',
+      q3_hal_memuaskan: 'Penalaran kritis murid saat membedakan bunyi ultrasonik dan audiosonik.',
+      q4_hal_kurang: 'Suara bising luar kelas sempat sedikit mengganggu pengukuran frekuensi rendah.',
+      q5_ketercapaian_tujuan: '93% murid mencapai KKTP dalam kuis formatif gelombang bunyi.',
+      q6_kesulitan_siswa: 'Menerapkan formula pipa organa terbuka vs tertutup.',
+      q7_alternatif_solusi: 'Membuat animasi visual pola gelombang stasioner menggunakan simulasi PhET.',
+      q8_rencana_tindak_lanjut: 'Melanjutkan materi ke efek Doppler pada pertemuan berikutnya.',
+      q9_pengembangan_diri: 'Mengikuti pelatihan laboratorium fisika komputasi.',
+      generalImpression: 'Kompetensi pedagogik dan profesional guru sangat unggul.',
+      recommendations: 'Tuliskan modul eksperimen audio ini menjadi best practice MGMP Fisika.',
+      completedAt: '2025-09-09T13:00:00.000Z'
+    },
+    evaluasiTahunan: {
+      hasilBelajar: { evidence: 'Ketuntasan 94%, nilai rata-rata asesmen sumatif fisika 91', note: 'Sangat Baik', score: 95 },
+      administrasi: { evidence: 'Perangkat ajar kurikulum merdeka tersimpan lengkap dan tertata rapi', note: 'Tertib', score: 96 },
+      pengembanganDiri: { evidence: 'Aktif di MGMP Fisika Kota Bogor dan menyelesaikan sertifikasi PMM', note: 'Produktif', score: 96 },
+      kedisiplinan: { evidence: 'Presensi 100%, teladan dalam ketertiban', note: 'Teladan', score: 98 },
+      rekomendasi: { notes: 'Direkomendasikan sebagai Fasilitator Pembelajaran Sains Kreatif', tindakLanjut: 'Ikutsertakan dalam diseminasi best practice sains tingkat kota', score: 96 },
+      finalAverageScore: 96.2,
+      finalGrade: 'Amat Baik (A)',
+      summaryNotes: 'Kinerja sangat prima dan berdedikasi tinggi dalam menginspirasi murid belajar sains.'
+    }
+  },
+  {
+    id: 'sup-demo-bhakti-widya',
+    schoolId: 'sch-bhakti-insani',
+    schoolName: 'SMAS Bhakti Insani',
+    teacherId: 'teacher-widya',
+    teacherName: 'Widya Anjani, S.Pd.',
+    teacherNip: '19900518 201604 2 007',
+    subject: 'Ekonomi',
+    classGrade: 'Fase E / Kelas X-1',
+    semester: 'Ganjil',
+    schoolYear: '2025/2026',
+    lessonTitle: 'Manajemen dan Koperasi Sekolah dalam Menggerakkan Ekonomi Kerakyatan',
+    status: 'completed',
+    supervisorId: 'admin-kusnandar',
+    supervisorName: 'Kusnandar, M.Si',
+    supervisorRole: 'admin',
+    createdAt: '2025-08-28T08:00:00.000Z',
+    updatedAt: '2025-09-19T11:00:00.000Z',
+    sambung: createDefaultSambungForTeacher('Widya Anjani, S.Pd.', 'SMAS Bhakti Insani', 'Ekonomi'),
+    perangkatAjar: {
+      driveLinks: {
+        cpTpAtpUrl: 'https://drive.google.com/file/d/1DemoCPTPEkonomiBhakti/view?usp=sharing',
+        modulAjarUrl: 'https://drive.google.com/file/d/1DemoModulEkonomiBhakti/view?usp=sharing',
+        bahanAjarUrl: 'https://drive.google.com/file/d/1DemoMediaEkonomiBhakti/view?usp=sharing',
+        asesmenUrl: 'https://drive.google.com/file/d/1DemoRubrikEkonomiBhakti/view?usp=sharing',
+      },
+      submittedAt: '2025-08-31T09:00:00.000Z',
+      telaahScores: { 1: 2, 2: 2, 3: 2, 4: 2, 5: 1, 6: 2, 7: 2, 8: 2, 9: 1, 10: 2, 11: 2, 12: 2, 13: 2, 14: 1, 15: 2, 16: 2, 17: 2, 18: 2, 19: 1, 20: 2, 21: 2, 22: 2 },
+      telaahComments: { 1: 'Modul terstruktur baik dan memuat nilai gotong royong ekonomi koperasi.' },
+      telaahSummary: { totalScore: 37, maxPossibleScore: 44, finalScore: 84.1, predicate: 'Baik' },
+      feedback: { kelebihan: 'Studi kasus riil koperasi sekolah sangat aplikatif bagi murid.', perbaikan: 'Perkaya lembar kerja dengan perhitungan Sisa Hasil Usaha (SHU).', rekomendasi: 'Dapat dilanjutkan ke observasi tatap muka.' }
+    },
+    praObservasi: {
+      interviewDurationMinutes: 30,
+      q1_kd_indikator: 'Mendeskripsikan peran koperasi dalam perekonomian Indonesia dan menyimulasikan pembagian SHU.',
+      q2_metode: 'Problem-Based Learning dengan simulasi Rapat Anggota Tahunan (RAT) mini.',
+      q3_alat_bahan: 'Laporan keuangan sederhana koperasi sekolah, lembar kerja hitung SHU, proyektor.',
+      q4_tahapan: 'Orientasi masalah ekonomi, Pembagian peran anggota koperasi, Simulasi perhitungan SHU, Presentasi hasil.',
+      q5_persiapan: 'Menyiapkan modul ajar dan data simulasi simpanan pokok dan wajib.',
+      q6_materi_sulit: 'Menghitung persentase jasa modal dan jasa anggota dalam pembagian SHU.',
+      q7_target_kompetensi: 'Literasi finansial, kerja sama tim, dan kepemimpinan demokratis.',
+      q8_perhatian_khusus: 'Memfasilitasi murid yang belum lancar kalkulasi proporsi keuangan.',
+      supervisorNotes: 'Perencanaan pembelajaran terstruktur dan mengedepankan asas kekeluargaan koperasi.',
+      completedAt: '2025-09-04T08:30:00.000Z'
+    },
+    observasiKelas: {
+      items: {},
+      totalYa: 20,
+      totalAspek: 24,
+      score: 83.3,
+      predicate: 'Baik (B)',
+      feedbackNotes: 'Suasana kelas tertib, murid berpartisipasi aktif dalam simulasi RAT koperasi sekolah.'
+    },
+    pascaObservasi: {
+      q1_kesan: 'Cukup puas, murid memahami esensi bahwa koperasi bukan sekadar toko melainkan badan usaha berasas kekeluargaan.',
+      q2_sesuai_rencana: 'Ya, simulasi pembagian SHU selesai sesuai alokasi waktu 2 JP.',
+      q3_hal_memuaskan: 'Keseriusan murid saat memverifikasi kebenaran nominal simpanan dan jasa anggota.',
+      q4_hal_kurang: 'Dua kelompok membutuhkan waktu agak lama dalam kalkulasi persentase jasa modal.',
+      q5_ketercapaian_tujuan: '88% murid tuntas menghitung pembagian SHU.',
+      q6_kesulitan_siswa: 'Membedakan antara simpanan sukarela dengan simpanan wajib.',
+      q7_alternatif_solusi: 'Membuat tabel komparasi ciri masing-masing simpanan koperasi.',
+      q8_rencana_tindak_lanjut: 'Kunjungan observasi langsung ke operasional koperasi karyawan/sekolah.',
+      q9_pengembangan_diri: 'Mengikuti workshop akuntansi koperasi digital.',
+      generalImpression: 'Guru komunikatif dan mampu mengaitkan teori ekonomi dengan praktik nyata di sekolah.',
+      recommendations: 'Tingkatkan keterlibatan aktif siswa dalam mengelola pojok literasi koperasi sekolah.',
+      completedAt: '2025-09-10T11:00:00.000Z'
+    },
+    evaluasiTahunan: {
+      hasilBelajar: { evidence: 'Ketuntasan 90%, nilai formatif memuaskan', note: 'Baik', score: 90 },
+      administrasi: { evidence: 'Perangkat pembelajaran lengkap dan tersusun tertib', note: 'Rapi', score: 92 },
+      pengembanganDiri: { evidence: 'Aktif di Kombel Sekolah dan webinar literasi ekonomi', note: 'Positif', score: 92 },
+      kedisiplinan: { evidence: 'Presensi 98%, disiplin dan bertanggung jawab', note: 'Baik', score: 95 },
+      rekomendasi: { notes: 'Pembina Koperasi Siswa SMAS Bhakti Insani', tindakLanjut: 'Pelatihan kewirausahaan koperasi sekolah', score: 92 },
+      finalAverageScore: 92.2,
+      finalGrade: 'Baik (B)',
+      summaryNotes: 'Kinerja pengajaran baik, berdedikasi dalam mendampingi murid.'
+    }
+  },
+  {
+    id: 'sup-demo-yasih-yazid',
+    schoolId: 'sch-yasih',
+    schoolName: 'SMAS Yasih',
+    teacherId: 'teacher-yazid',
+    teacherName: 'Yazid Ali Hamdi',
+    teacherNip: '19920921 201801 1 005',
+    subject: 'PKn',
+    classGrade: 'Fase E / Kelas X-A',
+    semester: 'Ganjil',
+    schoolYear: '2025/2026',
+    lessonTitle: 'Nilai-Nilai Pancasila dalam Penyelenggaraan Negara dan Kehidupan Bermasyarakat',
+    status: 'completed',
+    supervisorId: 'admin-kusnandar',
+    supervisorName: 'Kusnandar, M.Si',
+    supervisorRole: 'admin',
+    createdAt: '2025-08-29T08:00:00.000Z',
+    updatedAt: '2025-09-20T11:00:00.000Z',
+    sambung: createDefaultSambungForTeacher('Yazid Ali Hamdi', 'SMAS Yasih', 'PKn'),
+    perangkatAjar: {
+      driveLinks: {
+        cpTpAtpUrl: 'https://drive.google.com/file/d/1DemoCPTPPKnYasih/view?usp=sharing',
+        modulAjarUrl: 'https://drive.google.com/file/d/1DemoModulPKnYasih/view?usp=sharing',
+        bahanAjarUrl: 'https://drive.google.com/file/d/1DemoMediaPKnYasih/view?usp=sharing',
+        asesmenUrl: 'https://drive.google.com/file/d/1DemoRubrikPKnYasih/view?usp=sharing',
+      },
+      submittedAt: '2025-09-02T09:00:00.000Z',
+      telaahScores: { 1: 2, 2: 2, 3: 2, 4: 2, 5: 2, 6: 2, 7: 2, 8: 2, 9: 1, 10: 2, 11: 2, 12: 2, 13: 2, 14: 1, 15: 2, 16: 2, 17: 2, 18: 2, 19: 2, 20: 2, 21: 2, 22: 2 },
+      telaahComments: { 1: 'Penyusunan modul terarah pada penguatan Profil Pelajar Pancasila dan penegakan hukum berkeadilan.' },
+      telaahSummary: { totalScore: 38, maxPossibleScore: 44, finalScore: 86.4, predicate: 'Baik' },
+      feedback: { kelebihan: 'Studi kasus aktual hak asasi manusia dan toleransi beragama sangat relevan.', perbaikan: 'Tambahkan rubrik penilaian musyawarah mufakat.', rekomendasi: 'Diteruskan ke observasi kelas tatap muka.' }
+    },
+    praObservasi: {
+      interviewDurationMinutes: 30,
+      q1_kd_indikator: 'Menganalisis penerapan nilai-nilai Pancasila dalam perumusan kebijakan publik dan interaksi sosial.',
+      q2_metode: 'Case-Based Learning dipadukan Diskusi Panel Pro-Kontra Kebijakan Publik.',
+      q3_alat_bahan: 'Artikel berita aktual, lembar kerja analisis kasus, slide infografis konstitusi.',
+      q4_tahapan: 'Apersepsi nilai sila ke-4 dan ke-5, Pembagian klaster studi kasus, Diskusi argumen, Perumusan konsensus.',
+      q5_persiapan: 'Menyiapkan modul ajar dan rubrik keaktifan berpendapat santun.',
+      q6_materi_sulit: 'Mengharmonisasikan hak asasi individu dengan kewajiban warga negara dalam hukum nasional.',
+      q7_target_kompetensi: 'Kecakapan berpikir kritis kewarganegaraan (civic critical thinking) dan toleransi.',
+      q8_perhatian_khusus: 'Mendorong murid yang pasif agar berani menyuarakan sudut pandang etis.',
+      supervisorNotes: 'Rancangan sangat berorientasi penguatan karakter kebangsaan dan demokratis.',
+      completedAt: '2025-09-05T09:00:00.000Z'
+    },
+    observasiKelas: {
+      items: {},
+      totalYa: 21,
+      totalAspek: 24,
+      score: 87.5,
+      predicate: 'Baik (B)',
+      feedbackNotes: 'Diskusi panel berjalan hangat, murid menghargai perbedaan pandangan dengan etika komunikasi santun.'
+    },
+    pascaObservasi: {
+      q1_kesan: 'Sangat mengapresiasi kedewasaan berpikir murid saat membahas isu toleransi dan keadilan sosial.',
+      q2_sesuai_rencana: 'Ya, alur diskusi panel terlaksana tuntas.',
+      q3_hal_memuaskan: 'Murid mampu mengidentifikasi solusi berbasis musyawarah mufakat.',
+      q4_hal_kurang: 'Waktu untuk sesi tanggapan penonton panelis terasa singkat.',
+      q5_ketercapaian_tujuan: '91% murid mencapai KKTP analisis nilai konstitusi.',
+      q6_kesulitan_siswa: 'Menghubungkan pasal undang-undang dasar dengan penerapannya pada kasus hukum nyata.',
+      q7_alternatif_solusi: 'Membuat glosarium pasal-pasal kunci hak dan kewajiban warga negara.',
+      q8_rencana_tindak_lanjut: 'Projek mini kampanye toleransi dan anti-bullying di media sosial sekolah.',
+      q9_pengembangan_diri: 'Pelatihan mediasi resolusi konflik dan pendidikan kewarganegaraan transformatif.',
+      generalImpression: 'Sosok pendidik yang mengayomi, mengedepankan keteladanan etika moral Pancasila.',
+      recommendations: 'Giatkan proyek kepemimpinan murid dalam forum OSIS dan kegiatan kepanduan.',
+      completedAt: '2025-09-12T13:30:00.000Z'
+    },
+    evaluasiTahunan: {
+      hasilBelajar: { evidence: 'Ketuntasan 91%, proyek aksi nyata kebinekaan siswa berjalan sukses', note: 'Baik Sekali', score: 92 },
+      administrasi: { evidence: 'Dokumen RPP dan lembar asesmen otentik tersusun rapi', note: 'Tertib', score: 93 },
+      pengembanganDiri: { evidence: 'Aktif di MGMP PPKn dan seminar wawasan kebangsaan', note: 'Positif', score: 93 },
+      kedisiplinan: { evidence: 'Presensi 98%, teladan dalam ketepatan waktu', note: 'Disiplin', score: 96 },
+      rekomendasi: { notes: 'Pembina MPK dan Pendidikan Karakter Siswa', tindakLanjut: 'Bimtek penguatan wawasan kebangsaan provinsi', score: 93 },
+      finalAverageScore: 93.4,
+      finalGrade: 'Baik (B)',
+      summaryNotes: 'Kinerja terbukti baik, memiliki kepemimpinan moral yang kuat di satuan pendidikan.'
+    }
+  },
+  {
+    id: 'sup-demo-muhammadiyah-lutfiana',
+    schoolId: 'sch-muhammadiyah',
+    schoolName: 'SMAS Muhammadiyah',
+    teacherId: 'teacher-lutfiana',
+    teacherName: 'Lutfiana Faridh Fadillah',
+    teacherNip: '19931205 201902 2 006',
+    subject: 'Kimia',
+    classGrade: 'Fase F / Kelas XI-IPA',
+    semester: 'Ganjil',
+    schoolYear: '2025/2026',
+    lessonTitle: 'Ikatan Kimia dan Bentuk Molekul dengan Pendekatan Model Tiga Dimensi Sederhana',
+    status: 'completed',
+    supervisorId: 'admin-kusnandar',
+    supervisorName: 'Kusnandar, M.Si',
+    supervisorRole: 'admin',
+    createdAt: '2025-08-30T08:00:00.000Z',
+    updatedAt: '2025-09-22T10:00:00.000Z',
+    sambung: createDefaultSambungForTeacher('Lutfiana Faridh Fadillah', 'SMAS Muhammadiyah', 'Kimia'),
+    perangkatAjar: {
+      driveLinks: {
+        cpTpAtpUrl: 'https://drive.google.com/file/d/1DemoCPTPKimiaMuhammadiyah/view?usp=sharing',
+        modulAjarUrl: 'https://drive.google.com/file/d/1DemoModulKimiaMuhammadiyah/view?usp=sharing',
+        bahanAjarUrl: 'https://drive.google.com/file/d/1DemoMediaKimiaMuhammadiyah/view?usp=sharing',
+        asesmenUrl: 'https://drive.google.com/file/d/1DemoRubrikKimiaMuhammadiyah/view?usp=sharing',
+      },
+      submittedAt: '2025-09-03T09:00:00.000Z',
+      telaahScores: { 1: 2, 2: 2, 3: 1, 4: 2, 5: 1, 6: 2, 7: 1, 8: 2, 9: 1, 10: 2, 11: 1, 12: 2, 13: 1, 14: 1, 15: 2, 16: 1, 17: 2, 18: 1, 19: 1, 20: 2, 21: 1, 22: 2 },
+      telaahComments: { 1: 'Modul ajar memuat alur pembelajaran dasar, perlu penguatan pada diferensiasi konten dan rubrik unjuk kerja praktikum.' },
+      telaahSummary: { totalScore: 31, maxPossibleScore: 44, finalScore: 70.5, predicate: 'Cukup' },
+      feedback: { kelebihan: 'Pemanfaatan plastisin untuk model molekul 3D sudah baik.', perbaikan: 'Perjelas rubrik kriteria ketercapaian tujuan pembelajaran (KKTP) dan lembar asesmen formatif berkala.', rekomendasi: 'Perlu pendampingan berkala (coaching) oleh pengawas sebelum observasi lanjutan.' }
+    },
+    praObservasi: {
+      interviewDurationMinutes: 25,
+      q1_kd_indikator: 'Menjelaskan teori domain elektron dan meramalkan bentuk molekul kovalen sederhana.',
+      q2_metode: 'Demonstrasi guru dipadukan kerja kelompok merangkai plastisin dan tusuk gigi.',
+      q3_alat_bahan: 'Plastisin aneka warna, tusuk gigi, lembar kerja pengamatan bentuk molekul.',
+      q4_tahapan: 'Pendahuluan instruksi, Pemodelan molekul air dan metana, Diskusi kelompok, Simpulan.',
+      q5_persiapan: 'Menyiapkan bahan plastisin dan modul cetak.',
+      q6_materi_sulit: 'Menentukan pasangan elektron bebas (PEB) vs pasangan elektron ikatan (PEI).',
+      q7_target_kompetensi: 'Pemahaman spasial bentuk geometri molekul.',
+      q8_perhatian_khusus: 'Membimbing murid yang masih kesulitan menggambar struktur Lewis.',
+      supervisorNotes: 'Guru membutuhkan penguatan pada variasi metode pengajaran interaktif agar murid tidak jenuh.',
+      completedAt: '2025-09-08T09:00:00.000Z'
+    },
+    observasiKelas: {
+      items: {},
+      totalYa: 17,
+      totalAspek: 24,
+      score: 70.8,
+      predicate: 'Cukup (C)',
+      feedbackNotes: 'Interaksi kelas cukup baik, namun sebagian murid masih pasif dan alokasi waktu penarikan kesimpulan belum maksimal.'
+    },
+    pascaObservasi: {
+      q1_kesan: 'Cukup lega, namun menyadari perlunya manajemen waktu yang lebih disiplin saat praktik kelompok.',
+      q2_sesuai_rencana: 'Sebagian besar tahapan terlaksana meski sesi tanya jawab terpotong.',
+      q3_hal_memuaskan: 'Murid senang bermain dengan plastisin untuk membuat model geometri molekul.',
+      q4_hal_kurang: 'Asesmen formatif tertulis belum sempat dikerjakan seluruh murid.',
+      q5_ketercapaian_tujuan: '72% murid mencapai kriteria ketuntasan pemodelan geometri.',
+      q6_kesulitan_siswa: 'Memvisualisasikan sudut ikatan trigonal piramida dan planar.',
+      q7_alternatif_solusi: 'Memanfaatkan aplikasi augmented reality atau PhET simulation bentuk molekul.',
+      q8_rencana_tindak_lanjut: 'Coaching pendampingan perencanaan modul ajar berbasis IT bersama pengawas.',
+      q9_pengembangan_diri: 'Mengikuti pelatihan penyusunan RPP Kurikulum Merdeka dan asesmen otentik.',
+      generalImpression: 'Guru muda berpotensi yang membutuhkan bimbingan intensif dalam diferensiasi dan manajemen kelas.',
+      recommendations: 'Ikuti pendampingan berkelanjutan Siklus SAMBUNG untuk meningkatkan mutu pembelajaran.',
+      completedAt: '2025-09-15T11:00:00.000Z'
+    },
+    evaluasiTahunan: {
+      hasilBelajar: { evidence: 'Ketuntasan 76%, perlu bimbingan remedial berkelanjutan', note: 'Cukup', score: 75 },
+      administrasi: { evidence: 'Perangkat ajar tersusun standar, perlu pembaruan berkala', note: 'Cukup', score: 78 },
+      pengembanganDiri: { evidence: 'Mengikuti pelatihan Kombel dan PMM', note: 'Cukup Aktif', score: 75 },
+      kedisiplinan: { evidence: 'Presensi 96%, hadir tepat waktu', note: 'Baik', score: 85 },
+      rekomendasi: { notes: 'Diberikan pendampingan klinis pembelajaran oleh pengawas pembina', tindakLanjut: 'Bimtek pedagogi kurikulum merdeka tingkat kota', score: 78 },
+      finalAverageScore: 78.2,
+      finalGrade: 'Cukup (C)',
+      summaryNotes: 'Memiliki komitmen mengajar yang baik, siap berkembang melalui pendampingan pedagogik berkelanjutan.'
+    }
+  },
+  {
+    id: 'sup-demo-ananda-saulina',
+    schoolId: 'sch-ananda',
+    schoolName: 'SMAS Ananda',
+    teacherId: 'teacher-saulina',
+    teacherName: 'Saulina Siregar, S.Sos',
+    teacherNip: '19890422 201403 2 009',
+    subject: 'Ekonomi',
+    classGrade: 'Fase E / Kelas X-1',
+    semester: 'Ganjil',
+    schoolYear: '2025/2026',
+    lessonTitle: 'Perdagangan Internasional dan Kebijakan Tarif Impor dalam Era Globalisasi',
+    status: 'completed',
+    supervisorId: 'admin-kusnandar',
+    supervisorName: 'Kusnandar, M.Si',
+    supervisorRole: 'admin',
+    createdAt: '2025-08-31T08:00:00.000Z',
+    updatedAt: '2025-09-21T11:00:00.000Z',
+    sambung: createDefaultSambungForTeacher('Saulina Siregar, S.Sos', 'SMAS Ananda', 'Ekonomi'),
+    perangkatAjar: {
+      driveLinks: {
+        cpTpAtpUrl: 'https://drive.google.com/file/d/1DemoCPTPEkonomiAnanda/view?usp=sharing',
+        modulAjarUrl: 'https://drive.google.com/file/d/1DemoModulEkonomiAnanda/view?usp=sharing',
+        bahanAjarUrl: 'https://drive.google.com/file/d/1DemoMediaEkonomiAnanda/view?usp=sharing',
+        asesmenUrl: 'https://drive.google.com/file/d/1DemoRubrikEkonomiAnanda/view?usp=sharing',
+      },
+      submittedAt: '2025-09-04T09:00:00.000Z',
+      telaahScores: { 1: 2, 2: 2, 3: 2, 4: 2, 5: 1, 6: 2, 7: 2, 8: 2, 9: 1, 10: 2, 11: 2, 12: 2, 13: 2, 14: 1, 15: 2, 16: 2, 17: 2, 18: 2, 19: 1, 20: 2, 21: 2, 22: 2 },
+      telaahComments: { 1: 'Penyusunan modul ekonomi global terstruktur dan memuat isu aktual neraca perdagangan nasional.' },
+      telaahSummary: { totalScore: 37, maxPossibleScore: 44, finalScore: 84.1, predicate: 'Baik' },
+      feedback: { kelebihan: 'Studi kasus ekspor komoditas kelapa sawit dan nikel sangat aktual.', perbaikan: 'Tambahkan rubrik penilaian debat pro-kontra tarif proteksi.', rekomendasi: 'Diteruskan ke observasi tatap muka.' }
+    },
+    praObservasi: {
+      interviewDurationMinutes: 30,
+      q1_kd_indikator: 'Menganalisis faktor pendorong perdagangan internasional dan dampak kebijakan proteksi bagi konsumen.',
+      q2_metode: 'Problem-Based Learning dengan simulasi negosiasi perdagangan bilateral antarnegara.',
+      q3_alat_bahan: 'Data statistik ekspor-impor Kementerian Perdagangan, kartu komoditas, lembar negosiasi.',
+      q4_tahapan: 'Apersepsi produk impor di sekitar kita, Simulasi penetapan tarif kuota, Analisis keuntungan komparatif, Refleksi.',
+      q5_persiapan: 'Menyiapkan modul ajar dan data tren neraca perdagangan.',
+      q6_materi_sulit: 'Menghitung surplus konsumen dan surplus produsen akibat penetapan tarif impor.',
+      q7_target_kompetensi: 'Literasi ekonomi global, kemampuan negosiasi, dan nalar kritis kebijakan.',
+      q8_perhatian_khusus: 'Membimbing murid dalam memahami istilah neraca pembayaran berjalan.',
+      supervisorNotes: 'Rancangan sangat menarik dan membekali murid pemahaman ekonomi makro modern.',
+      completedAt: '2025-09-08T09:30:00.000Z'
+    },
+    observasiKelas: {
+      items: {},
+      totalYa: 20,
+      totalAspek: 24,
+      score: 83.3,
+      predicate: 'Baik (B)',
+      feedbackNotes: 'Pengelolaan kelas komunikatif, murid antusias mewakili peran diplomat perdagangan antarnegara.'
+    },
+    pascaObservasi: {
+      q1_kesan: 'Sangat senang karena murid berani mengemukakan argumen dampak kenaikan bea masuk impor.',
+      q2_sesuai_rencana: 'Ya, seluruh skenario negosiasi perdagangan selesai tepat waktu.',
+      q3_hal_memuaskan: 'Kecakapan murid mengidentifikasi keunggulan mutlak vs keunggulan komparatif.',
+      q4_hal_kurang: 'Dua murid memerlukan dorongan lebih untuk berbicara di hadapan audiens.',
+      q5_ketercapaian_tujuan: '89% murid tuntas asesmen formatif perdagangan internasional.',
+      q6_kesulitan_siswa: 'Membedakan antara dumping dengan subsidi ekspor.',
+      q7_alternatif_solusi: 'Membuat diagram ringkas jenis-jenis kebijakan perdagangan internasional.',
+      q8_rencana_tindak_lanjut: 'Membahas bab kerja sama ekonomi regional ASEAN dan APEC.',
+      q9_pengembangan_diri: 'Mengikuti kursus ekonomi internasional dan geopolitik perdagangan.',
+      generalImpression: 'Guru profesional dengan wawasan sosial ekonomi yang luas dan luwes dalam memfasilitasi murid.',
+      recommendations: 'Tingkatkan latihan soal penalaran berbasis grafik penawaran dan permintaan internasional.',
+      completedAt: '2025-09-14T11:00:00.000Z'
+    },
+    evaluasiTahunan: {
+      hasilBelajar: { evidence: 'Ketuntasan 90%, nilai sumatif ekonomi memuaskan', note: 'Baik', score: 91 },
+      administrasi: { evidence: 'Lengkap dan tertata rapi dalam portofolio guru', note: 'Tertib', score: 92 },
+      pengembanganDiri: { evidence: 'Aktif di forum MGMP Ekonomi dan seminar kurikulum', note: 'Positif', score: 92 },
+      kedisiplinan: { evidence: 'Presensi 99%, dedikasi tinggi', note: 'Disiplin', score: 96 },
+      rekomendasi: { notes: 'Pembina Klub Debat Isu Sosial Ekonomi Sekolah', tindakLanjut: 'Pelatihan bimbingan olimpiade sains ekonomi tingkat kota', score: 93 },
+      finalAverageScore: 92.8,
+      finalGrade: 'Baik (B)',
+      summaryNotes: 'Kinerja pengajaran baik, dedikatif, dan disenangi para murid.'
     }
   }
 ];

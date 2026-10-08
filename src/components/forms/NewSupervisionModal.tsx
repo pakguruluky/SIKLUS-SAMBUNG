@@ -12,26 +12,41 @@ interface NewSupervisionModalProps {
 }
 
 const PRESET_TEACHERS: Record<string, Array<{ name: string; nip?: string; subject: string; classGrade: string }>> = {
-  'sch-ummul-quro': [
-    { name: 'Sani Ramadhanti Noor, S.E.', nip: '19910418 201802 2 004', subject: 'Ekonomi', classGrade: 'Fase E / Kelas X-1' },
-    { name: 'Kirana Mahardhika, S.Pd, Gr.', nip: '19930825 201903 2 009', subject: 'Kimia', classGrade: 'Fase F / Kelas XI-IPA' },
-  ],
-  'sch-rimba-madya': [
-    { name: 'Atik Dwi Larasati, S.Pd.', nip: '19891105 201504 2 003', subject: 'Ekonomi', classGrade: 'Fase F / Kelas XI-IPS' },
-    { name: 'Ivany Ratna Ekandini, S.Pd.', nip: '19870614 201203 2 006', subject: 'Bahasa Indonesia', classGrade: 'Fase E / Kelas X-1' },
+  'sch-sman2': [
+    { name: 'Mega Nur Alfira, S.Pd.', nip: '19920114 201602 2 003', subject: 'Sejarah', classGrade: 'Fase E / Kelas X-B' },
+    { name: 'Alline Novianti, S.Pd.', nip: '19861112 201001 2 008', subject: 'Kimia', classGrade: 'Fase F / Kelas XI-MIPA 1' },
   ],
   'sch-sman4': [
     { name: 'Sondang Asih Januarti, S.Pd.', nip: '19840512 200801 2 007', subject: 'Fisika', classGrade: 'Fase F / Kelas XI-Fisika 1' },
-    { name: 'Risna Aryanti, M.Pd.', nip: '19820315 200604 2 011', subject: 'Biologi', classGrade: 'Fase F / Kelas XI-Biologi' },
-    { name: 'Hilmia Fitriyani, S.Pd.', nip: '19900821 201503 2 005', subject: 'Matematika', classGrade: 'Fase E / Kelas X-5' },
+    { name: 'Hilmia Fitriyani, S.Pd.', nip: '19900821 201503 2 005', subject: 'Ekonomi', classGrade: 'Fase E / Kelas X-B' },
   ],
-  'sch-sman2': [
-    { name: 'Alline Novianti, S.Pd.', nip: '19861112 201001 2 008', subject: 'Bahasa Inggris', classGrade: 'Fase E / Kelas X-B' },
-    { name: 'Mega Nur Alfira, S.Pd.', nip: '19920114 201602 2 003', subject: 'Sosiologi', classGrade: 'Fase F / Kelas XI-Sains Sosial' },
+  'sch-ummul-quro': [
+    { name: 'Kirana Mahardhika, S.Pd, Gr.', nip: '19930825 201903 2 009', subject: 'Fisika', classGrade: 'Fase F / Kelas XI-IPA' },
+    { name: 'Sani Ramadhanti Noor, S.E.', nip: '19910418 201802 2 004', subject: 'Ekonomi', classGrade: 'Fase E / Kelas X-1' },
   ],
+  'sch-yphb': [
+    { name: 'Sihana, S.Pd.Gr.', nip: '19880415 201502 1 004', subject: 'Penjasorkes', classGrade: 'Fase E / Kelas X-A' },
+    { name: 'Siti Salma, S.Pd', nip: '19910712 201703 2 008', subject: 'Fisika', classGrade: 'Fase F / Kelas XI-MIPA' },
+  ],
+  'sch-rimba-madya': [
+    { name: 'Ivany Ratna Ekandini, S.Pd.', nip: '19870614 201203 2 006', subject: 'Bahasa Indonesia', classGrade: 'Fase E / Kelas X-1' },
+    { name: 'Atik Dwi Larasati, S.Pd.', nip: '19891105 201504 2 003', subject: 'Ekonomi', classGrade: 'Fase F / Kelas XI-IPS' },
+  ],
+  'sch-yza-1': [],
   'sch-pgri-1': [
-    { name: 'Iqbal Aziz Andrianto', nip: '19940710 202012 1 002', subject: 'Informatika', classGrade: 'Fase E / Kelas X-RPL' },
-    { name: 'Fatma Rita, S.Si.', nip: '19810915 200501 2 009', subject: 'Prakarya & Kewirausahaan', classGrade: 'Fase F / Kelas XI-PKWU' },
+    { name: 'Iqbal Aziz Andrianto', nip: '19940710 202012 1 002', subject: 'Sejarah', classGrade: 'Fase E / Kelas X-1' },
+  ],
+  'sch-bhakti-insani': [
+    { name: 'Widya Anjani, S.Pd.', nip: '19900518 201604 2 007', subject: 'Ekonomi', classGrade: 'Fase E / Kelas X-1' },
+  ],
+  'sch-yasih': [
+    { name: 'Yazid Ali Hamdi', nip: '19920921 201801 1 005', subject: 'PKn', classGrade: 'Fase E / Kelas X-A' },
+  ],
+  'sch-muhammadiyah': [
+    { name: 'Lutfiana Faridh Fadillah', nip: '19931205 201902 2 006', subject: 'Kimia', classGrade: 'Fase F / Kelas XI-IPA' },
+  ],
+  'sch-ananda': [
+    { name: 'Saulina Siregar, S.Sos', nip: '19890422 201403 2 009', subject: 'Ekonomi', classGrade: 'Fase E / Kelas X-1' },
   ],
 };
 

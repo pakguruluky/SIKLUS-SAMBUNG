@@ -10,6 +10,7 @@ interface ObservasiKelasModalProps {
   supervision: Supervision;
   currentUser: UserProfile;
   onSaved: (updated: Supervision) => void;
+  mode?: 'awal' | 'perbaikan';
 }
 
 export const ObservasiKelasModal: React.FC<ObservasiKelasModalProps> = ({
@@ -18,12 +19,18 @@ export const ObservasiKelasModal: React.FC<ObservasiKelasModalProps> = ({
   supervision,
   currentUser,
   onSaved,
+  mode = 'awal',
 }) => {
+  const isPerbaikan = mode === 'perbaikan';
+  const sourceData = isPerbaikan && supervision.observasiKelasPerbaikan
+    ? supervision.observasiKelasPerbaikan
+    : supervision.observasiKelas;
+
   const [items, setItems] = useState<Record<string, { status: 'Ya' | 'Tidak'; note: string }>>(
-    supervision.observasiKelas?.items || {}
+    sourceData?.items || {}
   );
   const [feedbackNotes, setFeedbackNotes] = useState(
-    supervision.observasiKelas?.feedbackNotes || ''
+    sourceData?.feedbackNotes || ''
   );
   const [saving, setSaving] = useState(false);
 
@@ -75,19 +82,26 @@ export const ObservasiKelasModal: React.FC<ObservasiKelasModalProps> = ({
 
     try {
       setSaving(true);
-      const updated: Supervision = {
-        ...supervision,
-        observasiKelas: {
-          items,
-          totalYa,
-          totalAspek,
-          score,
-          predicate,
-          feedbackNotes,
-          completedAt: new Date().toISOString(),
-        },
-        status: 'in_progress',
+      const dataPayload = {
+        items,
+        totalYa,
+        totalAspek,
+        score,
+        predicate,
+        feedbackNotes,
+        completedAt: new Date().toISOString(),
       };
+
+      const updated: Supervision = isPerbaikan
+        ? {
+            ...supervision,
+            observasiKelasPerbaikan: dataPayload,
+          }
+        : {
+            ...supervision,
+            observasiKelas: dataPayload,
+            status: 'in_progress',
+          };
 
       await saveSupervision(updated);
       onSaved(updated);
@@ -107,16 +121,16 @@ export const ObservasiKelasModal: React.FC<ObservasiKelasModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 lg:p-6 bg-slate-900/60 backdrop-blur-xs overflow-y-auto no-print">
       <div className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[94vh] flex flex-col overflow-hidden border border-slate-200">
         {/* Header */}
-        <div className="bg-emerald-700 text-white p-4 sm:p-5 flex items-center justify-between shrink-0">
+        <div className={`${isPerbaikan ? 'bg-teal-700' : 'bg-emerald-700'} text-white p-4 sm:p-5 flex items-center justify-between shrink-0 transition-colors`}>
           <div>
-            <div className="flex items-center gap-2 text-emerald-200 text-xs font-semibold uppercase tracking-wider mb-0.5">
-              <span>Tahap 3 Supervisi Akademik</span>
+            <div className="flex items-center gap-2 text-white/80 text-xs font-semibold uppercase tracking-wider mb-0.5">
+              <span>{isPerbaikan ? 'Tahap U (Uji) &bull; Data Setelah Perbaikan' : 'Tahap S (Selidiki) &bull; Data Awal'}</span>
             </div>
             <h2 className="text-base sm:text-xl font-bold flex items-center gap-2">
               <FileSpreadsheet className="w-5 h-5 text-emerald-200" />
-              Instrumen Observasi Pelaksanaan Pembelajaran di Kelas
+              Instrumen Observasi Kelas Tatap Muka {isPerbaikan ? '(Setelah Ada Perbaikan)' : '(Kondisi Awal)'}
             </h2>
-            <p className="text-xs text-emerald-100 mt-0.5">
+            <p className="text-xs text-white/80 mt-0.5">
               Guru: {supervision.teacherName} &bull; {supervision.subject} &bull; {supervision.classGrade}
             </p>
           </div>

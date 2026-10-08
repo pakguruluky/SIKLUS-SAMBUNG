@@ -35,8 +35,47 @@ export const BEFORE_AFTER_ASPEK_DEFAULT = [
   'Aktivitas murid',
   'Konteks kehidupan nyata',
   'Refleksi murid',
-  'Asesmen dan umpan balik',
-  'Tindak lanjut supervisi',
+];
+
+export const DEFAULT_MATRIKS_BEFORE = {
+  peranGuru: 'Berfokus pada penyampaian materi (transfer pengetahuan satu arah secara klasikal/ceramah).',
+  aktivitasMurid: 'Lebih banyak menerima secara pasif, mendengarkan, mencatat penjelasan, dan minim inisiatif mandiri.',
+  konteksNyata: 'Belum konsisten dikaitkan dengan kehidupan nyata; materi diajarkan sebatas konsep buku teks teoretis.',
+  refleksiMurid: 'Belum rutin dilaksanakan; pembelajaran berakhir tanpa penarikan makna atau evaluasi diri murid.',
+};
+
+export const DEFAULT_MATRIKS_AFTER = {
+  peranGuru: 'Merancang dan memfasilitasi pengalaman belajar murid, berperan sebagai coach dan pemandu inkuiri.',
+  aktivitasMurid: 'Lebih aktif mengaplikasikan pengetahuan melalui studi kasus, penyelidikan kelompok, dan unjuk kerja.',
+  konteksNyata: 'Mulai dirancang secara terstruktur dan terhubung langsung dengan fenomena serta konteks nyata murid.',
+  refleksiMurid: 'Mulai menjadi bagian rutin pembelajaran; murid mengevaluasi proses pemahaman dan metakognisinya.',
+};
+
+export const DEFAULT_DATA_DAMPAK = [
+  {
+    indikator: 'Guru berorientasi pada pengalaman belajar murid',
+    awal: '45%',
+    akhir: '78%',
+    makna: 'Proporsi guru yang menunjukkan praktik tersebut meningkat',
+  },
+  {
+    indikator: 'Murid aktif mengaplikasikan pengetahuan',
+    awal: '45%',
+    akhir: '89%',
+    makna: 'Semakin banyak guru yang memberi ruang kepada murid untuk menerapkan pengetahuan',
+  },
+  {
+    indikator: 'Pembelajaran terhubung dengan konteks nyata',
+    awal: '56%',
+    akhir: '89%',
+    makna: 'Semakin banyak guru yang mengaitkan pembelajaran dengan kehidupan nyata',
+  },
+  {
+    indikator: 'Murid melakukan refleksi',
+    awal: '33%',
+    akhir: '78%',
+    makna: 'Semakin banyak guru yang memberi ruang bagi murid untuk melakukan refleksi',
+  },
 ];
 
 /**
@@ -60,6 +99,7 @@ export function createDefaultSambungForTeacher(
         isPrioritas: idx === 0 || idx === 1,
       })),
       catatanPrioritas: 'Fokus pada penguatan kesadaran murid dan kontekstualisasi materi.',
+      matriksBefore: { ...DEFAULT_MATRIKS_BEFORE },
     },
     arahkan: {
       periode: 'Semester Genap 2025/2026',
@@ -154,51 +194,15 @@ export function createDefaultSambungForTeacher(
         halPalingBermakna: 'Bisa berdiskusi dan menyelesaikan tantangan bersama teman-teman.',
         kesulitanMurid: 'Menghubungkan materi dengan istilah teknis yang belum familiar.',
       },
+      matriksAfter: { ...DEFAULT_MATRIKS_AFTER },
     },
     nyatakan: {
       beforeAfter: BEFORE_AFTER_ASPEK_DEFAULT.map(aspek => ({
         aspek,
         sebelumSambung: 'Pendekatan konvensional yang berpusat pada instruksi guru.',
         setelahSambung: 'Pendekatan berpusat pada murid dengan eksplorasi bermakna.',
-        buktiKode: 'BKT-' + aspek.substring(0, 3).toUpperCase(),
       })),
-      dataDampak: [
-        {
-          indikator: 'Capaian observasi kelas (% dari U-1)',
-          awal: '68.0%',
-          akhir: '85.0%',
-          selisih: '+17.0%',
-          sumber: 'Lembar U-1 Supervisi',
-        },
-        {
-          indikator: 'Murid setuju dapat mengaplikasikan (% dari U-2)',
-          awal: '55.0%',
-          akhir: '84.0%',
-          selisih: '+29.0%',
-          sumber: 'Angket Murid U-2 Butir 3',
-        },
-        {
-          indikator: 'Murid setuju dapat menghubungkan dengan kehidupan nyata (% dari U-2)',
-          awal: '50.0%',
-          akhir: '87.5%',
-          selisih: '+37.5%',
-          sumber: 'Angket Murid U-2 Butir 4',
-        },
-        {
-          indikator: 'Temuan supervisi yang memiliki RTL dan terlaksana (%)',
-          awal: '40.0%',
-          akhir: '100.0%',
-          selisih: '+60.0%',
-          sumber: 'Matriks RTL Lembar G',
-        },
-        {
-          indikator: 'Jumlah guru yang menerapkan praktik baik',
-          awal: '1 Guru',
-          akhir: '3 Guru',
-          selisih: '+2 Guru',
-          sumber: 'Laporan MGMP Sekolah',
-        },
-      ],
+      dataDampak: DEFAULT_DATA_DAMPAK.map(d => ({ ...d })),
     },
     gerakkan: {
       tindakLanjut: [
@@ -286,6 +290,12 @@ export const SEED_SAMBUNG_DEWI: SambungData = {
       },
     ],
     catatanPrioritas: 'Prioritas pembinaan disepakati pada Aspek 1 (Kesadaran Murid) dan Aspek 2 (Konteks Kehidupan Nyata Listrik Arus Searah).',
+    matriksBefore: {
+      peranGuru: 'Penceramah dominan di depan kelas, mendiktekan rumus Hukum Ohm dan menghitung contoh soal di papan tulis.',
+      aktivitasMurid: 'Menyalin tulisan di papan, mencatat rumus tanpa berdialog, pasif menunggu jam pelajaran selesai.',
+      konteksNyata: 'Soal teks abstrak berupa kawat penghantar tanpa konteks gawai atau perangkat rumah tangga.',
+      refleksiMurid: 'Sama sekali tidak ada alokasi waktu refleksi di akhir jam belajar.',
+    },
   },
   arahkan: {
     periode: 'Semester Ganjil 2025/2026',
@@ -395,6 +405,12 @@ export const SEED_SAMBUNG_DEWI: SambungData = {
       halPalingBermakna: 'Saat kelompok kami menyusun rangkaian lampu paralel dan menghitung arus di PhET lalu mengujinya pada breadboard nyata, ternyata listrik itu logis dan menyenangkan!',
       kesulitanMurid: 'Menentukan arah loop arus pada Hukum Kirchhoff II jika terdapat lebih dari dua sumber tegangan baterai.',
     },
+    matriksAfter: {
+      peranGuru: 'Fasilitator inkuiri, pemandu eksplorasi simulasi sirkuit PhET DC, dan coach yang memantik nalar murid.',
+      aktivitasMurid: 'Bereksplorasi dengan simulator PhET DC, berdebat ilmiah dalam kelompok, dan mempresentasikan skema rangkaian.',
+      konteksNyata: 'Konteks nyata: baterai smartphone, sistem aki kendaraan, instalasi panel surya, dan pencegahan korsleting.',
+      refleksiMurid: 'Refleksi terstruktur 10-15 menit di setiap pertemuan melalui formulir digital refleksi diri.',
+    },
   },
   nyatakan: {
     beforeAfter: [
@@ -422,56 +438,8 @@ export const SEED_SAMBUNG_DEWI: SambungData = {
         setelahSambung: 'Refleksi terstruktur 10-15 menit di setiap pertemuan melalui formulir digital refleksi.',
         buktiKode: 'BKT-04 (Rekap Tanggapan Google Form)',
       },
-      {
-        aspek: 'Asesmen dan umpan balik',
-        sebelumSambung: 'Hanya ulangan tengah semester dan akhir semester pilihan ganda hafalan rumus.',
-        setelahSambung: 'Asesmen formatif bertahap, rubrik unjuk kerja perancangan rangkaian, serta penilaian rekan sejawat.',
-        buktiKode: 'BKT-05 (Rubrik Penilaian Kinerja Rangkaian)',
-      },
-      {
-        aspek: 'Tindak lanjut supervisi',
-        sebelumSambung: 'Catatan supervisi terdahulu sebatas arsip map administrasi dan tidak ditindaklanjuti.',
-        setelahSambung: 'Rencana aksi pembinaan terstruktur, dipantau berkala oleh pengawas Kusnandar, M.Si, dan diimbaskan ke komunitas MGMP.',
-        buktiKode: 'BKT-06 (Berita Acara Pembinaan Pengawas)',
-      },
     ],
-    dataDampak: [
-      {
-        indikator: 'Capaian observasi kelas (% dari U-1)',
-        awal: '62.5%',
-        akhir: '100.0%',
-        selisih: '+37.5%',
-        sumber: 'Lembar U-1 Observasi Awal vs Akhir',
-      },
-      {
-        indikator: 'Murid setuju dapat mengaplikasikan (% dari U-2)',
-        awal: '44.4%',
-        akhir: '97.2%',
-        selisih: '+52.8%',
-        sumber: 'Angket Murid U-2 Butir 3',
-      },
-      {
-        indikator: 'Murid setuju dapat menghubungkan dengan kehidupan nyata (% dari U-2)',
-        awal: '41.6%',
-        akhir: '100.0%',
-        selisih: '+58.4%',
-        sumber: 'Angket Murid U-2 Butir 4',
-      },
-      {
-        indikator: 'Temuan supervisi yang memiliki RTL dan terlaksana (%)',
-        awal: '25.0%',
-        akhir: '100.0%',
-        selisih: '+75.0%',
-        sumber: 'Buku Rencana Tindak Lanjut Pengawas',
-      },
-      {
-        indikator: 'Jumlah guru yang menerapkan praktik baik',
-        awal: '1 Guru (Mandiri)',
-        akhir: '6 Guru Fisika di MGMP Kota Bogor',
-        selisih: '+5 Guru Terimbas',
-        sumber: 'Daftar Hadir Diseminasi MGMP Kota Bogor',
-      },
-    ],
+    dataDampak: DEFAULT_DATA_DAMPAK.map(d => ({ ...d })),
   },
   gerakkan: {
     tindakLanjut: [
@@ -573,6 +541,12 @@ export const SEED_SAMBUNG_AHMAD: SambungData = {
       },
     ],
     catatanPrioritas: 'Prioritas pada Aspek 1 (Etika kritik santun) dan Aspek 3 (Kreativitas produksi teks orisinal).',
+    matriksBefore: {
+      peranGuru: 'Mengoreksi kesalahan tata bahasa secara mekanis dengan tinta merah dan dominan ceramah kaidah kebahasaan satu arah.',
+      aktivitasMurid: 'Mengerjakan LKS menjawab pertanyaan 5W+1H dari teks anekdot asing tanpa ruang berkreasi mandiri.',
+      konteksNyata: 'Mengulang kisah fiktif klasik tanpa refleksi kondisi kekinian atau fenomena sekitar lingkungan murid.',
+      refleksiMurid: 'Hanya ada pertanyaan singkat formalitas: "Ada yang mau ditanyakan sebelum pulang?", tanpa penarikan makna.',
+    },
   },
   arahkan: {
     periode: 'Semester Ganjil 2025/2026',
@@ -675,6 +649,12 @@ export const SEED_SAMBUNG_AHMAD: SambungData = {
       halPalingBermakna: 'Bisa menyampaikan keresahan tentang fasilitas sekolah lewat gambar komik lucu tanpa takut dimarahi guru.',
       kesulitanMurid: 'Mencari punchline (kelucuan) yang tetap sopan dan bermakna mendalam.',
     },
+    matriksAfter: {
+      peranGuru: 'Menjadi kurator karya kreatif, fasilitator dialog ide bernalar kritis, dan coach proses belajar.',
+      aktivitasMurid: 'Melakukan riset fakta riil, menggambar komik strip di Canva, dan saling memberi umpan balik apresiatif.',
+      konteksNyata: 'Mengangkat isu nyata kebiasaan membuang sampah, etika antre kantin, dan budaya bermedia sosial.',
+      refleksiMurid: 'Formulir refleksi kesadaran diri: "Pelajaran moral apa yang saya petik dari karya teman saya?".',
+    },
   },
   nyatakan: {
     beforeAfter: [
@@ -702,56 +682,8 @@ export const SEED_SAMBUNG_AHMAD: SambungData = {
         setelahSambung: 'Formulir refleksi kesadaran diri: "Pelajaran moral apa yang saya petik dari karya teman saya?".',
         buktiKode: 'BKT-IND-04 (Buku Refleksi Siswa)',
       },
-      {
-        aspek: 'Asesmen dan umpan balik',
-        sebelumSambung: 'Penilaian tertulis konvensional di akhir semester.',
-        setelahSambung: 'Asesmen autentik pameran karya, peer-assessment, dan kurasi digital.',
-        buktiKode: 'BKT-IND-05 (Rubrik Peer-Review)',
-      },
-      {
-        aspek: 'Tindak lanjut supervisi',
-        sebelumSambung: 'Selesai di buku catatan pengawas tanpa implementasi lanjutan.',
-        setelahSambung: 'Karya murid dibukukan dalam antologi ISBN mini dan didaftarkan ke ajang literasi.',
-        buktiKode: 'BKT-IND-06 (Draft Buku Antologi)',
-      },
     ],
-    dataDampak: [
-      {
-        indikator: 'Capaian observasi kelas (% dari U-1)',
-        awal: '70.0%',
-        akhir: '97.5%',
-        selisih: '+27.5%',
-        sumber: 'Lembar U-1 Observasi Kelas',
-      },
-      {
-        indikator: 'Murid setuju dapat mengaplikasikan (% dari U-2)',
-        awal: '52.9%',
-        akhir: '94.1%',
-        selisih: '+41.2%',
-        sumber: 'Angket U-2 Butir 3',
-      },
-      {
-        indikator: 'Murid setuju dapat menghubungkan dengan kehidupan nyata (% dari U-2)',
-        awal: '47.0%',
-        akhir: '97.1%',
-        selisih: '+50.1%',
-        sumber: 'Angket U-2 Butir 4',
-      },
-      {
-        indikator: 'Temuan supervisi yang memiliki RTL dan terlaksana (%)',
-        awal: '33.3%',
-        akhir: '100.0%',
-        selisih: '+66.7%',
-        sumber: 'Laporan RTL Pengawas',
-      },
-      {
-        indikator: 'Jumlah guru yang menerapkan praktik baik',
-        awal: '1 Guru',
-        akhir: '5 Guru Bahasa Indonesia',
-        selisih: '+4 Guru Terimbas',
-        sumber: 'Kombel Bahasa SMA Kota Bogor',
-      },
-    ],
+    dataDampak: DEFAULT_DATA_DAMPAK.map(d => ({ ...d })),
   },
   gerakkan: {
     tindakLanjut: [
@@ -838,6 +770,12 @@ export const SEED_SAMBUNG_SITI: SambungData = {
       },
     ],
     catatanPrioritas: 'Prioritas pada Aspek 2 (Konteks kehidupan nyata) dan Aspek 3 (Aplikasi GeoGebra).',
+    matriksBefore: {
+      peranGuru: 'Mencontohkan cara berhitung rumus manual di papan tulis dan murid mencatat berulang kali.',
+      aktivitasMurid: 'Mengeplot titik koordinat secara manual dengan pensil dan penggaris berjam-jam tanpa analisis makna.',
+      konteksNyata: 'Soal abstrak f(x) = 2^x tanpa kaitan dengan realitas kehidupan dan aplikasi dunia nyata.',
+      refleksiMurid: 'Tidak pernah ada refleksi; murid langsung berkemas setelah bel berbunyi tanpa penarikan intisari belajar.',
+    },
   },
   arahkan: {
     periode: 'Semester Ganjil 2025/2026',
@@ -940,6 +878,12 @@ export const SEED_SAMBUNG_SITI: SambungData = {
       halPalingBermakna: 'Menggeser slider GeoGebra dan melihat grafik eksponen langsung melengkung, jadi paham kenapa uang tabungan bisa berlipat ganda dengan bunga majemuk.',
       kesulitanMurid: 'Menyusun model matematika jika variabel waktu t dinyatakan dalam hitungan bulan bukan tahun.',
     },
+    matriksAfter: {
+      peranGuru: 'Fasilitator simulasi digital yang menantang murid memprediksi pola kurva grafik dan tren pertumbuhan.',
+      aktivitasMurid: 'Memanipulasi parameter di GeoGebra, menganalisis kecepatan pertumbuhan, dan membandingkan skema finansial.',
+      konteksNyata: 'Studi kasus resmi pertumbuhan koloni bakteri biologi dan peramalan investasi bunga majemuk perbankan.',
+      refleksiMurid: 'Refleksi komprehensif metakognitif: "Mengapa eksponensial lebih cepat melaju daripada fungsi linier?".',
+    },
   },
   nyatakan: {
     beforeAfter: [
@@ -967,56 +911,8 @@ export const SEED_SAMBUNG_SITI: SambungData = {
         setelahSambung: 'Refleksi komprehensif: "Mengapa eksponensial lebih cepat melaju daripada fungsi linier?".',
         buktiKode: 'BKT-MAT-04 (Papan Refleksi Jamboard)',
       },
-      {
-        aspek: 'Asesmen dan umpan balik',
-        sebelumSambung: 'Ulangan esai hitungan manual yang rawan salah tanda negatif.',
-        setelahSambung: 'Asesmen formatif terintegrasi di GeoGebra dengan umpan balik langsung (real-time).',
-        buktiKode: 'BKT-MAT-05 (Dashboard Analitik Siswa)',
-      },
-      {
-        aspek: 'Tindak lanjut supervisi',
-        sebelumSambung: 'Selesai tanpa ada tindak lanjut perbaikan terstruktur.',
-        setelahSambung: 'Diadopsi menjadi kurikulum modul literasi numerasi sekolah dan diimbaskan ke MGMP.',
-        buktiKode: 'BKT-MAT-06 (Surat Keputusan Inovasi Sekolah)',
-      },
     ],
-    dataDampak: [
-      {
-        indikator: 'Capaian observasi kelas (% dari U-1)',
-        awal: '67.5%',
-        akhir: '100.0%',
-        selisih: '+32.5%',
-        sumber: 'Lembar U-1 Observasi Kelas',
-      },
-      {
-        indikator: 'Murid setuju dapat mengaplikasikan (% dari U-2)',
-        awal: '48.5%',
-        akhir: '97.1%',
-        selisih: '+48.6%',
-        sumber: 'Angket U-2 Butir 3',
-      },
-      {
-        indikator: 'Murid setuju dapat menghubungkan dengan kehidupan nyata (% dari U-2)',
-        awal: '42.8%',
-        akhir: '100.0%',
-        selisih: '+57.2%',
-        sumber: 'Angket U-2 Butir 4',
-      },
-      {
-        indikator: 'Temuan supervisi yang memiliki RTL dan terlaksana (%)',
-        awal: '30.0%',
-        akhir: '100.0%',
-        selisih: '+70.0%',
-        sumber: 'Laporan Monitoring RTL Pengawas',
-      },
-      {
-        indikator: 'Jumlah guru yang menerapkan praktik baik',
-        awal: '1 Guru',
-        akhir: '8 Guru Matematika',
-        selisih: '+7 Guru Terimbas',
-        sumber: 'Presensi Workshop MGMP Matematika',
-      },
-    ],
+    dataDampak: DEFAULT_DATA_DAMPAK.map(d => ({ ...d })),
   },
   gerakkan: {
     tindakLanjut: [

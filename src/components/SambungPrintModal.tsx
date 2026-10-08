@@ -488,43 +488,42 @@ export const SambungPrintModal: React.FC<SambungPrintModalProps> = ({
             <table className="w-full border-collapse border border-slate-300 text-[11px] mb-4">
               <thead>
                 <tr className="bg-slate-100 text-slate-800 font-bold">
-                  <th className="border border-slate-300 px-2 py-1.5 w-36 text-left">Aspek</th>
+                  <th className="border border-slate-300 px-2 py-1.5 w-40 text-left">Aspek Perubahan</th>
                   <th className="border border-slate-300 px-2 py-1.5 text-left">Sebelum SAMBUNG</th>
                   <th className="border border-slate-300 px-2 py-1.5 text-left">Setelah SAMBUNG</th>
-                  <th className="border border-slate-300 px-2 py-1.5 text-left w-32">Bukti (kode)</th>
                 </tr>
               </thead>
               <tbody>
-                {sambung.nyatakan.beforeAfter.map((item, idx) => (
+                {sambung.nyatakan.beforeAfter
+                  .filter(item => item.aspek !== 'Asesmen dan umpan balik' && item.aspek !== 'Tindak lanjut supervisi')
+                  .map((item, idx) => (
                   <tr key={idx}>
                     <td className="border border-slate-300 px-2 py-1.5 font-bold text-slate-800 bg-slate-50/40">{item.aspek}</td>
                     <td className="border border-slate-300 px-2 py-1.5 text-slate-600">{item.sebelumSambung}</td>
                     <td className="border border-slate-300 px-2 py-1.5 text-slate-900 font-medium">{item.setelahSambung}</td>
-                    <td className="border border-slate-300 px-2 py-1.5 text-slate-600">{item.buktiKode}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
 
-            <h4 className="font-bold text-xs text-slate-800 mb-1">2. Data Dampak Kuantitatif &amp; Kualitatif</h4>
+            <h4 className="font-bold text-xs text-slate-800 mb-2">2. Data Dampak Pembelajaran Murid (Tabel Rekapitulasi)</h4>
+
             <table className="w-full border-collapse border border-slate-300 text-[11px]">
               <thead>
                 <tr className="bg-slate-100 text-slate-800 font-bold">
-                  <th className="border border-slate-300 px-2 py-1.5 text-left">Data dampak</th>
+                  <th className="border border-slate-300 px-2 py-1.5 text-left">Indikator</th>
                   <th className="border border-slate-300 px-2 py-1.5 w-24 text-center">Awal</th>
-                  <th className="border border-slate-300 px-2 py-1.5 w-24 text-center">Akhir</th>
-                  <th className="border border-slate-300 px-2 py-1.5 w-24 text-center">Selisih</th>
-                  <th className="border border-slate-300 px-2 py-1.5 w-48 text-left">Sumber</th>
+                  <th className="border border-slate-300 px-2 py-1.5 w-32 text-center">Setelah SAMBUNG</th>
+                  <th className="border border-slate-300 px-2 py-1.5 text-left">Makna</th>
                 </tr>
               </thead>
               <tbody>
                 {sambung.nyatakan.dataDampak.map((row, idx) => (
                   <tr key={idx}>
                     <td className="border border-slate-300 px-2 py-1.5 font-medium text-slate-800">{row.indikator}</td>
-                    <td className="border border-slate-300 px-2 py-1.5 text-center text-slate-600">{row.awal}</td>
-                    <td className="border border-slate-300 px-2 py-1.5 text-center font-bold text-slate-900">{row.akhir}</td>
-                    <td className="border border-slate-300 px-2 py-1.5 text-center font-bold text-emerald-700">{row.selisih}</td>
-                    <td className="border border-slate-300 px-2 py-1.5 text-slate-600">{row.sumber}</td>
+                    <td className="border border-slate-300 px-2 py-1.5 text-center text-slate-600 font-semibold">{row.awal}</td>
+                    <td className="border border-slate-300 px-2 py-1.5 text-center font-bold text-emerald-800 bg-emerald-50/30">{row.akhir}</td>
+                    <td className="border border-slate-300 px-2 py-1.5 text-slate-700">{row.makna || '-'}</td>
                   </tr>
                 ))}
               </tbody>

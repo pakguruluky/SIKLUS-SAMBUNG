@@ -41,11 +41,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             SIKLUS <span className="text-indigo-400">SAMBUNG</span>
           </h1>
           <p className="text-xl sm:text-2xl font-light text-indigo-200 italic mb-6">
-            &ldquo;Mendampingi Guru, Meningkatkan Mutu.&rdquo;
+            &ldquo;Merangkai Aksi, Menggerakkan Perubahan Menuju Pembelajaran Bermakna.&rdquo;
           </p>
 
           <p className="max-w-3xl mx-auto text-base sm:text-lg text-slate-300 leading-relaxed mb-8">
-            Platform supervisi akademik terintegrasi berstandar Kurikulum Merdeka dan Sekolah Model Pembelajaran Mendalam (PM). Dirancang khusus untuk memfasilitasi telaah modul ajar, observasi kelas interaktif, evaluasi tahunan, serta cetak laporan resmi berstandar Dinas Pendidikan.
+            Platform supervisi akademik terintegrasi untuk mendukung pendampingan guru, pemantauan praktik pembelajaran, dokumentasi bukti perubahan, dan tindak lanjut secara berkelanjutan.
           </p>
 
           <div className="bg-slate-800/80 border border-slate-700 rounded-2xl p-4 max-w-xl mx-auto mb-10 shadow-lg backdrop-blur-xs">

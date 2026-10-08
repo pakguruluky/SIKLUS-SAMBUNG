@@ -589,10 +589,10 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
               </button>
             )}
             <button
-              onClick={onNavigateSupervisions}
+              onClick={onOpenSambung ? () => onOpenSambung() : onNavigateSupervisions}
               className="px-3.5 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 font-semibold text-xs transition-colors flex items-center gap-1.5"
             >
-              <span>{isGuru ? 'Lihat Portofolio Saya' : 'Lihat Berkas'}</span>
+              <span>{isGuru ? 'Buka Portofolio SAMBUNG' : 'Buka Instrumen SAMBUNG'}</span>
             </button>
           </div>
         </div>
@@ -1003,10 +1003,10 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
               <p className="text-xs text-slate-500">Kewenangan Pengawas Pembina melihat berkas guru aktif lintas sekolah</p>
             </div>
             <button
-              onClick={onNavigateSupervisions}
+              onClick={onOpenSambung ? () => onOpenSambung() : onNavigateSupervisions}
               className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 flex items-center gap-1"
             >
-              <span>Lihat Semua</span>
+              <span>Buka di SAMBUNG</span>
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>

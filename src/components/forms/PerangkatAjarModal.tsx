@@ -24,6 +24,7 @@ interface PerangkatAjarModalProps {
   currentUser: UserProfile;
   onSaved: (updated: Supervision) => void;
   onApproveTeacher?: (uid: string) => void;
+  mode?: 'awal' | 'perbaikan';
 }
 
 export const PerangkatAjarModal: React.FC<PerangkatAjarModalProps> = ({
@@ -32,25 +33,53 @@ export const PerangkatAjarModal: React.FC<PerangkatAjarModalProps> = ({
   supervision,
   currentUser,
   onSaved,
+  mode = 'awal',
 }) => {
   // Initial links
-  const [cpTpAtpUrl, setCpTpAtpUrl] = useState(supervision.perangkatAjar?.driveLinks?.cpTpAtpUrl || '');
-  const [modulAjarUrl, setModulAjarUrl] = useState(supervision.perangkatAjar?.driveLinks?.modulAjarUrl || '');
-  const [bahanAjarUrl, setBahanAjarUrl] = useState(supervision.perangkatAjar?.driveLinks?.bahanAjarUrl || '');
-  const [asesmenUrl, setAsesmenUrl] = useState(supervision.perangkatAjar?.driveLinks?.asesmenUrl || '');
+  const [cpTpAtpUrl, setCpTpAtpUrl] = useState(
+    (mode === 'perbaikan' ? supervision.perangkatAjarPerbaikan?.driveLinks?.cpTpAtpUrl : undefined) ||
+    supervision.perangkatAjar?.driveLinks?.cpTpAtpUrl || ''
+  );
+  const [modulAjarUrl, setModulAjarUrl] = useState(
+    (mode === 'perbaikan' ? (supervision.perangkatAjar?.revisi?.modulAjarRevisiUrl || supervision.perangkatAjarPerbaikan?.driveLinks?.modulAjarUrl) : undefined) ||
+    supervision.perangkatAjar?.driveLinks?.modulAjarUrl || ''
+  );
+  const [bahanAjarUrl, setBahanAjarUrl] = useState(
+    (mode === 'perbaikan' ? supervision.perangkatAjarPerbaikan?.driveLinks?.bahanAjarUrl : undefined) ||
+    supervision.perangkatAjar?.driveLinks?.bahanAjarUrl || ''
+  );
+  const [asesmenUrl, setAsesmenUrl] = useState(
+    (mode === 'perbaikan' ? supervision.perangkatAjarPerbaikan?.driveLinks?.asesmenUrl : undefined) ||
+    supervision.perangkatAjar?.driveLinks?.asesmenUrl || ''
+  );
 
   // Scores and Comments
-  const [scores, setScores] = useState<Record<number, number | 'NA'>>(
-    supervision.perangkatAjar?.telaahScores || {}
-  );
-  const [comments, setComments] = useState<Record<number, string>>(
-    supervision.perangkatAjar?.telaahComments || {}
-  );
+  const [scores, setScores] = useState<Record<number, number | 'NA'>>(() => {
+    if (mode === 'perbaikan' && supervision.perangkatAjarPerbaikan?.telaahScores) {
+      return supervision.perangkatAjarPerbaikan.telaahScores;
+    }
+    return supervision.perangkatAjar?.telaahScores || {};
+  });
+  const [comments, setComments] = useState<Record<number, string>>(() => {
+    if (mode === 'perbaikan' && supervision.perangkatAjarPerbaikan?.telaahComments) {
+      return supervision.perangkatAjarPerbaikan.telaahComments;
+    }
+    return supervision.perangkatAjar?.telaahComments || {};
+  });
 
   // Feedbacks
-  const [kelebihan, setKelebihan] = useState(supervision.perangkatAjar?.feedback?.kelebihan || '');
-  const [perbaikan, setPerbaikan] = useState(supervision.perangkatAjar?.feedback?.perbaikan || '');
-  const [rekomendasi, setRekomendasi] = useState(supervision.perangkatAjar?.feedback?.rekomendasi || '');
+  const [kelebihan, setKelebihan] = useState(
+    (mode === 'perbaikan' ? supervision.perangkatAjarPerbaikan?.feedback?.kelebihan : undefined) ||
+    supervision.perangkatAjar?.feedback?.kelebihan || ''
+  );
+  const [perbaikan, setPerbaikan] = useState(
+    (mode === 'perbaikan' ? supervision.perangkatAjarPerbaikan?.feedback?.perbaikan : undefined) ||
+    supervision.perangkatAjar?.feedback?.perbaikan || ''
+  );
+  const [rekomendasi, setRekomendasi] = useState(
+    (mode === 'perbaikan' ? supervision.perangkatAjarPerbaikan?.feedback?.rekomendasi : undefined) ||
+    supervision.perangkatAjar?.feedback?.rekomendasi || ''
+  );
 
   // Post-Review Revision state
   const [modulAjarRevisiUrl, setModulAjarRevisiUrl] = useState(
@@ -148,22 +177,29 @@ export const PerangkatAjarModal: React.FC<PerangkatAjarModalProps> = ({
       const updatedSupervision: Supervision = {
         ...supervision,
         perangkatAjar: {
-          driveLinks: {
-            cpTpAtpUrl: cpTpAtpUrl.trim(),
-            modulAjarUrl: modulAjarUrl.trim(),
-            bahanAjarUrl: bahanAjarUrl.trim(),
-            asesmenUrl: asesmenUrl.trim(),
-          },
+          driveLinks: mode === 'perbaikan' 
+            ? (supervision.perangkatAjar?.driveLinks || {
+                cpTpAtpUrl: cpTpAtpUrl.trim(),
+                modulAjarUrl: modulAjarUrl.trim(),
+                bahanAjarUrl: bahanAjarUrl.trim(),
+                asesmenUrl: asesmenUrl.trim(),
+              })
+            : {
+                cpTpAtpUrl: cpTpAtpUrl.trim(),
+                modulAjarUrl: modulAjarUrl.trim(),
+                bahanAjarUrl: bahanAjarUrl.trim(),
+                asesmenUrl: asesmenUrl.trim(),
+              },
           submittedAt: supervision.perangkatAjar?.submittedAt || (uploadedFilesCount > 0 ? new Date().toISOString() : undefined),
-          telaahScores: scores,
-          telaahComments: comments,
-          telaahSummary: {
+          telaahScores: mode === 'perbaikan' ? (supervision.perangkatAjar?.telaahScores || scores) : scores,
+          telaahComments: mode === 'perbaikan' ? (supervision.perangkatAjar?.telaahComments || comments) : comments,
+          telaahSummary: mode === 'perbaikan' ? (supervision.perangkatAjar?.telaahSummary || { totalScore, maxPossibleScore, finalScore, predicate }) : {
             totalScore,
             maxPossibleScore,
             finalScore,
             predicate,
           },
-          feedback: {
+          feedback: mode === 'perbaikan' ? (supervision.perangkatAjar?.feedback || { kelebihan, perbaikan, rekomendasi }) : {
             kelebihan,
             perbaikan,
             rekomendasi,
@@ -171,12 +207,38 @@ export const PerangkatAjarModal: React.FC<PerangkatAjarModalProps> = ({
           reviewedAt: isSupervisor ? (supervision.perangkatAjar?.reviewedAt || new Date().toISOString()) : supervision.perangkatAjar?.reviewedAt,
           reviewedBy: isSupervisor ? (supervision.perangkatAjar?.reviewedBy || currentUser.displayName) : supervision.perangkatAjar?.reviewedBy,
           revisi: {
-            modulAjarRevisiUrl: modulAjarRevisiUrl.trim(),
+            modulAjarRevisiUrl: (mode === 'perbaikan' ? (modulAjarUrl.trim() || modulAjarRevisiUrl.trim()) : modulAjarRevisiUrl.trim()),
             catatanRevisiGuru: catatanRevisiGuru.trim(),
             revisiSubmittedAt: hasNewRevision ? (supervision.perangkatAjar?.revisi?.revisiSubmittedAt || new Date().toISOString()) : undefined,
             revisiStatus: newRevisiStatus,
           },
         },
+        ...(mode === 'perbaikan' ? {
+          perangkatAjarPerbaikan: {
+            driveLinks: {
+              cpTpAtpUrl: cpTpAtpUrl.trim(),
+              modulAjarUrl: modulAjarUrl.trim() || modulAjarRevisiUrl.trim(),
+              bahanAjarUrl: bahanAjarUrl.trim(),
+              asesmenUrl: asesmenUrl.trim(),
+            },
+            submittedAt: new Date().toISOString(),
+            telaahScores: scores,
+            telaahComments: comments,
+            telaahSummary: {
+              totalScore,
+              maxPossibleScore,
+              finalScore,
+              predicate,
+            },
+            feedback: {
+              kelebihan,
+              perbaikan,
+              rekomendasi,
+            },
+            reviewedAt: isSupervisor ? new Date().toISOString() : undefined,
+            reviewedBy: isSupervisor ? currentUser.displayName : undefined,
+          }
+        } : {}),
         status: isPeriodicDraft && supervision.status === 'draft' 
           ? 'draft' 
           : (supervision.status === 'draft' && uploadedFilesCount >= 1 ? 'submitted' : supervision.status),
@@ -212,16 +274,16 @@ export const PerangkatAjarModal: React.FC<PerangkatAjarModalProps> = ({
       <div className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[94vh] flex flex-col overflow-hidden border border-slate-200">
         
         {/* Header */}
-        <div className="bg-indigo-700 text-white p-4 sm:p-5 flex items-center justify-between shrink-0">
+        <div className={`${mode === 'perbaikan' ? 'bg-purple-800' : 'bg-indigo-700'} text-white p-4 sm:p-5 flex items-center justify-between shrink-0 transition-colors`}>
           <div>
             <div className="flex items-center gap-2 text-indigo-200 text-xs font-semibold uppercase tracking-wider mb-0.5">
               <FileCheck className="w-4 h-4" />
-              <span>Tahap 1 Supervisi &bull; Telaah Perangkat Pembelajaran</span>
+              <span>{mode === 'perbaikan' ? 'Tahap U (Uji) &bull; Perangkat Ajar Setelah Perbaikan' : 'Tahap S (Selidiki) &bull; Perangkat Ajar Kondisi Awal'}</span>
             </div>
             <h2 className="text-base sm:text-xl font-bold">
               {isSupervisor 
-                ? 'Instrumen Telaah & Evaluasi Modul Ajar / RPP' 
-                : 'Unggah Berkas Perencanaan Pembelajaran Awal (Sebelum Penilaian)'}
+                ? mode === 'perbaikan' ? 'Instrumen Telaah & Evaluasi Modul Ajar (Setelah Ada Perbaikan)' : 'Instrumen Telaah & Evaluasi Modul Ajar / RPP Awal'
+                : mode === 'perbaikan' ? 'Unggah Perangkat Pembelajaran Hasil Revisi / Perbaikan' : 'Unggah Berkas Perencanaan Pembelajaran Awal (Sebelum Penilaian)'}
             </h2>
             <p className="text-xs text-indigo-100 mt-0.5">
               Guru: <strong>{supervision.teacherName}</strong> &bull; Mapel: <strong>{supervision.subject}</strong> &bull; {supervision.schoolName}

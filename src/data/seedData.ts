@@ -1023,6 +1023,67 @@ export const SAMPLE_SUPERVISIONS: Supervision[] = [
       recommendations: 'Kembangkan projek pencatatan keuangan ini menjadi pameran portofolio literasi finansial.',
       completedAt: '2025-09-03T11:30:00.000Z'
     },
+    perangkatAjarPerbaikan: {
+      driveLinks: {
+        cpTpAtpUrl: 'https://drive.google.com/file/d/1DemoCpTpAtpSondang/view?usp=sharing',
+        modulAjarUrl: 'https://drive.google.com/file/d/1DemoModulEkonomiRevisi/view?usp=sharing',
+        bahanAjarUrl: 'https://drive.google.com/file/d/1DemoBahanAjarSondang/view?usp=sharing',
+        asesmenUrl: 'https://drive.google.com/file/d/1DemoAsesmenSondang/view?usp=sharing'
+      },
+      submittedAt: '2025-08-30T10:00:00.000Z',
+      telaahScores: {},
+      telaahComments: {},
+      telaahSummary: {
+        totalScore: 44,
+        maxPossibleScore: 44,
+        finalScore: 100,
+        predicate: 'Sangat Baik'
+      },
+      feedback: {
+        kelebihan: 'Modul ajar perbaikan sangat kaya dengan simulasi studi kasus kontekstual dan integrasi literasi finansial.',
+        perbaikan: 'Terus pertahankan keterlibatan siswa aktif dalam pemecahan masalah ekonomi riil.',
+        rekomendasi: 'Sangat layak dijadikan rujukan modul ekonomi inspiratif di Komunitas Belajar SMA.'
+      },
+      catatanRevisiGuru: 'Telah ditambahkan lembar simulasi aplikasi pencatatan keuangan pribadi dan diferensiasi tugas.',
+      reviewedAt: '2025-08-31T09:00:00.000Z',
+      reviewedBy: 'Kusnandar, M.Si'
+    },
+    praObservasiPerbaikan: {
+      interviewDurationMinutes: 30,
+      q1_kd_indikator: 'Penerapan simulasi perencanaan anggaran pribadi dan analisis dampak kelangkaan secara kontekstual.',
+      q2_metode: 'Case-Based Learning dipadukan dengan FGD dan presentasi interaktif terbimbing.',
+      q3_alat_bahan: 'Lembar Studi Kasus riil, kalkulator simulasi anggaran, aplikasi budgeting digital.',
+      q4_tahapan: 'Apersepsi interaktif, penyelidikan kasus riil, presentasi tim dan umpan balik antarkelompok.',
+      q5_persiapan: 'Menyiapkan modul perbaikan dan rubrik penilaian asesmen formatif.',
+      q6_materi_sulit: 'Analisis peluang biaya opportunitas dalam keputusan riil.',
+      q7_target_kompetensi: 'Murid mampu menyusun anggaran pribadi berbasis skala prioritas secara mandiri.',
+      q8_perhatian_khusus: 'Memfasilitasi murid yang memerlukan bimbingan tambahan dalam penghitungan pos tabungan.',
+      supervisorNotes: 'Rencana perbaikan sangat matang dan berpusat pada keterlibatan murid (Student Agency).',
+      completedAt: '2025-09-01T08:30:00.000Z'
+    },
+    observasiKelasPerbaikan: {
+      items: {},
+      totalYa: 24,
+      totalAspek: 24,
+      score: 100,
+      predicate: 'Amat Baik (A)',
+      feedbackNotes: 'Praktik perbaikan di kelas sangat impresif. Murid sangat antusias, diskusi berjalan aktif dan mandiri, guru berperan optimal sebagai fasilitator.',
+      completedAt: '2025-09-02T10:00:00.000Z'
+    },
+    pascaObservasiPerbaikan: {
+      q1_kesan: 'Suasana kelas jauh lebih hidup dan murid tidak lagi pasif menunggu instruksi.',
+      q2_sesuai_rencana: 'Ya, seluruh tahapan terlaksana tepat waktu.',
+      q3_hal_memuaskan: 'Seluruh murid mampu menyusun rencana keuangan mandiri yang realistis.',
+      q4_hal_kurang: 'Waktu refleksi akhir perlu diperpanjang 5 menit.',
+      q5_ketercapaian_tujuan: '100% murid mencapai KKTP dan menghasilkan karya anggaran pribadi.',
+      q6_kesulitan_siswa: 'Siswa dengan cepat memahami konsep melalui studi kasus riil.',
+      q7_alternatif_solusi: 'Formula 50-30-20 sangat efektif membantu murid.',
+      q8_rencana_tindak_lanjut: 'Diseminasi modul ajar hasil perbaikan ke MGMP Ekonomi SMA Kota Bogor.',
+      q9_pengembangan_diri: 'Menjadi narasumber praktik baik kurikulum merdeka.',
+      generalImpression: 'Pembelajaran bermakna yang mengubah paradigma pengajaran menjadi berpusat pada murid.',
+      recommendations: 'Sangat direkomendasikan untuk didiseminasikan dalam forum Komunitas Belajar (Kombel) dan MGMP.',
+      completedAt: '2025-09-03T11:30:00.000Z'
+    },
     evaluasiTahunan: {
       hasilBelajar: { evidence: 'Ketuntasan 95%, portofolio perencanaan anggaran siswa lengkap', note: 'Sangat Baik', score: 95 },
       administrasi: { evidence: 'Perangkat ajar lengkap dan tertata rapi di Google Drive', note: 'Lengkap', score: 96 },

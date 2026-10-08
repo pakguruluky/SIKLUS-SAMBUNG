@@ -10,6 +10,7 @@ interface PascaObservasiModalProps {
   supervision: Supervision;
   currentUser: UserProfile;
   onSaved: (updated: Supervision) => void;
+  mode?: 'awal' | 'perbaikan';
 }
 
 export const PascaObservasiModal: React.FC<PascaObservasiModalProps> = ({
@@ -18,22 +19,28 @@ export const PascaObservasiModal: React.FC<PascaObservasiModalProps> = ({
   supervision,
   currentUser,
   onSaved,
+  mode = 'awal',
 }) => {
-  const [q1, setQ1] = useState(supervision.pascaObservasi?.q1_kesan || '');
-  const [q2, setQ2] = useState(supervision.pascaObservasi?.q2_sesuai_rencana || '');
-  const [q3, setQ3] = useState(supervision.pascaObservasi?.q3_hal_memuaskan || '');
-  const [q4, setQ4] = useState(supervision.pascaObservasi?.q4_hal_kurang || '');
-  const [q5, setQ5] = useState(supervision.pascaObservasi?.q5_ketercapaian_tujuan || '');
-  const [q6, setQ6] = useState(supervision.pascaObservasi?.q6_kesulitan_siswa || '');
-  const [q7, setQ7] = useState(supervision.pascaObservasi?.q7_alternatif_solusi || '');
-  const [q8, setQ8] = useState(supervision.pascaObservasi?.q8_rencana_tindak_lanjut || '');
-  const [q9, setQ9] = useState(supervision.pascaObservasi?.q9_pengembangan_diri || '');
+  const isPerbaikan = mode === 'perbaikan';
+  const sourceData = isPerbaikan && supervision.pascaObservasiPerbaikan
+    ? supervision.pascaObservasiPerbaikan
+    : supervision.pascaObservasi;
+
+  const [q1, setQ1] = useState(sourceData?.q1_kesan || '');
+  const [q2, setQ2] = useState(sourceData?.q2_sesuai_rencana || '');
+  const [q3, setQ3] = useState(sourceData?.q3_hal_memuaskan || '');
+  const [q4, setQ4] = useState(sourceData?.q4_hal_kurang || '');
+  const [q5, setQ5] = useState(sourceData?.q5_ketercapaian_tujuan || '');
+  const [q6, setQ6] = useState(sourceData?.q6_kesulitan_siswa || '');
+  const [q7, setQ7] = useState(sourceData?.q7_alternatif_solusi || '');
+  const [q8, setQ8] = useState(sourceData?.q8_rencana_tindak_lanjut || '');
+  const [q9, setQ9] = useState(sourceData?.q9_pengembangan_diri || '');
 
   const [generalImpression, setGeneralImpression] = useState(
-    supervision.pascaObservasi?.generalImpression || ''
+    sourceData?.generalImpression || ''
   );
   const [recommendations, setRecommendations] = useState(
-    supervision.pascaObservasi?.recommendations || ''
+    sourceData?.recommendations || ''
   );
 
   const [saving, setSaving] = useState(false);
@@ -49,23 +56,30 @@ export const PascaObservasiModal: React.FC<PascaObservasiModalProps> = ({
 
     try {
       setSaving(true);
-      const updated: Supervision = {
-        ...supervision,
-        pascaObservasi: {
-          q1_kesan: q1,
-          q2_sesuai_rencana: q2,
-          q3_hal_memuaskan: q3,
-          q4_hal_kurang: q4,
-          q5_ketercapaian_tujuan: q5,
-          q6_kesulitan_siswa: q6,
-          q7_alternatif_solusi: q7,
-          q8_rencana_tindak_lanjut: q8,
-          q9_pengembangan_diri: q9,
-          generalImpression,
-          recommendations,
-          completedAt: new Date().toISOString(),
-        },
+      const dataPayload = {
+        q1_kesan: q1,
+        q2_sesuai_rencana: q2,
+        q3_hal_memuaskan: q3,
+        q4_hal_kurang: q4,
+        q5_ketercapaian_tujuan: q5,
+        q6_kesulitan_siswa: q6,
+        q7_alternatif_solusi: q7,
+        q8_rencana_tindak_lanjut: q8,
+        q9_pengembangan_diri: q9,
+        generalImpression,
+        recommendations,
+        completedAt: new Date().toISOString(),
       };
+
+      const updated: Supervision = isPerbaikan
+        ? {
+            ...supervision,
+            pascaObservasiPerbaikan: dataPayload,
+          }
+        : {
+            ...supervision,
+            pascaObservasi: dataPayload,
+          };
 
       await saveSupervision(updated);
       onSaved(updated);
@@ -82,16 +96,16 @@ export const PascaObservasiModal: React.FC<PascaObservasiModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 lg:p-6 bg-slate-900/60 backdrop-blur-xs overflow-y-auto no-print">
       <div className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[94vh] flex flex-col overflow-hidden border border-slate-200">
         {/* Header */}
-        <div className="bg-blue-700 text-white p-4 sm:p-5 flex items-center justify-between shrink-0">
+        <div className={`${isPerbaikan ? 'bg-indigo-800' : 'bg-blue-700'} text-white p-4 sm:p-5 flex items-center justify-between shrink-0 transition-colors`}>
           <div>
-            <div className="flex items-center gap-2 text-blue-200 text-xs font-semibold uppercase tracking-wider mb-0.5">
-              <span>Tahap 4 Supervisi Akademik</span>
+            <div className="flex items-center gap-2 text-white/80 text-xs font-semibold uppercase tracking-wider mb-0.5">
+              <span>{isPerbaikan ? 'Tahap U (Uji) &bull; Data Setelah Perbaikan' : 'Tahap S (Selidiki) &bull; Data Awal'}</span>
             </div>
             <h2 className="text-base sm:text-xl font-bold flex items-center gap-2">
               <FileText className="w-5 h-5 text-blue-200" />
-              Instrumen Wawancara Pasca-Observasi &amp; Refleksi
+              Instrumen Wawancara Pasca-Observasi &amp; Refleksi {isPerbaikan ? '(Setelah Ada Perbaikan)' : '(Kondisi Awal)'}
             </h2>
-            <p className="text-xs text-blue-100 mt-0.5">
+            <p className="text-xs text-white/80 mt-0.5">
               Guru: {supervision.teacherName} &bull; Mapel: {supervision.subject} &bull; {supervision.schoolName}
             </p>
           </div>

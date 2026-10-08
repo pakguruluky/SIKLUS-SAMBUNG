@@ -149,7 +149,73 @@ export interface Supervision {
     completedAt?: string;
   };
 
-  // F. Instrumen Strategi SAMBUNG (Apresiasi GTK 2026 Pengawas SMA)
+  // F. Data Supervisi Setelah Ada Perbaikan (Tahap Uji SAMBUNG)
+  perangkatAjarPerbaikan?: {
+    driveLinks?: {
+      cpTpAtpUrl?: string;
+      modulAjarUrl?: string;
+      bahanAjarUrl?: string;
+      asesmenUrl?: string;
+    };
+    submittedAt?: string;
+    telaahScores?: Record<number, number | 'NA'>;
+    telaahComments?: Record<number, string>;
+    telaahSummary?: {
+      totalScore: number;
+      maxPossibleScore: number;
+      finalScore: number;
+      predicate: string;
+    };
+    feedback?: {
+      kelebihan: string;
+      perbaikan: string;
+      rekomendasi: string;
+    };
+    catatanRevisiGuru?: string;
+    reviewedAt?: string;
+    reviewedBy?: string;
+  };
+
+  praObservasiPerbaikan?: {
+    interviewDurationMinutes: number;
+    q1_kd_indikator: string;
+    q2_metode: string;
+    q3_alat_bahan: string;
+    q4_tahapan: string;
+    q5_persiapan: string;
+    q6_materi_sulit: string;
+    q7_target_kompetensi: string;
+    q8_perhatian_khusus: string;
+    supervisorNotes: string;
+    completedAt?: string;
+  };
+
+  observasiKelasPerbaikan?: {
+    items: Record<string, { status: 'Ya' | 'Tidak'; note: string }>;
+    totalYa: number;
+    totalAspek: number;
+    score: number;
+    predicate: string;
+    feedbackNotes: string;
+    completedAt?: string;
+  };
+
+  pascaObservasiPerbaikan?: {
+    q1_kesan: string;
+    q2_sesuai_rencana: string;
+    q3_hal_memuaskan: string;
+    q4_hal_kurang: string;
+    q5_ketercapaian_tujuan: string;
+    q6_kesulitan_siswa: string;
+    q7_alternatif_solusi: string;
+    q8_rencana_tindak_lanjut: string;
+    q9_pengembangan_diri: string;
+    generalImpression: string;
+    recommendations: string;
+    completedAt?: string;
+  };
+
+  // G. Instrumen Strategi SAMBUNG (Apresiasi GTK 2026 Pengawas SMA)
   sambung?: SambungData;
 }
 
@@ -207,15 +273,23 @@ export interface SambungBeforeAfterItem {
   aspek: string;
   sebelumSambung: string;
   setelahSambung: string;
-  buktiKode: string;
+  buktiKode?: string;
+}
+
+export interface SambungMatriksPerubahan {
+  peranGuru: string;
+  aktivitasMurid: string;
+  konteksNyata: string;
+  refleksiMurid: string;
 }
 
 export interface SambungDataDampakItem {
   indikator: string;
   awal: string;
-  akhir: string;
-  selisih: string;
-  sumber: string;
+  akhir: string; // Setelah SAMBUNG
+  selisih?: string;
+  sumber?: string;
+  makna?: string;
 }
 
 export interface SambungTindakLanjutItem {
@@ -241,6 +315,7 @@ export interface SambungData {
     tanggal: string;
     items: SambungAspekPemetaan[];
     catatanPrioritas?: string;
+    matriksBefore?: SambungMatriksPerubahan;
   };
   // A - ARAHKAN
   arahkan: {
@@ -284,6 +359,7 @@ export interface SambungData {
       halPalingBermakna: string;
       kesulitanMurid: string;
     };
+    matriksAfter?: SambungMatriksPerubahan;
   };
   // N - NYATAKAN
   nyatakan: {

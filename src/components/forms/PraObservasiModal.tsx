@@ -10,6 +10,7 @@ interface PraObservasiModalProps {
   supervision: Supervision;
   currentUser: UserProfile;
   onSaved: (updated: Supervision) => void;
+  mode?: 'awal' | 'perbaikan';
 }
 
 export const PraObservasiModal: React.FC<PraObservasiModalProps> = ({
@@ -18,19 +19,25 @@ export const PraObservasiModal: React.FC<PraObservasiModalProps> = ({
   supervision,
   currentUser,
   onSaved,
+  mode = 'awal',
 }) => {
+  const isPerbaikan = mode === 'perbaikan';
+  const sourceData = isPerbaikan && supervision.praObservasiPerbaikan
+    ? supervision.praObservasiPerbaikan
+    : supervision.praObservasi;
+
   const [duration, setDuration] = useState<number>(
-    supervision.praObservasi?.interviewDurationMinutes || 30
+    sourceData?.interviewDurationMinutes || 30
   );
-  const [q1, setQ1] = useState(supervision.praObservasi?.q1_kd_indikator || '');
-  const [q2, setQ2] = useState(supervision.praObservasi?.q2_metode || '');
-  const [q3, setQ3] = useState(supervision.praObservasi?.q3_alat_bahan || '');
-  const [q4, setQ4] = useState(supervision.praObservasi?.q4_tahapan || '');
-  const [q5, setQ5] = useState(supervision.praObservasi?.q5_persiapan || '');
-  const [q6, setQ6] = useState(supervision.praObservasi?.q6_materi_sulit || '');
-  const [q7, setQ7] = useState(supervision.praObservasi?.q7_target_kompetensi || '');
-  const [q8, setQ8] = useState(supervision.praObservasi?.q8_perhatian_khusus || '');
-  const [notes, setNotes] = useState(supervision.praObservasi?.supervisorNotes || '');
+  const [q1, setQ1] = useState(sourceData?.q1_kd_indikator || '');
+  const [q2, setQ2] = useState(sourceData?.q2_metode || '');
+  const [q3, setQ3] = useState(sourceData?.q3_alat_bahan || '');
+  const [q4, setQ4] = useState(sourceData?.q4_tahapan || '');
+  const [q5, setQ5] = useState(sourceData?.q5_persiapan || '');
+  const [q6, setQ6] = useState(sourceData?.q6_materi_sulit || '');
+  const [q7, setQ7] = useState(sourceData?.q7_target_kompetensi || '');
+  const [q8, setQ8] = useState(sourceData?.q8_perhatian_khusus || '');
+  const [notes, setNotes] = useState(sourceData?.supervisorNotes || '');
   const [saving, setSaving] = useState(false);
 
   const isGuru = currentUser.role === 'guru';
@@ -43,23 +50,30 @@ export const PraObservasiModal: React.FC<PraObservasiModalProps> = ({
 
     try {
       setSaving(true);
-      const updated: Supervision = {
-        ...supervision,
-        praObservasi: {
-          interviewDurationMinutes: Number(duration),
-          q1_kd_indikator: q1,
-          q2_metode: q2,
-          q3_alat_bahan: q3,
-          q4_tahapan: q4,
-          q5_persiapan: q5,
-          q6_materi_sulit: q6,
-          q7_target_kompetensi: q7,
-          q8_perhatian_khusus: q8,
-          supervisorNotes: notes,
-          completedAt: new Date().toISOString(),
-        },
-        status: supervision.status === 'draft' || supervision.status === 'submitted' ? 'in_progress' : supervision.status,
+      const dataPayload = {
+        interviewDurationMinutes: Number(duration),
+        q1_kd_indikator: q1,
+        q2_metode: q2,
+        q3_alat_bahan: q3,
+        q4_tahapan: q4,
+        q5_persiapan: q5,
+        q6_materi_sulit: q6,
+        q7_target_kompetensi: q7,
+        q8_perhatian_khusus: q8,
+        supervisorNotes: notes,
+        completedAt: new Date().toISOString(),
       };
+
+      const updated: Supervision = isPerbaikan
+        ? {
+            ...supervision,
+            praObservasiPerbaikan: dataPayload,
+          }
+        : {
+            ...supervision,
+            praObservasi: dataPayload,
+            status: supervision.status === 'draft' || supervision.status === 'submitted' ? 'in_progress' : supervision.status,
+          };
 
       await saveSupervision(updated);
       onSaved(updated);
@@ -76,16 +90,16 @@ export const PraObservasiModal: React.FC<PraObservasiModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 lg:p-6 bg-slate-900/60 backdrop-blur-xs overflow-y-auto no-print">
       <div className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[94vh] flex flex-col overflow-hidden border border-slate-200">
         {/* Header */}
-        <div className="bg-amber-600 text-white p-4 sm:p-5 flex items-center justify-between shrink-0">
+        <div className={`${isPerbaikan ? 'bg-purple-700' : 'bg-amber-600'} text-white p-4 sm:p-5 flex items-center justify-between shrink-0 transition-colors`}>
           <div>
-            <div className="flex items-center gap-2 text-amber-100 text-xs font-semibold uppercase tracking-wider mb-0.5">
-              <span>Tahap 2 Supervisi Akademik</span>
+            <div className="flex items-center gap-2 text-white/80 text-xs font-semibold uppercase tracking-wider mb-0.5">
+              <span>{isPerbaikan ? 'Tahap U (Uji) &bull; Data Setelah Perbaikan' : 'Tahap S (Selidiki) &bull; Data Awal'}</span>
             </div>
             <h2 className="text-base sm:text-xl font-bold flex items-center gap-2">
               <Compass className="w-5 h-5 text-amber-200" />
-              Instrumen Wawancara Pra-Observasi Pembelajaran
+              Instrumen Wawancara Pra-Observasi {isPerbaikan ? '(Setelah Ada Perbaikan)' : '(Kondisi Awal)'}
             </h2>
-            <p className="text-xs text-amber-100 mt-0.5">
+            <p className="text-xs text-white/80 mt-0.5">
               Guru: {supervision.teacherName} &bull; {supervision.subject} &bull; {supervision.schoolName}
             </p>
           </div>

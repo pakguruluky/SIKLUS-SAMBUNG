@@ -85,18 +85,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
 
               <button
-                onClick={() => setActiveTab('supervisions')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 ${
-                  activeTab === 'supervisions'
-                    ? 'bg-slate-100 text-indigo-700'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                }`}
-              >
-                <FileText className="w-3.5 h-3.5 text-slate-500" />
-                <span>{currentUser.role === 'guru' ? 'Hasil Supervisi' : 'Daftar Supervisi'}</span>
-              </button>
-
-              <button
                 onClick={() => setActiveTab('sambung')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 ${
                   activeTab === 'sambung'
@@ -195,13 +183,6 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <BarChart3 className="w-4 h-4" />
             <span>Dashboard</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('supervisions')}
-            className={`flex flex-col items-center gap-1 ${activeTab === 'supervisions' ? 'text-indigo-600 font-bold' : 'text-slate-500'}`}
-          >
-            <FileText className="w-4 h-4" />
-            <span>{currentUser.role === 'guru' ? 'Hasil' : 'Supervisi'}</span>
           </button>
           <button
             onClick={() => setActiveTab('sambung')}

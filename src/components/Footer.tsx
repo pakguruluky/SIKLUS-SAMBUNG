@@ -18,7 +18,7 @@ export const Footer: React.FC = () => {
             @copyright by Pak Kus &amp; Pak GuruAI
           </div>
           <p className="text-xs text-slate-500">
-            Mendampingi Guru, Meningkatkan Mutu &bull; Prov. Jawa Barat
+            Merangkai Aksi, Menggerakkan Perubahan Menuju Pembelajaran Bermakna &bull; Prov. Jawa Barat
           </p>
         </div>
       </div>

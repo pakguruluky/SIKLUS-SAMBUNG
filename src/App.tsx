@@ -3,7 +3,6 @@ import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { LandingPage } from './components/LandingPage';
 import { DashboardOverview } from './components/DashboardOverview';
-import { SupervisionList } from './components/SupervisionList';
 import { SchoolManagement } from './components/SchoolManagement';
 import { AuthModal } from './components/AuthModal';
 import { ReportPrintView } from './components/ReportPrintView';
@@ -74,6 +73,42 @@ export default function App() {
       }
 
       // Check persistent supervisions from Firestore & sync with device local storage
+      const mergeWithSeeds = (baseList: Supervision[], seedList: Supervision[]): Supervision[] => {
+        const seedMap = new Map(seedList.map(s => [s.id, s]));
+        const mergedBase = baseList.map(item => {
+          const seed = seedMap.get(item.id);
+          if (!seed) return item;
+          return {
+            ...seed,
+            ...item,
+            perangkatAjar: {
+              ...seed.perangkatAjar,
+              ...item.perangkatAjar,
+              driveLinks: {
+                ...seed.perangkatAjar?.driveLinks,
+                ...item.perangkatAjar?.driveLinks,
+              },
+              revisi: {
+                ...seed.perangkatAjar?.revisi,
+                ...item.perangkatAjar?.revisi,
+              },
+            },
+            perangkatAjarPerbaikan: item.perangkatAjarPerbaikan || seed.perangkatAjarPerbaikan,
+            praObservasi: item.praObservasi || seed.praObservasi,
+            praObservasiPerbaikan: item.praObservasiPerbaikan || seed.praObservasiPerbaikan,
+            observasiKelas: item.observasiKelas || seed.observasiKelas,
+            observasiKelasPerbaikan: item.observasiKelasPerbaikan || seed.observasiKelasPerbaikan,
+            pascaObservasi: item.pascaObservasi || seed.pascaObservasi,
+            pascaObservasiPerbaikan: item.pascaObservasiPerbaikan || seed.pascaObservasiPerbaikan,
+            sambung: item.sambung || seed.sambung,
+          };
+        });
+
+        const baseIds = new Set(baseList.map(s => s.id));
+        const newSeeds = seedList.filter(s => !baseIds.has(s.id));
+        return [...mergedBase, ...newSeeds];
+      };
+
       try {
         const firestoreSupervisions = await fetchSupervisions();
         const localCached = loadLocalSupervisions() || [];
@@ -81,15 +116,13 @@ export default function App() {
           ? firestoreSupervisions
           : localCached;
 
-        const existingIds = new Set(base.map(s => s.id));
-        const merged = [...base, ...SAMPLE_SUPERVISIONS.filter(s => !existingIds.has(s.id))];
+        const merged = mergeWithSeeds(base, SAMPLE_SUPERVISIONS);
         setSupervisions(merged);
         saveLocalSupervisions(merged);
       } catch (e) {
         console.warn('Using local seed supervisions', e);
         const localCached = loadLocalSupervisions() || [];
-        const existingIds = new Set(localCached.map(s => s.id));
-        const merged = [...localCached, ...SAMPLE_SUPERVISIONS.filter(s => !existingIds.has(s.id))];
+        const merged = mergeWithSeeds(localCached, SAMPLE_SUPERVISIONS);
         setSupervisions(merged);
         saveLocalSupervisions(merged);
       }
@@ -234,7 +267,8 @@ export default function App() {
       saveLocalSupervisions(next);
       return next;
     });
-    setActiveTab('supervisions');
+    setSelectedSambungId(newSup.id);
+    setActiveTab('sambung');
   };
 
   const handleRestoreData = (restoredSupervisions: Supervision[], restoredSchools: School[]) => {
@@ -284,7 +318,7 @@ export default function App() {
                 schools={schools}
                 supervisions={visibleSupervisions}
                 currentUser={currentUser}
-                onNavigateSupervisions={() => setActiveTab('supervisions')}
+                onNavigateSupervisions={() => setActiveTab('sambung')}
                 onNavigateSchools={() => setActiveTab('schools')}
                 onNewSupervision={() => setIsNewSupervisionModalOpen(true)}
                 onOpenForm={handleOpenForm}
@@ -292,18 +326,6 @@ export default function App() {
                 onApproveTeacher={handleApproveTeacher}
                 onOpenSambung={handleOpenSambung}
                 onOpenStorageModal={() => setIsLocalStorageModalOpen(true)}
-              />
-            )}
-
-            {activeTab === 'supervisions' && (
-              <SupervisionList
-                supervisions={visibleSupervisions}
-                currentUser={currentUser}
-                schools={schools}
-                onOpenForm={handleOpenForm}
-                onOpenPrint={handleOpenPrint}
-                onNewSupervision={() => setIsNewSupervisionModalOpen(true)}
-                onOpenSambung={handleOpenSambung}
               />
             )}
 

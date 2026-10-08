@@ -107,6 +107,46 @@ export const DEFAULT_SCHOOLS: School[] = [
     accreditation: 'A',
     createdAt: new Date().toISOString(),
     createdBy: 'system'
+  },
+  {
+    id: 'sch-bhakti-insani',
+    npsn: '20220520',
+    name: 'SMAS Bhakti Insani',
+    address: 'Jl. Batu Tulis NV Sidik No. 5C Bogor Selatan',
+    principalName: 'Kusmiati, Phd.',
+    accreditation: 'B',
+    createdAt: new Date().toISOString(),
+    createdBy: 'system'
+  },
+  {
+    id: 'sch-yasih',
+    npsn: '20220349',
+    name: 'SMAS Yasih',
+    address: 'Jl. Baranangsiang Indah Kp. Cikeas Kel. Katulampa Kec. Bogor Timur Kota Bogor',
+    principalName: 'M. Fahmi Fauzan Ihsan, S.Pd',
+    accreditation: 'B',
+    createdAt: new Date().toISOString(),
+    createdBy: 'system'
+  },
+  {
+    id: 'sch-muhammadiyah',
+    npsn: '20220314',
+    name: 'SMAS Muhammadiyah',
+    address: 'Jl .Merdeka 118 Bogor',
+    principalName: 'Nurmawaji, S.Pd.',
+    accreditation: 'B',
+    createdAt: new Date().toISOString(),
+    createdBy: 'system'
+  },
+  {
+    id: 'sch-ananda',
+    npsn: '20220547',
+    name: 'SMAS Ananda',
+    address: 'Jl. Lawanggintung Komp. KPKN No.25 Rt.06 Rw.06 Bogor',
+    principalName: 'Maria, M.Psi.',
+    accreditation: 'B',
+    createdAt: new Date().toISOString(),
+    createdBy: 'system'
   }
 ];
 

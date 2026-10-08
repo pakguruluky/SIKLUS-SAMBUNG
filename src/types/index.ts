@@ -215,7 +215,7 @@ export interface Supervision {
     completedAt?: string;
   };
 
-  // G. Instrumen Strategi SAMBUNG (Apresiasi GTK 2026 Pengawas SMA)
+  // G. Instrumen Strategi SAMBUNG (Sistem Informasi Pengawasan, Pendampingan, dan Evaluasi Guru SMA)
   sambung?: SambungData;
 }
 

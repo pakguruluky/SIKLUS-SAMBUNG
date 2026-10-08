@@ -338,7 +338,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-indigo-200 text-xs font-semibold mb-2">
               <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-              <span>Lampiran Praktik Baik &bull; Apresiasi GTK 2026 Pengawas Sekolah SMA</span>
+              <span>Sistem Informasi Pengawasan, Pendampingan, dan Evaluasi Guru SMA</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
               Instrumen Siklus Strategi SAMBUNG

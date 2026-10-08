@@ -67,7 +67,7 @@ export const SambungPrintModal: React.FC<SambungPrintModalProps> = ({
                 INSTRUMEN STRATEGI SAMBUNG
               </h1>
               <p className="text-xs font-medium text-slate-600 mt-1 italic">
-                Lampiran Praktik Baik — Apresiasi GTK 2026, Pengawas Sekolah SMA
+                Sistem Informasi Pengawasan, Pendampingan, dan Evaluasi Guru SMA
               </p>
               <div className="h-0.5 w-32 bg-indigo-600 mx-auto mt-2"></div>
             </div>
@@ -608,7 +608,7 @@ export const SambungPrintModal: React.FC<SambungPrintModalProps> = ({
             </div>
 
             <div className="mt-8 text-center text-[10px] text-slate-400 print:text-slate-500">
-              Dokumen Portofolio Resmi Strategi SAMBUNG &bull; Apresiasi GTK 2026 &bull; Pengawas Kusnandar, M.Si
+              Dokumen Portofolio Resmi Strategi SAMBUNG &bull; Sistem Informasi Pengawasan, Pendampingan, dan Evaluasi Guru SMA &bull; Pengawas Kusnandar, M.Si
             </div>
           </div>
 

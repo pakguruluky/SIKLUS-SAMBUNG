@@ -511,19 +511,39 @@ export const SambungPrintModal: React.FC<SambungPrintModalProps> = ({
             <table className="w-full border-collapse border border-slate-300 text-[11px]">
               <thead>
                 <tr className="bg-slate-100 text-slate-800 font-bold">
-                  <th className="border border-slate-300 px-2 py-1.5 text-left">Indikator</th>
-                  <th className="border border-slate-300 px-2 py-1.5 w-24 text-center">Awal</th>
-                  <th className="border border-slate-300 px-2 py-1.5 w-32 text-center">Setelah SAMBUNG</th>
-                  <th className="border border-slate-300 px-2 py-1.5 text-left">Makna</th>
+                  <th className="border border-slate-300 px-2 py-1.5 text-left w-48">Indikator</th>
+                  <th className="border border-slate-300 px-2 py-1.5 w-20 text-center">Awal</th>
+                  <th className="border border-slate-300 px-2 py-1.5 w-24 text-center">Setelah SAMBUNG</th>
+                  <th className="border border-slate-300 px-2 py-1.5 text-left">Makna &amp; Informasi Deskriptif Penilaian Guru</th>
                 </tr>
               </thead>
               <tbody>
                 {sambung.nyatakan.dataDampak.map((row, idx) => (
                   <tr key={idx}>
-                    <td className="border border-slate-300 px-2 py-1.5 font-medium text-slate-800">{row.indikator}</td>
-                    <td className="border border-slate-300 px-2 py-1.5 text-center text-slate-600 font-semibold">{row.awal}</td>
-                    <td className="border border-slate-300 px-2 py-1.5 text-center font-bold text-emerald-800 bg-emerald-50/30">{row.akhir}</td>
-                    <td className="border border-slate-300 px-2 py-1.5 text-slate-700">{row.makna || '-'}</td>
+                    <td className="border border-slate-300 px-2 py-1.5 font-medium text-slate-800 align-top">
+                      <div className="font-bold text-slate-900">{row.indikator}</div>
+                      {row.buktiKegiatan && (
+                        <div className="text-[10px] text-slate-500 mt-1 italic">
+                          Bukti: {row.buktiKegiatan}
+                        </div>
+                      )}
+                    </td>
+                    <td className="border border-slate-300 px-2 py-1.5 text-center text-slate-600 font-semibold align-top">{row.awal}</td>
+                    <td className="border border-slate-300 px-2 py-1.5 text-center font-bold text-emerald-800 bg-emerald-50/30 align-top">
+                      <div>{row.akhir}</div>
+                      {row.selisih && (
+                        <span className="text-[9px] text-emerald-700 font-bold">{row.selisih}</span>
+                      )}
+                    </td>
+                    <td className="border border-slate-300 px-2 py-1.5 text-slate-700 align-top space-y-1">
+                      <div className="font-bold text-slate-900">{row.makna || '-'}</div>
+                      {row.deskripsiPenilaian && (
+                        <div className="text-[10px] text-slate-700 bg-slate-50 p-1.5 rounded border border-slate-200 mt-1 leading-relaxed">
+                          <strong className="text-indigo-900">Deskripsi Penilaian Pengawas: </strong>
+                          {row.deskripsiPenilaian}
+                        </div>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

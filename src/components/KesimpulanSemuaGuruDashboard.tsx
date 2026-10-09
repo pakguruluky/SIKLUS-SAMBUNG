@@ -135,31 +135,36 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
         awalValues: number[];
         akhirValues: number[];
         maknaList: string[];
+        deskripsiList: string[];
       };
     } = {
       '1': { 
         indikator: 'Guru berorientasi pada pengalaman belajar murid', 
         awalValues: [], 
         akhirValues: [], 
-        maknaList: [] 
+        maknaList: [],
+        deskripsiList: [] 
       },
       '2': { 
         indikator: 'Murid aktif mengaplikasikan pengetahuan', 
         awalValues: [], 
         akhirValues: [], 
-        maknaList: [] 
+        maknaList: [],
+        deskripsiList: [] 
       },
       '3': { 
         indikator: 'Pembelajaran terhubung dengan konteks nyata', 
         awalValues: [], 
         akhirValues: [], 
-        maknaList: [] 
+        maknaList: [],
+        deskripsiList: [] 
       },
       '4': { 
         indikator: 'Murid melakukan refleksi', 
         awalValues: [], 
         akhirValues: [], 
-        maknaList: [] 
+        maknaList: [],
+        deskripsiList: [] 
       },
     };
 
@@ -187,6 +192,9 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
             if (!isNaN(a)) buckets[key].awalValues.push(a);
             if (!isNaN(b)) buckets[key].akhirValues.push(b);
             if (item.makna && item.makna.trim()) buckets[key].maknaList.push(item.makna);
+            if (item.deskripsiPenilaian && item.deskripsiPenilaian.trim()) {
+              buckets[key].deskripsiList.push(item.deskripsiPenilaian);
+            }
           }
         });
       }
@@ -208,12 +216,16 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
 
       const delta = avgAkhir - avgAwal;
       const makna = bucket && bucket.maknaList.length > 0 ? bucket.maknaList[0] : def.makna;
+      const deskripsiPenilaian = bucket && bucket.deskripsiList.length > 0 
+        ? bucket.deskripsiList[0] 
+        : (def as any).deskripsiPenilaian;
 
       return {
         indikator: def.indikator,
         awal: `${avgAwal}%`,
         akhir: `${avgAkhir}%`,
         makna,
+        deskripsiPenilaian,
         awalNum: avgAwal,
         akhirNum: avgAkhir,
         deltaNum: delta,
@@ -738,8 +750,14 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
                       </div>
                     </td>
                     <td className="py-4 px-4 align-middle text-slate-700 leading-relaxed font-medium">
-                      <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/70 text-xs">
-                        {item.makna}
+                      <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/70 text-xs space-y-1.5">
+                        <p className="font-extrabold text-slate-900">{item.makna}</p>
+                        {item.deskripsiPenilaian && (
+                          <p className="text-[11px] text-slate-600 bg-white/90 p-2 rounded-lg border border-slate-200/60 leading-relaxed">
+                            <strong className="text-indigo-800 not-italic">Uraian Evaluasi Pengawas: </strong>
+                            {item.deskripsiPenilaian}
+                          </p>
+                        )}
                       </div>
                     </td>
                   </tr>

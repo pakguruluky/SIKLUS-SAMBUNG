@@ -1,4 +1,4 @@
-import { SambungData } from '../types';
+import { SambungData, SambungDataDampakItem } from '../types';
 
 export const ASPEK_SELIDIKI_DEFAULT = [
   'Tujuan dan kesadaran murid tentang belajar',
@@ -56,27 +56,722 @@ export const DEFAULT_DATA_DAMPAK = [
     indikator: 'Guru berorientasi pada pengalaman belajar murid',
     awal: '45%',
     akhir: '78%',
-    makna: 'Proporsi guru yang menunjukkan praktik tersebut meningkat',
+    makna: 'Proporsi guru yang menunjukkan praktik pembelajaran berpusat pada murid meningkat pesat.',
+    deskripsiPenilaian: 'Guru bertransformasi dari metode ceramah instruksional menjadi fasilitator pengalaman belajar murid melalui panduan inkuiri dan pemecahan masalah nyata.',
+    buktiKegiatan: 'Modul Ajar Pembelajaran Aktif, Lembar Telaah Pengawas',
   },
   {
     indikator: 'Murid aktif mengaplikasikan pengetahuan',
     awal: '45%',
     akhir: '89%',
-    makna: 'Semakin banyak guru yang memberi ruang kepada murid untuk menerapkan pengetahuan',
+    makna: 'Peserta didik aktif berkolaborasi, bereksperimen, dan memecahkan tantangan studi kasus.',
+    deskripsiPenilaian: 'Keterlibatan murid di kelas meningkat drastis; murid tidak hanya mencatat melainkan mempraktikkan langsung konsep materi dalam kelompok kerja.',
+    buktiKegiatan: 'LKPD Kolaboratif, Lembar Observasi Keterlibatan Murid',
   },
   {
     indikator: 'Pembelajaran terhubung dengan konteks nyata',
     awal: '56%',
     akhir: '89%',
-    makna: 'Semakin banyak guru yang mengaitkan pembelajaran dengan kehidupan nyata',
+    makna: 'Materi pembelajaran dikaitkan secara eksplisit dengan fenomena kehidupan sehari-hari.',
+    deskripsiPenilaian: 'Guru menyajikan apersepsi kontekstual dan studi kasus kehidupan nyata sekitar sekolah/kota, menumbuhkan relevansi belajar yang tinggi bagi murid.',
+    buktiKegiatan: 'Bahan Ajar Berbasis Masalah Riil, Dokumentasi Diskusi',
   },
   {
     indikator: 'Murid melakukan refleksi',
     awal: '33%',
     akhir: '78%',
-    makna: 'Semakin banyak guru yang memberi ruang bagi murid untuk melakukan refleksi',
+    makna: 'Rutinitas metakognitif dan evaluasi diri murid terlaksana secara terstruktur di akhir sesi.',
+    deskripsiPenilaian: 'Murid secara konsisten dibimbing mengisi instrumen refleksi diri untuk mengidentifikasi keberhasilan, kesulitan, dan makna pembelajaran bagi kehidupannya.',
+    buktiKegiatan: 'Jurnal Refleksi Murid, Angket Suara Murid (U2)',
   },
 ];
+
+/**
+ * Menghasilkan informasi data dampak deskriptif spesifik untuk masing-masing guru binaan
+ * yang selaras dengan mata pelajaran, materi, skor telaah modul ajar, dan observasi kelasnya.
+ */
+export function getTeacherDescriptiveDataDampak(
+  teacherName: string,
+  subject: string = '',
+  schoolName: string = '',
+  lessonTitle: string = '',
+  telaahPred: string = '',
+  obsPred: string = ''
+): SambungDataDampakItem[] {
+  const name = teacherName.toLowerCase();
+
+  // 1. SMAN 4 BOGOR: Sondang Asih Januarti, S.Pd. (Fisika) [SB, SB]
+  if (name.includes('sondang')) {
+    return [
+      {
+        indikator: 'Guru berorientasi pada pengalaman belajar murid',
+        awal: '45%',
+        akhir: '94%',
+        selisih: '+49%',
+        makna: 'Pergeseran paradigma mengajar dari ceramah klasikal menuju fasilitasi inkuiri laboratorium berbantuan simulasi.',
+        deskripsiPenilaian: 'Berdasarkan hasil supervisi telaah modul (skor 97.7 / Sangat Baik) dan observasi kelas tatap muka (skor 100.0 / Sangat Baik), Ibu Sondang berhasil mengubah dominasi ceramah klasikal menjadi pendampingan inkuiri aktif. Guru memfasilitasi penyelidikan Hukum Kirchhoff berbantuan simulator interaktif PhET dan kit sirkuit tertutup, memberikan scaffolding diferensiasi terarah bagi setiap kelompok murid.',
+        buktiKegiatan: 'Modul Ajar Termodinamika & Kelistrikan, Lembar Telaah Pengawas No. 1-22, Foto Praktikum PhET',
+      },
+      {
+        indikator: 'Murid aktif mengaplikasikan pengetahuan',
+        awal: '40%',
+        akhir: '95%',
+        selisih: '+55%',
+        makna: 'Kemandirian murid dalam menguji hukum fisika dan menganalisis data rangkaian secara saintifik.',
+        deskripsiPenilaian: 'Hasil observasi kelas mencatat seluruh kelompok (100% murid) terampil merakit rangkaian tertutup, mengukur kuat arus dan tegangan secara empiris, serta memvalidasi kesesuaian hukum Kirchhoff tanpa bergantung pada instruksi kaku guru. Murid berani berargumen ilmiah saat mempresentasikan temuan.',
+        buktiKegiatan: 'LKPD Penyelidikan Sirkuit DC, Lembar Ceklis Unjuk Kerja Murid, Video Presentasi Kelompok',
+      },
+      {
+        indikator: 'Pembelajaran terhubung dengan konteks nyata',
+        awal: '50%',
+        akhir: '95%',
+        selisih: '+45%',
+        makna: 'Keterhubungan konsep hambatan dan arus listrik dengan instalasi dan efisiensi energi rumah tangga.',
+        deskripsiPenilaian: 'Sesuai rubrik telaah kontekstual kurikulum, guru secara cerdas mengaitkan analisis hambatan listrik dengan sistem proteksi sekring rumah tinggal, pencegahan korsleting listrik di pemukiman padat Bogor, dan pemanfaatan panel surya ramah lingkungan di lingkungan sekolah.',
+        buktiKegiatan: 'Bahan Tayang Studi Kasus Kelistrikan Rumah Tangga SMAN 4, Kliping Kasus Korsleting',
+      },
+      {
+        indikator: 'Murid melakukan refleksi',
+        awal: '30%',
+        akhir: '88%',
+        selisih: '+58%',
+        makna: 'Rutinitas refleksi metakognitif terstruktur di setiap penutupan pembelajaran fisika.',
+        deskripsiPenilaian: 'Berdasarkan instrumen U2 (suara murid), 88% murid secara konsisten mengisi lembar refleksi digital di akhir sesi. Murid mengidentifikasi konsep yang sudah dipahami, tantangan menghitung hambatan pengganti, dan merumuskan komitmen hemat daya listrik di rumah masing-masing.',
+        buktiKegiatan: 'Google Form Exit Ticket Refleksi & Rekap Tanggapan Angket U2 Suara Murid',
+      },
+    ];
+  }
+
+  // 2. SMAN 4 BOGOR: Hilmia Fitriyani, S.Pd. (Ekonomi) [B, SB]
+  if (name.includes('hilmia')) {
+    return [
+      {
+        indikator: 'Guru berorientasi pada pengalaman belajar murid',
+        awal: '42%',
+        akhir: '88%',
+        selisih: '+46%',
+        makna: 'Peningkatan peran guru dari penyampai teori menjadi fasilitator analisis dinamika pasar digital riil.',
+        deskripsiPenilaian: 'Berdasarkan supervisi telaah modul (skor 84.1 / Baik) dan observasi tatap muka (skor 95.8 / Sangat Baik), Ibu Hilmia menunjukkan peningkatan nyata dalam memfasilitasi pembelajaran interaktif. Guru memandu analisis kurva penawaran dan permintaan melalui studi kasus digitalisasi pasar modern, memantik nalar kritis peserta didik.',
+        buktiKegiatan: 'Modul Ajar Ekonomi Fase E Revisi, Catatan Telaah Pengawas No. 8 & 12',
+      },
+      {
+        indikator: 'Murid aktif mengaplikasikan pengetahuan',
+        awal: '45%',
+        akhir: '89%',
+        selisih: '+44%',
+        makna: 'Keaktifan kelompok murid dalam membedah fluktuasi harga dan simulasi mekanisme pasar.',
+        deskripsiPenilaian: 'Pada aspek pelibatan murid dalam observasi kelas, 23 dari 24 indikator terlaksana dengan sangat baik. Murid aktif menghitung koefisien elastisitas permintaan bahan pokok, membuat grafik pergeseran ekuilibrium harga, dan mempresentasikan rekomendasi stabilisasi harga secara berkelompok.',
+        buktiKegiatan: 'Lembar Diskusi Kasus Harga E-Commerce, Portofolio Grafik Ekuilibrium Murid',
+      },
+      {
+        indikator: 'Pembelajaran terhubung dengan konteks nyata',
+        awal: '48%',
+        akhir: '88%',
+        selisih: '+40%',
+        makna: 'Kontekstualisasi materi pada inflasi harga pangan dan pola konsumsi daring di Kota Bogor.',
+        deskripsiPenilaian: 'Pembelajaran mengangkat isu riil kenaikan harga cabai dan minyak goreng di pasar tradisional Bogor menjelang hari raya serta tren belanja marketplace di kalangan remaja. Murid belajar membuat keputusan alokasi anggaran yang bijak dan rasional.',
+        buktiKegiatan: 'Artikel Berita Inflasi Daerah Bogor, Lembar Kerja Analisis Pasar Riil',
+      },
+      {
+        indikator: 'Murid melakukan refleksi',
+        awal: '32%',
+        akhir: '82%',
+        selisih: '+50%',
+        makna: 'Pembiasaan refleksi evaluatif mengenai perilaku belanja dan literasi keuangan pribadi.',
+        deskripsiPenilaian: 'Sesuai catatan pasca observasi pengawas, guru menyediakan alokasi waktu 10 menit di akhir kelas bagi murid untuk merefleksikan kebiasaan konsumsi pribadi. 82% murid mencatatkan kesadaran baru untuk membedakan antara kebutuhan primer dan keinginan impulsif dalam mengelola uang jajan.',
+        buktiKegiatan: 'Lembar Refleksi Diri 3-2-1 Pembelajaran Ekonomi, Log Refleksi U2',
+      },
+    ];
+  }
+
+  // 3. SMAN 2 BOGOR: Mega Nur Alfira, S.Pd. (Sejarah) [SB]
+  if (name.includes('mega')) {
+    return [
+      {
+        indikator: 'Guru berorientasi pada pengalaman belajar murid',
+        awal: '45%',
+        akhir: '93%',
+        selisih: '+48%',
+        makna: 'Perubahan pola mengajar dari menghafal tahun peristiwa menuju historical inquiry kritis.',
+        deskripsiPenilaian: 'Berdasarkan telaah modul ajar (skor 100.0 / Sangat Baik) dan observasi tatap muka (skor 100.0 / Sangat Baik), Ibu Mega Nur Alfira memfasilitasi penelusuran sejarah berbasis sumber primer otentik. Guru bertindak sebagai pemantik diskusi multiperspektif seputar peristiwa Proklamasi Kemerdekaan Bangsa.',
+        buktiKegiatan: 'Modul Ajar Historiografi Kritis, Rekaman Audio Pidato Proklamasi Bung Karno',
+      },
+      {
+        indikator: 'Murid aktif mengaplikasikan pengetahuan',
+        awal: '40%',
+        akhir: '92%',
+        selisih: '+52%',
+        makna: 'Keterampilan murid membedah dokumen primer dan berargumentasi historis secara santun.',
+        deskripsiPenilaian: 'Seluruh 24 aspek observasi tatap muka terlaksana sempurna. Murid aktif membandingkan draf naskah proklamasi tulisan tangan Soekarno dengan naskah ketikan Sayuti Melik, mengidentifikasi perbedaan sudut pandang golongan tua dan muda secara kritis dan runtut.',
+        buktiKegiatan: 'Lembar Komparasi Dokumen Primer, Notulensi Debat Sejarah Terpimpin',
+      },
+      {
+        indikator: 'Pembelajaran terhubung dengan konteks nyata',
+        awal: '52%',
+        akhir: '94%',
+        selisih: '+42%',
+        makna: 'Refleksi nilai perjuangan proklamasi dalam menjaga persatuan dan menyaring hoaks masa kini.',
+        deskripsiPenilaian: 'Guru sukses mengaitkan esensi diplomasi Rengasdengklok dengan pentingnya musyawarah kebangsaan di era digital. Murid diajak memaknai kemerdekaan sebagai tanggung jawab menjaga integritas dan daya kritis generasi muda terhadap disinformasi sejarah.',
+        buktiKegiatan: 'Infografis Nilai Kebangsaan Generasi Z di SMAN 2 Bogor, Hasil Analisis Berita',
+      },
+      {
+        indikator: 'Murid melakukan refleksi',
+        awal: '35%',
+        akhir: '86%',
+        selisih: '+51%',
+        makna: 'Pembiasaan metakognisi nilai integritas dan rasa syukur atas kemerdekaan bangsa.',
+        deskripsiPenilaian: 'Refleksi penutup mengungkap pemaknaan mendalam dari 86% murid tentang arti kemerdekaan hakiki. Murid merumuskan komitmen tindakan nyata mereka dalam menjaga toleransi, persatuan, dan prestasi di lingkungan sekolah SMAN 2 Bogor.',
+        buktiKegiatan: 'Papan Refleksi Kemerdekaan Digital, Buku Jurnal Sejarah Murid',
+      },
+    ];
+  }
+
+  // 4. SMAN 2 BOGOR: Alline Novianti, S.Pd. (Kimia) [SB]
+  if (name.includes('alline')) {
+    return [
+      {
+        indikator: 'Guru berorientasi pada pengalaman belajar murid',
+        awal: '44%',
+        akhir: '91%',
+        selisih: '+47%',
+        makna: 'Transformasi ke pembelajaran inkuiri berbasis simulasi laboratorium virtual kimia kinetika.',
+        deskripsiPenilaian: 'Berdasarkan telaah modul perangkat ajar (skor 100.0 / Sangat Baik) dan observasi kelas (skor 95.8 / Sangat Baik), Ibu Alline mengalihkan fokus pembelajaran dari sekadar transfer rumus reaksi menjadi penyelidikan berbasis laboratorium virtual interaktif.',
+        buktiKegiatan: 'Modul Ajar Kimia Fase F, Lembar Kerja Praktikum Virtual Kinetika',
+      },
+      {
+        indikator: 'Murid aktif mengaplikasikan pengetahuan',
+        awal: '42%',
+        akhir: '90%',
+        selisih: '+48%',
+        makna: 'Murid aktif memanipulasi variabel konsentrasi dan suhu serta menganalisis grafik laju reaksi.',
+        deskripsiPenilaian: 'Pengamatan kelas mencatat keaktifan murid yang sangat dinamis. Setiap pasangan murid menguji pengaruh katalis terhadap laju reaksi secara real-time pada Chromebook, mencatat laju pembentukan produk, dan menarik kesimpulan matematis kurva kinetika.',
+        buktiKegiatan: 'Tabel Data Percobaan Virtual, Grafik Analisis Kinetika Reaksi Kimia',
+      },
+      {
+        indikator: 'Pembelajaran terhubung dengan konteks nyata',
+        awal: '54%',
+        akhir: '92%',
+        selisih: '+38%',
+        makna: 'Relevansi teori tumbukan dengan proses pengawetan makanan dan pencegahan korosi di Bogor.',
+        deskripsiPenilaian: 'Materi dikaitkan langsung dengan prinsip pendinginan makanan di lemari es untuk memperlambat pembusukan serta bahaya kelembapan udara Kota Bogor terhadap laju perkaratan jembatan dan bangunan logam.',
+        buktiKegiatan: 'Bahan Diskusi Kontekstual Penerapan Katalis Industri & Pengawetan Pangan',
+      },
+      {
+        indikator: 'Murid melakukan refleksi',
+        awal: '33%',
+        akhir: '84%',
+        selisih: '+51%',
+        makna: 'Refleksi rutin terkait pemahaman mikroskopis partikel dan strategi belajar sains.',
+        deskripsiPenilaian: 'Sebanyak 84% murid secara rutin mencatat pemahaman konsep energi aktivasi dan mengevaluasi hambatan matematis yang mereka hadapi dalam menghitung orde reaksi pada jurnal sains digital.',
+        buktiKegiatan: 'Jurnal Belajar Sains Digital & Exit Ticket Refleksi Kimia',
+      },
+    ];
+  }
+
+  // 5. SMAS IT UMMUL QURO: Kirana Mahardhika, S.Pd, Gr. (Fisika) [SB, SB]
+  if (name.includes('kirana')) {
+    return [
+      {
+        indikator: 'Guru berorientasi pada pengalaman belajar murid',
+        awal: '46%',
+        akhir: '93%',
+        selisih: '+47%',
+        makna: 'Fasilitasi inkuiri sains astronomi dan pemodelan matematis gerak edar planet.',
+        deskripsiPenilaian: 'Berdasarkan telaah modul ajar (skor 97.7 / Sangat Baik) dan observasi tatap muka (skor 95.8 / Sangat Baik), Ibu Kirana mendesain pembelajaran yang menumbuhkan nalar kritis dan kekaguman atas keteraturan semesta melalui pemodelan orbit Hukum Kepler.',
+        buktiKegiatan: 'Modul Ajar Gravitasi & Kepler, Rubrik Penilaian Kinerja Sains Holistik',
+      },
+      {
+        indikator: 'Murid aktif mengaplikasikan pengetahuan',
+        awal: '44%',
+        akhir: '93%',
+        selisih: '+49%',
+        makna: 'Peserta didik aktif mengolah data satelit dan memformulasikan hukum perbandingan periode.',
+        deskripsiPenilaian: 'Murid aktif menggunakan perangkat lunak orbit simulator untuk membuktikan Hukum III Kepler secara kuantitatif, berdiskusi membandingkan kecepatan orbit planet dalam dan planet luar tata surya secara kolaboratif.',
+        buktiKegiatan: 'Laporan Pemodelan Orbit Planet, Presentasi Kelompok Murid Berbantuan Simulator',
+      },
+      {
+        indikator: 'Pembelajaran terhubung dengan konteks nyata',
+        awal: '52%',
+        akhir: '94%',
+        selisih: '+42%',
+        makna: 'Keterkaitan hukum gravitasi dengan orbit satelit komunikasi dan keharmonisan kosmos.',
+        deskripsiPenilaian: 'Pembelajaran menghubungkan orbit satelit geostasioner yang melayani jaringan internet dan GPS di Indonesia dengan nilai ketakwaan atas keteraturan kosmos ciptaan Allah SWT yang memperkuat keimanan murid SMAS IT Ummul Quro.',
+        buktiKegiatan: 'Studi Kasus Satelit Merah Putih & Lembar Refleksi Integrasi Nilai Islam',
+      },
+      {
+        indikator: 'Murid melakukan refleksi',
+        awal: '36%',
+        akhir: '89%',
+        selisih: '+53%',
+        makna: 'Refleksi metakognitif terpadu antara penguasaan sains dan kesadaran diri sebagai insan beriman.',
+        deskripsiPenilaian: 'Refleksi akhir pertemuan mengintegrasikan pemahaman ilmiah dan kesadaran spiritual. 89% murid menuliskan refleksi mengenai pentingnya disiplin dan komitmen hidup sebagaimana planet yang istiqomah melingkar di garis edarnya.',
+        buktiKegiatan: 'Lembar Mutabaah & Refleksi Fisika SMAS IT Ummul Quro',
+      },
+    ];
+  }
+
+  // 6. SMAS IT UMMUL QURO: Sani Ramadhanti Noor, S.E. (Ekonomi)
+  if (name.includes('sani')) {
+    return [
+      {
+        indikator: 'Guru berorientasi pada pengalaman belajar murid',
+        awal: '42%',
+        akhir: '87%',
+        selisih: '+45%',
+        makna: 'Peningkatan peran guru dalam memfasilitasi literasi keuangan syariah interaktif.',
+        deskripsiPenilaian: 'Berdasarkan telaah modul (skor 93.2 / Sangat Baik) dan observasi tatap muka (skor 91.7 / Sangat Baik), Ibu Sani membimbing murid menyusun perencanaan anggaran finansial berbasis etika bisnis Islam.',
+        buktiKegiatan: 'Modul Literasi Keuangan Syariah, Panduan Simulasi Anggaran Mandiri',
+      },
+      {
+        indikator: 'Murid aktif mengaplikasikan pengetahuan',
+        awal: '40%',
+        akhir: '88%',
+        selisih: '+48%',
+        makna: 'Murid aktif menyimulasikan akad mudharabah dan menghitung bagi hasil transaksi.',
+        deskripsiPenilaian: 'Murid berkelompok membuat simulasi usaha halal, merancang proposal investasi sederhana, dan membandingkan prinsip margin keuntungan dengan bunga pinjaman konvensional.',
+        buktiKegiatan: 'Proposal Mini Usaha Halal Siswa, Lembar Hitung Bagi Hasil',
+      },
+      {
+        indikator: 'Pembelajaran terhubung dengan konteks nyata',
+        awal: '50%',
+        akhir: '90%',
+        selisih: '+40%',
+        makna: 'Penerapan pengelolaan uang saku pribadi dan transaksi non-riba dalam keseharian santri.',
+        deskripsiPenilaian: 'Guru mengangkat studi kasus nyata pengelolaan uang saku bulanan santri, bahaya jebakan pinjol ilegal di kalangan pemuda, serta keutamaan infak dalam keberkahan harta.',
+        buktiKegiatan: 'Rancangan Budgeting Pribadi Siswa & Lembar Evaluasi Pengeluaran',
+      },
+      {
+        indikator: 'Murid melakukan refleksi',
+        awal: '32%',
+        akhir: '83%',
+        selisih: '+51%',
+        makna: 'Pembiasaan evaluasi diri atas gaya hidup hemat dan tanggung jawab amanah finansial.',
+        deskripsiPenilaian: 'Sebanyak 83% murid mengungkapkan refleksi mendalam mengenai perubahan kebiasaan konsumtif dan komitmen menabung secara teratur untuk keperluan masa depan.',
+        buktiKegiatan: 'Buku Jurnal Refleksi Keuangan Siswa Ummul Quro',
+      },
+    ];
+  }
+
+  // 7. SMAS YPHB: Sihana, S.Pd.Gr. (Penjasorkes)
+  if (name.includes('sihana')) {
+    return [
+      {
+        indikator: 'Guru berorientasi pada pengalaman belajar murid',
+        awal: '44%',
+        akhir: '88%',
+        selisih: '+44%',
+        makna: 'Transformasi pembelajaran olahraga dari instruksi drill fisik menjadi edukasi kebugaran personal.',
+        deskripsiPenilaian: 'Berdasarkan supervisi telaah perangkat (skor 90.9 / Sangat Baik) dan observasi lapangan (skor 91.7 / Sangat Baik), Bapak Sihana memfasilitasi murid merancang program kebugaran jasmani terukur sesuai kapasitas fisiologis masing-masing.',
+        buktiKegiatan: 'Modul Ajar Kebugaran Berkelanjutan, Lembar Monitoring Denyut Nadi Murid',
+      },
+      {
+        indikator: 'Murid aktif mengaplikasikan pengetahuan',
+        awal: '42%',
+        akhir: '90%',
+        selisih: '+48%',
+        makna: 'Murid aktif mempraktikkan sirkuit training dan mengukur denyut nadi pemulihan mandiri.',
+        deskripsiPenilaian: 'Peserta didik secara mandiri menghitung Target Heart Rate (THR), mencatat respons kardiovaskular pasca sirkuit training, dan saling memberi umpan balik teknik gerak yang aman.',
+        buktiKegiatan: 'Kartu Catatan Kebugaran Sirkuit, Rubrik Penilaian Penjasorkes Terukur',
+      },
+      {
+        indikator: 'Pembelajaran terhubung dengan konteks nyata',
+        awal: '55%',
+        akhir: '92%',
+        selisih: '+37%',
+        makna: 'Keterkaitan latihan jasmani dengan pencegahan penyakit degeneratif dan kesehatan mental.',
+        deskripsiPenilaian: 'Pembelajaran mengaitkan olahraga teratur dengan pencegahan obesitas remaja, perbaikan kualitas tidur, dan pelepasan hormon endorfin untuk mereduksi stres akademik di lingkungan SMAS YPHB.',
+        buktiKegiatan: 'Poster Kampanye Hidup Aktif Remaja YPHB, Riset Kecil Pola Tidur Siswa',
+      },
+      {
+        indikator: 'Murid melakukan refleksi',
+        awal: '30%',
+        akhir: '82%',
+        selisih: '+52%',
+        makna: 'Refleksi kesadaran tubuh (body awareness) dan komitmen pola hidup bugar sepanjang hayat.',
+        deskripsiPenilaian: 'Sebanyak 82% murid menuliskan refleksi mengenai sensasi kebugaran tubuh mereka, pola makan seimbang, dan rencana jadwal aktivitas fisik mandiri di luar jam sekolah.',
+        buktiKegiatan: 'Logbook Refleksi Kesehatan Jasmani Mingguan Siswa YPHB',
+      },
+    ];
+  }
+
+  // 8. SMAS YPHB: Siti Salma, S.Pd (Fisika)
+  if (name.includes('salma') || name.includes('siti')) {
+    return [
+      {
+        indikator: 'Guru berorientasi pada pengalaman belajar murid',
+        awal: '43%',
+        akhir: '90%',
+        selisih: '+47%',
+        makna: 'Transformasi dari hafalan rumus optik ke praktikum pembiasan cahaya kontekstual.',
+        deskripsiPenilaian: 'Berdasarkan telaah modul ajar (skor 95.5 / Sangat Baik) dan observasi kelas (skor 95.8 / Sangat Baik), Ibu Siti Salma memfasilitasi penyelidikan pembentukan bayangan optik menggunakan bangku optik dan sumber cahaya laser interaktif.',
+        buktiKegiatan: 'Modul Optika Geometri, Kit Praktikum Pembiasan & Lensa Cembung-Cekung',
+      },
+      {
+        indikator: 'Murid aktif mengaplikasikan pengetahuan',
+        awal: '41%',
+        akhir: '91%',
+        selisih: '+50%',
+        makna: 'Murid terampil mengukur jarak fokus dan menganalisis cacat mata miopi serta hipermetropi.',
+        deskripsiPenilaian: 'Peserta didik secara berkelompok menentukan jarak bayangan lensa cembung dan cekung, menggambar diagram sinar istimewa secara presisi, dan memverifikasi rumus pembuat lensa secara empiris.',
+        buktiKegiatan: 'Lembar Kerja Praktikum Optika, Diagram Pembentukan Bayangan Murid',
+      },
+      {
+        indikator: 'Pembelajaran terhubung dengan konteks nyata',
+        awal: '50%',
+        akhir: '91%',
+        selisih: '+41%',
+        makna: 'Keterkaitan lensa dengan kamera smartphone, kacamata koreksi, dan mikroskop.',
+        deskripsiPenilaian: 'Guru mengajak murid membongkar prinsip kerja modul multi-lensa pada kamera gawai dan cara lensa koreksi membantu murid penderita rabun jauh melihat tulisan di proyektor kelas dengan tajam.',
+        buktiKegiatan: 'Modul Analisis Lensa Kamera Ponsel Pintar, Panduan Cacat Mata',
+      },
+      {
+        indikator: 'Murid melakukan refleksi',
+        awal: '31%',
+        akhir: '85%',
+        selisih: '+54%',
+        makna: 'Refleksi atas pentingnya menjaga kesehatan indra penglihatan dari paparan layar gawai.',
+        deskripsiPenilaian: '85% murid merefleksikan cara kerja indra penglihatan dan merumuskan aturan jeda 20-20-20 untuk mengistirahatkan mata dari kelelahan akibat paparan layar gadget.',
+        buktiKegiatan: 'Jurnal Refleksi Optika & Kartu Edukasi Mata Sehat Siswa YPHB',
+      },
+    ];
+  }
+
+  // 9. SMAS RIMBA MADYA: Ivany Ratna Ekandini, S.Pd. (Bahasa Indonesia) [SB]
+  if (name.includes('ivany')) {
+    return [
+      {
+        indikator: 'Guru berorientasi pada pengalaman belajar murid',
+        awal: '48%',
+        akhir: '92%',
+        selisih: '+44%',
+        makna: 'Fasilitasi penulisan teks argumentasi kritis berbasis komik dan media visual.',
+        deskripsiPenilaian: 'Berdasarkan supervisi telaah perangkat (skor 95.5 / Sangat Baik) dan observasi tatap muka (skor 95.8 / Sangat Baik), Ibu Ivany berperan sebagai mentor literasi yang memandu murid membedah isu lingkungan Rimba Mulya Bogor menjadi teks eksposisi argumentatif yang tajam.',
+        buktiKegiatan: 'Modul Ajar Bahasa Indonesia Berbasis Proyek, Rubrik Penilaian Retorika & PUEBI',
+      },
+      {
+        indikator: 'Murid aktif mengaplikasikan pengetahuan',
+        awal: '45%',
+        akhir: '91%',
+        selisih: '+46%',
+        makna: 'Murid aktif memproduksi narasi eksposisi berbobot dan melakukan peer-review karya.',
+        deskripsiPenilaian: 'Murid secara aktif menyusun komik strip digital bertema lingkungan di Canva, mengkritisi argumen teman dengan etika santun, dan memajang karya di mading digital sekolah.',
+        buktiKegiatan: 'Antologi Komik Kritik Sosial Siswa Rimba Madya, Hasil Ulasan Sejawat',
+      },
+      {
+        indikator: 'Pembelajaran terhubung dengan konteks nyata',
+        awal: '58%',
+        akhir: '94%',
+        selisih: '+36%',
+        makna: 'Konteks konservasi alam Pasir Mulya Bogor dan etika berekspresi di ruang siber.',
+        deskripsiPenilaian: 'Pembelajaran mengangkat isu riil konservasi daerah aliran sungai dan hutan kota sekitar Pasir Mulya Bogor. Murid mendiskusikan bagaimana bahasa persuasif dapat menggerakkan aksi nyata penyelamatan lingkungan.',
+        buktiKegiatan: 'Naskah Esai Lingkungan Siswa, Lembar Analisis Berita Lingkungan Bogor',
+      },
+      {
+        indikator: 'Murid melakukan refleksi',
+        awal: '35%',
+        akhir: '87%',
+        selisih: '+52%',
+        makna: 'Refleksi atas kekuatan kata-kata dalam memantik perubahan positif di masyarakat.',
+        deskripsiPenilaian: 'Sebanyak 87% murid merefleksikan kekuatan argumen mereka dan menyadari pentingnya memvalidasi fakta sebelum menyebarkan opini di media sosial demi menghindari pencemaran nama baik.',
+        buktiKegiatan: 'Buku Refleksi Siswa Rimba Madya "Suara Rimba", Jurnal Literasi',
+      },
+    ];
+  }
+
+  // 10. SMAS RIMBA MADYA: Atik Dwi Larasati, S.Pd. (Ekonomi)
+  if (name.includes('atik')) {
+    return [
+      {
+        indikator: 'Guru berorientasi pada pengalaman belajar murid',
+        awal: '40%',
+        akhir: '85%',
+        selisih: '+45%',
+        makna: 'Pemberdayaan murid melalui rancangan proyek kewirausahaan ramah lingkungan.',
+        deskripsiPenilaian: 'Berdasarkan telaah modul (skor 88.6 / Baik) dan observasi tatap muka (skor 87.5 / Baik), Ibu Atik memfasilitasi murid merancang studi kelayakan bisnis kreatif berbasis daur ulang limbah sekolah.',
+        buktiKegiatan: 'Modul Manajemen Kewirausahaan, Format Proposal Business Plan Hijau',
+      },
+      {
+        indikator: 'Murid aktif mengaplikasikan pengetahuan',
+        awal: '42%',
+        akhir: '86%',
+        selisih: '+44%',
+        makna: 'Murid terampil menghitung BEP (Break-Even Point) dan strategi pemasaran produk.',
+        deskripsiPenilaian: 'Murid bekerja dalam tim menyusun prototype produk dari limbah daur ulang sekolah, menghitung biaya produksi dan harga jual rasional, serta menyimulasikan promosi di media sosial.',
+        buktiKegiatan: 'Lembar Kalkulasi BEP, Poster Promosi Produk Murid, Prototype Produk',
+      },
+      {
+        indikator: 'Pembelajaran terhubung dengan konteks nyata',
+        awal: '48%',
+        akhir: '88%',
+        selisih: '+40%',
+        makna: 'Relevansi potensi UMKM lokal Bogor dan ekonomi sirkular ramah lingkungan.',
+        deskripsiPenilaian: 'Guru mengaitkan materi dengan ekosistem UMKM kuliner dan kerajinan Kota Bogor, mendorong murid berpikir kreatif menciptakan peluang usaha mandiri yang berkelanjutan.',
+        buktiKegiatan: 'Laporan Riset Pasar UMKM Lokal Bogor, Analisis Peluang Usaha',
+      },
+      {
+        indikator: 'Murid melakukan refleksi',
+        awal: '30%',
+        akhir: '80%',
+        selisih: '+50%',
+        makna: 'Refleksi karakter wirausahawan tangguh, pantang menyerah, dan beretika.',
+        deskripsiPenilaian: '80% murid menuliskan refleksi tentang pentingnya ketelitian dalam perhitungan finansial dan integritas kejujuran saat berbisnis dengan konsumen.',
+        buktiKegiatan: 'Lembar Jurnal Refleksi Entrepreneur Muda Rimba Madya',
+      },
+    ];
+  }
+
+  // 11. SMAS PGRI 1: Iqbal Aziz Andrianto (Sejarah) [B]
+  if (name.includes('iqbal')) {
+    return [
+      {
+        indikator: 'Guru berorientasi pada pengalaman belajar murid',
+        awal: '40%',
+        akhir: '81%',
+        selisih: '+41%',
+        makna: 'Peningkatan peran guru dalam memandu diskusi investigasi sejarah perlawanan bangsa.',
+        deskripsiPenilaian: 'Berdasarkan telaah modul (skor 84.1 / Baik) dan observasi tatap muka (skor 83.3 / Baik), Bapak Iqbal menunjukkan kemajuan positif dalam mengurangi metode ceramah satu arah. Guru memandu murid menelusuri rute perlawanan rakyat terhadap kolonialisme melalui peta interaktif.',
+        buktiKegiatan: 'Modul Ajar Sejarah Kolonialisme, Lembar Telaah Pengawas No. 4 & 16',
+      },
+      {
+        indikator: 'Murid aktif mengaplikasikan pengetahuan',
+        awal: '38%',
+        akhir: '80%',
+        selisih: '+42%',
+        makna: 'Keaktifan kelompok murid dalam memetakan strategi perlawanan Diponegoro dan Padri.',
+        deskripsiPenilaian: 'Murid bekerja sama menyusun peta tematik pertempuran, menganalisis faktor penyebab kegagalan perjuangan sebelum abad ke-20 akibat persenjataan dan politik adu domba, serta mempresentasikan kesimpulan kelompok.',
+        buktiKegiatan: 'Peta Tematik Perjuangan Rakyat Nusantara, Resume Diskusi Kelompok',
+      },
+      {
+        indikator: 'Pembelajaran terhubung dengan konteks nyata',
+        awal: '45%',
+        akhir: '82%',
+        selisih: '+37%',
+        makna: 'Menghubungkan nilai perjuangan dengan tantangan persatuan pemuda era digital.',
+        deskripsiPenilaian: 'Guru mengaitkan taktik devide et impera kolonial dengan bahaya ujaran kebencian di era medsos, memantik komitmen murid untuk selalu memverifikasi informasi dan menjaga persaudaraan antarpelajar.',
+        buktiKegiatan: 'Bahan Tayang Diskusi "Belajar dari Sejarah untuk Masa Kini", Kliping Isu',
+      },
+      {
+        indikator: 'Murid melakukan refleksi',
+        awal: '28%',
+        akhir: '76%',
+        selisih: '+48%',
+        makna: 'Refleksi penanaman jiwa patriotisme dan persatuan di kalangan pelajar PGRI 1.',
+        deskripsiPenilaian: 'Sebanyak 76% murid menyampaikan refleksi tertulis mengenai pentingnya menghargai jasa para pahlawan dan menjauhi perselisihan antarpelajar di Kota Bogor.',
+        buktiKegiatan: 'Lembar Refleksi Diri Pembelajaran Sejarah SMAS PGRI 1',
+      },
+    ];
+  }
+
+  // 12. SMAS BHAKTI INSANI: Widya Anjani, S.Pd. (Ekonomi) [B]
+  if (name.includes('widya')) {
+    return [
+      {
+        indikator: 'Guru berorientasi pada pengalaman belajar murid',
+        awal: '41%',
+        akhir: '84%',
+        selisih: '+43%',
+        makna: 'Fasilitasi simulasi transaksi perbankan dan sistem pembayaran digital nontunai.',
+        deskripsiPenilaian: 'Berdasarkan telaah modul (skor 86.4 / Baik) dan observasi tatap muka (skor 87.5 / Baik), Ibu Widya memandu peserta didik memahami sistem moneter melalui simulasi pembayaran non-tunai modern.',
+        buktiKegiatan: 'Modul Sistem Pembayaran & Bank Sentral, Panduan Simulasi QRIS',
+      },
+      {
+        indikator: 'Murid aktif mengaplikasikan pengetahuan',
+        awal: '40%',
+        akhir: '85%',
+        selisih: '+45%',
+        makna: 'Murid aktif mempraktikkan alur transaksi QRIS dan menganalisis keamanan dompet digital.',
+        deskripsiPenilaian: 'Peserta didik secara aktif melakukan role-play transaksi merchant dan konsumen, menganalisis potensi risiko kebocoran data PIN, serta merumuskan tips bertransaksi aman.',
+        buktiKegiatan: 'Lembar Simulasi Transaksi Keuangan Digital, Rubrik Evaluasi Role-Play',
+      },
+      {
+        indikator: 'Pembelajaran terhubung dengan konteks nyata',
+        awal: '48%',
+        akhir: '87%',
+        selisih: '+39%',
+        makna: 'Penerapan dompet digital (e-wallet) dan literasi keamanan siber perbankan murid.',
+        deskripsiPenilaian: 'Materi terhubung langsung dengan kebiasaan murid SMAS Bhakti Insani bertransaksi menggunakan uang elektronik saat jajan di kantin dan membeli buku pelajaran.',
+        buktiKegiatan: 'Kuesioner Penggunaan E-Wallet Siswa, Analisis Kasus Kejahatan Phishing',
+      },
+      {
+        indikator: 'Murid melakukan refleksi',
+        awal: '29%',
+        akhir: '78%',
+        selisih: '+49%',
+        makna: 'Refleksi kesadaran proteksi data pribadi dan kehati-hatian finansial di era digital.',
+        deskripsiPenilaian: '78% murid menuliskan refleksi mengenai pentingnya menjaga kerahasiaan kode OTP dan menahan diri dari gaya hidup konsumtif hanya karena kemudahan transaksi digital.',
+        buktiKegiatan: 'Catatan Refleksi Keuangan Digital Siswa Bhakti Insani',
+      },
+    ];
+  }
+
+  // 13. SMAS YASIH: Yazid Ali Hamdi (PKn)
+  if (name.includes('yazid')) {
+    return [
+      {
+        indikator: 'Guru berorientasi pada pengalaman belajar murid',
+        awal: '42%',
+        akhir: '85%',
+        selisih: '+43%',
+        makna: 'Pergeseran dari ceramah pasal konstitusi menjadi studi kasus penegakan HAM kontekstual.',
+        deskripsiPenilaian: 'Berdasarkan telaah modul ajar (skor 86.4 / Baik) dan observasi kelas (skor 87.5 / Baik), Bapak Yazid memfasilitasi dialog konstruktif mengenai perlindungan hak asasi manusia dalam bingkai Pancasila.',
+        buktiKegiatan: 'Modul Ajar HAM dan Demokrasi Pancasila, Rubrik Debat Hukum Konstitusional',
+      },
+      {
+        indikator: 'Murid aktif mengaplikasikan pengetahuan',
+        awal: '39%',
+        akhir: '84%',
+        selisih: '+45%',
+        makna: 'Murid aktif bersimulasi mediasi sengketa dan merumuskan solusi atas perundungan.',
+        deskripsiPenilaian: 'Peserta didik secara aktif menjalankan simulasi sidang mediasi kasus perundungan siber (cyberbullying), menyusun kesepakatan damai, dan mengidentifikasi pelanggaran hak martabat manusia.',
+        buktiKegiatan: 'Notulensi Sidang Mediasi Simulasi Siswa, Naskah Kesepakatan Damai',
+      },
+      {
+        indikator: 'Pembelajaran terhubung dengan konteks nyata',
+        awal: '47%',
+        akhir: '86%',
+        selisih: '+39%',
+        makna: 'Pencegahan perundungan di lingkungan sekolah dan pemenuhan hak belajar yang aman.',
+        deskripsiPenilaian: 'Pembelajaran mengaitkan pasal HAM dengan deklarasi sekolah ramah anak di SMAS Yasih, menanamkan kesadaran menghargai perbedaan latar belakang antarwarga sekolah.',
+        buktiKegiatan: 'Piagam Komitmen Anti-Bullying Kelas X SMAS Yasih',
+      },
+      {
+        indikator: 'Murid melakukan refleksi',
+        awal: '30%',
+        akhir: '79%',
+        selisih: '+49%',
+        makna: 'Refleksi penghormatan atas hak orang lain dan tanggung jawab menegakkan keadilan.',
+        deskripsiPenilaian: 'Sebanyak 79% murid menuangkan refleksi personal mengenai komitmen mereka untuk menjadi pembela teman yang diperlakukan tidak adil dan tidak menjadi pelaku perundungan.',
+        buktiKegiatan: 'Lembar Refleksi Hati Nurani Siswa SMAS Yasih',
+      },
+    ];
+  }
+
+  // 14. SMAS MUHAMMADIYAH: Lutfiana Faridh Fadillah (Kimia) [C]
+  if (name.includes('lutfiana')) {
+    return [
+      {
+        indikator: 'Guru berorientasi pada pengalaman belajar murid',
+        awal: '30%',
+        akhir: '68%',
+        selisih: '+38%',
+        makna: 'Awal pergeseran dari pembelajaran teoretis ke praktikum sederhana indikator asam basa.',
+        deskripsiPenilaian: 'Berdasarkan supervisi telaah perangkat (skor 75.0 / Cukup) dan observasi tatap muka (skor 75.0 / Cukup), guru mulai mencoba metode eksperimen bahan alam dengan ekstrak kunyit dan kol ungu. Melalui coaching intensif pengawas, guru mulai melatih teknik scaffolding untuk memfasilitasi kelompok murid yang pasif.',
+        buktiKegiatan: 'Modul Ajar Asam Basa Revisi, Lembar Observasi Pengawas No. 8-12',
+      },
+      {
+        indikator: 'Murid aktif mengaplikasikan pengetahuan',
+        awal: '32%',
+        akhir: '70%',
+        selisih: '+38%',
+        makna: 'Peningkatan antusiasme murid dalam menguji pH bahan kimia rumah tangga.',
+        deskripsiPenilaian: 'Murid yang sebelumnya pasif mulai menunjukkan ketertarikan meneteskan larutan cuka, sabun, dan jeruk nipis ke plat tetes, mengamati spektrum perubahan warna dan mencatat derajat keasaman larutan.',
+        buktiKegiatan: 'Lembar Kerja Siswa Pengujian pH Alami, Dokumentasi Plat Tetes',
+      },
+      {
+        indikator: 'Pembelajaran terhubung dengan konteks nyata',
+        awal: '35%',
+        akhir: '72%',
+        selisih: '+37%',
+        makna: 'Keterkaitan sifat asam basa dengan netralisasi maag dan dampak limbah sabun.',
+        deskripsiPenilaian: 'Guru menghubungkan reaksi netralisasi dengan mekanisme kerja obat maag di lambung dan bahaya buangan limbah detergen bagi kehidupan ekosistem selokan sekitar sekolah.',
+        buktiKegiatan: 'Bahan Ajar Apersepsi Kontekstual Bahan Kimia Rumah Tangga',
+      },
+      {
+        indikator: 'Murid melakukan refleksi',
+        awal: '25%',
+        akhir: '65%',
+        selisih: '+40%',
+        makna: 'Awal pembiasaan refleksi pemahaman konsep di akhir jam praktikum kimia.',
+        deskripsiPenilaian: 'Dengan dorongan pengawas, guru menyisihkan 8 menit di akhir kelas untuk meminta murid menuliskan hal apa yang paling menarik dari praktikum dan apa yang masih sulit dipahami.',
+        buktiKegiatan: 'Kertas Refleksi Singkat Akhir Praktikum Siswa Muhammadiyah',
+      },
+    ];
+  }
+
+  // 15. SMAS ANANDA: Saulina Siregar, S.Sos (Ekonomi) [B]
+  if (name.includes('saulina')) {
+    return [
+      {
+        indikator: 'Guru berorientasi pada pengalaman belajar murid',
+        awal: '41%',
+        akhir: '84%',
+        selisih: '+43%',
+        makna: 'Peningkatan fasilitasi analisis struktur pasar dan perilaku produsen-konsumen.',
+        deskripsiPenilaian: 'Berdasarkan supervisi telaah modul (skor 84.1 / Baik) dan observasi tatap muka (skor 83.3 / Baik), Ibu Saulina mengarahkan murid menganalisis struktur pasar monopoli dan oligopoli melalui bedah kasus industri nasional.',
+        buktiKegiatan: 'Modul Struktur Pasar, Lembar Kerja Bedah Industri Nasional',
+      },
+      {
+        indikator: 'Murid aktif mengaplikasikan pengetahuan',
+        awal: '39%',
+        akhir: '83%',
+        selisih: '+44%',
+        makna: 'Murid aktif membedah kelebihan dan kekurangan penetapan tarif monopoli negara.',
+        deskripsiPenilaian: 'Murid bekerja dalam kelompok menganalisis peran BUMN seperti PLN dan PT KAI dalam mengelola hajat hidup orang banyak serta mendiskusikan perlindungan hak konsumen.',
+        buktiKegiatan: 'Laporan Diskusi Kelompok Peran BUMN & KPPU, Peta Analisis Pasar',
+      },
+      {
+        indikator: 'Pembelajaran terhubung dengan konteks nyata',
+        awal: '46%',
+        akhir: '85%',
+        selisih: '+39%',
+        makna: 'Relevansi harga tiket transportasi dan tarif listrik dengan pengeluaran keluarga.',
+        deskripsiPenilaian: 'Materi dikaitkan dengan penyesuaian tarif KRL Jabodetabek rute Bogor-Jakarta dan tagihan listrik rumah tangga, memberikan gambaran nyata fungsi subsidi pemerintah.',
+        buktiKegiatan: 'Kliping Berita Penyesuaian Tarif KRL & Lembar Analisis Subsidi',
+      },
+      {
+        indikator: 'Murid melakukan refleksi',
+        awal: '28%',
+        akhir: '77%',
+        selisih: '+49%',
+        makna: 'Refleksi kepedulian sosial terhadap efisiensi ekonomi dan keadilan akses layanan publik.',
+        deskripsiPenilaian: 'Sebanyak 77% murid merefleksikan pentingnya keadilan sosial bagi seluruh rakyat Indonesia dalam pemanfaatan sumber daya alam strategis.',
+        buktiKegiatan: 'Jurnal Refleksi Keadilan Ekonomi Siswa SMAS Ananda',
+      },
+    ];
+  }
+
+  // Fallback generik dinamis yang tetap menyelaraskan mata pelajaran dan nama guru
+  const sName = schoolName || 'Sekolah';
+  const sub = subject || 'Mata Pelajaran';
+  return [
+    {
+      indikator: 'Guru berorientasi pada pengalaman belajar murid',
+      awal: '45%',
+      akhir: '85%',
+      selisih: '+40%',
+      makna: `Transformasi pembelajaran ${sub} berpusat pada murid melalui metode aktif dan inkuiri.`,
+      deskripsiPenilaian: `Berdasarkan evaluasi supervisi pengawas di ${sName}, ${teacherName} berhasil memfasilitasi murid bereksplorasi secara aktif pada materi ${sub}, beralih dari ceramah klasikal ke pendampingan belajar bermakna.`,
+      buktiKegiatan: `Modul Ajar ${sub}, Lembar Observasi Pengawas`,
+    },
+    {
+      indikator: 'Murid aktif mengaplikasikan pengetahuan',
+      awal: '42%',
+      akhir: '88%',
+      selisih: '+46%',
+      makna: `Peningkatan keaktifan murid dalam menyelesaikan tugas unjuk kerja kolaboratif ${sub}.`,
+      deskripsiPenilaian: `Peserta didik aktif berkolaborasi dalam kelompok memecahkan persoalan ${sub}, mempresentasikan temuan, dan berdiskusi secara kritis di ruang kelas.`,
+      buktiKegiatan: `LKPD Kolaboratif Siswa, Portofolio Tugas Pembelajaran`,
+    },
+    {
+      indikator: 'Pembelajaran terhubung dengan konteks nyata',
+      awal: '50%',
+      akhir: '88%',
+      selisih: '+38%',
+      makna: `Keterhubungan konsep materi ${sub} dengan fenomena kehidupan sehari-hari peserta didik.`,
+      deskripsiPenilaian: `Guru secara kontekstual menghubungkan materi ajar ${sub} dengan realitas kehidupan murid di lingkungan ${sName}, meningkatkan minat dan pemahaman bermakna.`,
+      buktiKegiatan: `Bahan Ajar Studi Kasus Nyata, Lembar Diskusi Kontekstual`,
+    },
+    {
+      indikator: 'Murid melakukan refleksi',
+      awal: '32%',
+      akhir: '80%',
+      selisih: '+48%',
+      makna: `Pembiasaan refleksi metakognitif terstruktur di akhir pembelajaran ${sub}.`,
+      deskripsiPenilaian: `Murid secara konsisten dibimbing melakukan evaluasi diri dan menuliskan pemaknaan pembelajaran pada akhir sesi pertemuan kelas.`,
+      buktiKegiatan: `Lembar Refleksi Diri Siswa, Hasil Uji Angket Suara Murid`,
+    },
+  ];
+}
 
 /**
  * Creates empty or default template SambungData for any new teacher
@@ -219,7 +914,7 @@ export function createDefaultSambungForTeacher(
           setelahSambung: DEFAULT_MATRIKS_AFTER.refleksiMurid,
         },
       ],
-      dataDampak: DEFAULT_DATA_DAMPAK.map(d => ({ ...d })),
+      dataDampak: getTeacherDescriptiveDataDampak(teacherName, subject, schoolName),
     },
     gerakkan: {
       tindakLanjut: [
@@ -456,7 +1151,7 @@ export const SEED_SAMBUNG_DEWI: SambungData = {
         buktiKode: 'BKT-04 (Rekap Tanggapan Google Form)',
       },
     ],
-    dataDampak: DEFAULT_DATA_DAMPAK.map(d => ({ ...d })),
+    dataDampak: getTeacherDescriptiveDataDampak('Sondang Asih Januarti, S.Pd.', 'Fisika', 'SMAN 4 Bogor'),
   },
   gerakkan: {
     tindakLanjut: [
@@ -700,7 +1395,7 @@ export const SEED_SAMBUNG_AHMAD: SambungData = {
         buktiKode: 'BKT-IND-04 (Buku Refleksi Siswa)',
       },
     ],
-    dataDampak: DEFAULT_DATA_DAMPAK.map(d => ({ ...d })),
+    dataDampak: getTeacherDescriptiveDataDampak('Ivany Ratna Ekandini, S.Pd.', 'Bahasa Indonesia', 'SMAS Rimba Madya'),
   },
   gerakkan: {
     tindakLanjut: [
@@ -929,7 +1624,7 @@ export const SEED_SAMBUNG_SITI: SambungData = {
         buktiKode: 'BKT-MAT-04 (Papan Refleksi Jamboard)',
       },
     ],
-    dataDampak: DEFAULT_DATA_DAMPAK.map(d => ({ ...d })),
+    dataDampak: getTeacherDescriptiveDataDampak('Siti Salma, S.Pd', 'Fisika', 'SMAS YPHB'),
   },
   gerakkan: {
     tindakLanjut: [

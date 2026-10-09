@@ -4,7 +4,8 @@ import {
   createDefaultSambungForTeacher, 
   DEFAULT_DATA_DAMPAK,
   DEFAULT_MATRIKS_BEFORE,
-  DEFAULT_MATRIKS_AFTER
+  DEFAULT_MATRIKS_AFTER,
+  getTeacherDescriptiveDataDampak
 } from '../data/sambungSeed';
 import { saveSupervision } from '../services/firebase';
 import { SambungPrintModal } from './SambungPrintModal';
@@ -170,7 +171,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
           ],
         };
 
-        // Ensure dataDampak has the 4 standard indicators if not yet set or outdated
+        // Ensure dataDampak has the 4 standard indicators with teacher-specific descriptive assessment data
         if (
           !cloned.nyatakan ||
           !cloned.nyatakan.dataDampak ||
@@ -179,7 +180,36 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
         ) {
           cloned.nyatakan = {
             ...cloned.nyatakan,
-            dataDampak: DEFAULT_DATA_DAMPAK.map(d => ({ ...d })),
+            dataDampak: getTeacherDescriptiveDataDampak(
+              currentSupervision.teacherName,
+              currentSupervision.subject,
+              currentSupervision.schoolName,
+              currentSupervision.lessonTitle,
+              currentSupervision.perangkatAjar?.telaahSummary?.predicate,
+              currentSupervision.observasiKelas?.predicate
+            ),
+          };
+        } else {
+          // If dataDampak exists but lacks deskripsiPenilaian, merge teacher-specific descriptive data
+          const teacherSpecific = getTeacherDescriptiveDataDampak(
+            currentSupervision.teacherName,
+            currentSupervision.subject,
+            currentSupervision.schoolName,
+            currentSupervision.lessonTitle,
+            currentSupervision.perangkatAjar?.telaahSummary?.predicate,
+            currentSupervision.observasiKelas?.predicate
+          );
+          cloned.nyatakan = {
+            ...cloned.nyatakan,
+            dataDampak: cloned.nyatakan.dataDampak.map((item, idx) => {
+              const match = teacherSpecific[idx] || teacherSpecific.find(t => t.indikator === item.indikator);
+              return {
+                ...item,
+                deskripsiPenilaian: item.deskripsiPenilaian || match?.deskripsiPenilaian,
+                buktiKegiatan: item.buktiKegiatan || match?.buktiKegiatan,
+                selisih: item.selisih || match?.selisih,
+              };
+            }),
           };
         }
         setSambungDraft(cloned);
@@ -3513,124 +3543,262 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
             </div>
 
             {/* 2. Data Dampak Table (Sesuai File / Gambar yang Diunggah) */}
-            <div className="space-y-3 pt-2">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+            <div className="space-y-4 pt-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-slate-50 via-indigo-50/50 to-slate-50 p-4 rounded-2xl border border-indigo-100">
                 <div>
-                  <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-emerald-600" />
+                  <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-800 text-[10px] font-extrabold uppercase tracking-wider mb-1">
+                    <TrendingUp className="w-3 h-3 text-indigo-600" />
+                    <span>Terhubung Hasil Supervisi Pengawas</span>
+                  </div>
+                  <h4 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
                     <span>2. Data Dampak Pembelajaran Murid (Indikator Kuantitatif &amp; Makna)</span>
                   </h4>
-                  <p className="text-[11px] text-slate-500">
-                    Tabel rekapitulasi data awal vs setelah SAMBUNG beserta makna perubahannya.
+                  <p className="text-xs text-slate-600 mt-0.5">
+                    Informasi deskriptif dan capaian kuantitatif untuk <strong>{currentSupervision.teacherName}</strong> ({currentSupervision.subject} &bull; {currentSupervision.schoolName}) yang diselaraskan dengan hasil telaah perangkat dan observasi kelas.
                   </p>
+                  
+                  {/* Status Penilaian Guru Badge */}
+                  <div className="flex flex-wrap items-center gap-2 mt-2 text-[11px]">
+                    <span className="px-2.5 py-0.5 rounded-lg bg-white border border-slate-200 text-slate-700 font-bold shadow-2xs">
+                      Materi: <strong className="text-indigo-900">{currentSupervision.lessonTitle || 'Materi Pokok Pembelajaran'}</strong>
+                    </span>
+                    <span className="px-2.5 py-0.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold">
+                      Skor Telaah Modul: <strong>{currentSupervision.perangkatAjar?.telaahSummary?.finalScore ?? '-'}/100</strong> ({currentSupervision.perangkatAjar?.telaahSummary?.predicate || 'Belum Dinilai'})
+                    </span>
+                    <span className="px-2.5 py-0.5 rounded-lg bg-teal-50 border border-teal-200 text-teal-800 font-bold">
+                      Skor Observasi Kelas: <strong>{currentSupervision.observasiKelas?.score ?? '-'}/100</strong> ({currentSupervision.observasiKelas?.predicate || 'Belum Diobservasi'})
+                    </span>
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSambungDraft({
-                      ...sambungDraft,
-                      nyatakan: {
-                        ...sambungDraft.nyatakan,
-                        dataDampak: DEFAULT_DATA_DAMPAK.map(d => ({ ...d })),
-                      },
-                    });
-                    setSaveToast('Indikator standar data dampak berhasil dipulihkan!');
-                    setTimeout(() => setSaveToast(null), 3000);
-                  }}
-                  className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 underline text-left sm:text-right"
-                >
-                  Pulihkan 4 Indikator Standar
-                </button>
+
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const updated = getTeacherDescriptiveDataDampak(
+                        currentSupervision.teacherName,
+                        currentSupervision.subject,
+                        currentSupervision.schoolName,
+                        currentSupervision.lessonTitle,
+                        currentSupervision.perangkatAjar?.telaahSummary?.predicate,
+                        currentSupervision.observasiKelas?.predicate
+                      );
+                      setSambungDraft({
+                        ...sambungDraft,
+                        nyatakan: {
+                          ...sambungDraft.nyatakan,
+                          dataDampak: updated,
+                        },
+                      });
+                      setSaveToast(`Informasi deskriptif berhasil diselaraskan dengan penilaian ${currentSupervision.teacherName}!`);
+                      setTimeout(() => setSaveToast(null), 3000);
+                    }}
+                    className="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Sinkronkan Deskripsi Sesuai Penilaian Guru</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSambungDraft({
+                        ...sambungDraft,
+                        nyatakan: {
+                          ...sambungDraft.nyatakan,
+                          dataDampak: DEFAULT_DATA_DAMPAK.map(d => ({ ...d })),
+                        },
+                      });
+                      setSaveToast('Indikator standar data dampak berhasil dipulihkan!');
+                      setTimeout(() => setSaveToast(null), 3000);
+                    }}
+                    className="px-2.5 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 font-semibold text-xs text-center transition-colors cursor-pointer"
+                  >
+                    Pulihkan Standar
+                  </button>
+                </div>
               </div>
 
-              {/* TABEL DATA DAMPAK SESUAI FORMAT GAMBAR (IMAGE.PNG) */}
+              {/* TABEL DATA DAMPAK DENGAN INFORMASI DESKRIPTIF PENILAIAN */}
               <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-xs">
-                <table className="w-full text-xs border-collapse">
+                <table className="w-full text-xs border-collapse min-w-[850px]">
                   <thead>
-                    <tr className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
-                      <th className="py-3 px-4 text-left font-bold text-slate-800 text-xs">Indikator</th>
-                      <th className="py-3 px-4 text-center w-36 font-bold text-slate-800 text-xs">Awal</th>
-                      <th className="py-3 px-4 text-center w-44 font-bold text-slate-800 text-xs">Setelah SAMBUNG</th>
-                      <th className="py-3 px-4 text-left font-bold text-slate-800 text-xs">Makna</th>
+                    <tr className="bg-slate-100/80 text-slate-800 font-bold border-b border-slate-200 text-xs">
+                      <th className="py-3 px-4 text-left w-64">Indikator &amp; Bukti Kegiatan</th>
+                      <th className="py-3 px-3 text-center w-28">Kondisi Awal</th>
+                      <th className="py-3 px-3 text-center w-36">Setelah SAMBUNG</th>
+                      <th className="py-3 px-4 text-left">Makna &amp; Uraian Deskriptif Hasil Penilaian Pengawas</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {sambungDraft.nyatakan.dataDampak.map((row, idx) => (
-                      <tr key={idx} className="hover:bg-slate-50/60 transition-colors">
-                        <td className="py-3.5 px-4 font-bold text-slate-900 align-middle">
-                          <input
-                            type="text"
-                            value={row.indikator}
-                            onChange={(e) => {
-                              const list = [...sambungDraft.nyatakan.dataDampak];
-                              list[idx].indikator = e.target.value;
-                              setSambungDraft({
-                                ...sambungDraft,
-                                nyatakan: { ...sambungDraft.nyatakan, dataDampak: list },
-                              });
-                            }}
-                            className="w-full px-2 py-1 rounded-lg border border-transparent hover:border-slate-300 focus:border-indigo-600 focus:outline-hidden text-xs bg-transparent font-bold text-slate-800"
-                          />
-                        </td>
-                        <td className="py-3.5 px-4 text-center align-middle">
-                          <div className="inline-block px-4 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs shadow-2xs">
-                            <input
-                              type="text"
-                              value={row.awal}
-                              onChange={(e) => {
-                                const list = [...sambungDraft.nyatakan.dataDampak];
-                                list[idx].awal = e.target.value;
-                                setSambungDraft({
-                                  ...sambungDraft,
-                                  nyatakan: { ...sambungDraft.nyatakan, dataDampak: list },
-                                });
-                              }}
-                              className="w-14 text-center font-bold text-slate-800 focus:outline-none bg-transparent"
-                            />
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-4 text-center align-middle">
-                          <div className="inline-block px-4 py-1.5 rounded-xl border border-emerald-300 bg-emerald-50/60 font-bold text-emerald-700 text-xs shadow-2xs">
-                            <input
-                              type="text"
-                              value={row.akhir}
-                              onChange={(e) => {
-                                const list = [...sambungDraft.nyatakan.dataDampak];
-                                list[idx].akhir = e.target.value;
-                                setSambungDraft({
-                                  ...sambungDraft,
-                                  nyatakan: { ...sambungDraft.nyatakan, dataDampak: list },
-                                });
-                              }}
-                              className="w-14 text-center font-bold text-emerald-700 focus:outline-none bg-transparent"
-                            />
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-4 align-middle">
-                          <div className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs text-slate-700">
-                            <input
-                              type="text"
-                              value={row.makna || ''}
-                              onChange={(e) => {
-                                const list = [...sambungDraft.nyatakan.dataDampak];
-                                list[idx].makna = e.target.value;
-                                setSambungDraft({
-                                  ...sambungDraft,
-                                  nyatakan: { ...sambungDraft.nyatakan, dataDampak: list },
-                                });
-                              }}
-                              placeholder="Makna perubahan..."
-                              className="w-full text-xs text-slate-700 focus:outline-none bg-transparent"
-                            />
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                    {sambungDraft.nyatakan.dataDampak.map((row, idx) => {
+                      const valAwal = parseFloat((row.awal || '').replace(/[^0-9.]/g, '')) || 0;
+                      const valAkhir = parseFloat((row.akhir || '').replace(/[^0-9.]/g, '')) || 0;
+                      const delta = valAkhir - valAwal;
+
+                      const dimensionLabels = [
+                        'Dimensi Orientasi & Pengalaman Belajar',
+                        'Dimensi Kemandirian & Pengaplikasian HOTS',
+                        'Dimensi Relevansi Konteks Kehidupan Riil',
+                        'Dimensi Metakognisi & Rutinitas Refleksi'
+                      ];
+
+                      return (
+                        <tr key={idx} className="hover:bg-slate-50/60 transition-colors align-top">
+                          {/* Indikator & Bukti Kegiatan */}
+                          <td className="py-4 px-4 bg-slate-50/40 border-r border-slate-100">
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <span className="w-5 h-5 rounded-md bg-indigo-100 text-indigo-700 text-xs font-black flex items-center justify-center shrink-0">
+                                  {idx + 1}
+                                </span>
+                                <input
+                                  type="text"
+                                  value={row.indikator}
+                                  onChange={(e) => {
+                                    const list = [...sambungDraft.nyatakan.dataDampak];
+                                    list[idx].indikator = e.target.value;
+                                    setSambungDraft({
+                                      ...sambungDraft,
+                                      nyatakan: { ...sambungDraft.nyatakan, dataDampak: list },
+                                    });
+                                  }}
+                                  className="w-full px-2 py-1 rounded-lg border border-transparent hover:border-slate-300 focus:border-indigo-600 focus:bg-white focus:outline-hidden text-xs bg-transparent font-extrabold text-slate-900 leading-snug"
+                                />
+                              </div>
+
+                              <span className="inline-block text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200/60">
+                                {dimensionLabels[idx] || 'Dimensi Mutu Pembelajaran'}
+                              </span>
+
+                              {/* Bukti Dokumen/Kegiatan Input */}
+                              <div className="pt-1">
+                                <span className="text-[10px] font-semibold text-slate-500 block mb-0.5">
+                                  Bukti Pendukung / Artefak:
+                                </span>
+                                <input
+                                  type="text"
+                                  value={row.buktiKegiatan || ''}
+                                  placeholder="Contoh: Modul Ajar, Foto PhET, Lembar Refleksi U2..."
+                                  onChange={(e) => {
+                                    const list = [...sambungDraft.nyatakan.dataDampak];
+                                    list[idx].buktiKegiatan = e.target.value;
+                                    setSambungDraft({
+                                      ...sambungDraft,
+                                      nyatakan: { ...sambungDraft.nyatakan, dataDampak: list },
+                                    });
+                                  }}
+                                  className="w-full px-2 py-1 text-[11px] text-slate-700 bg-white border border-slate-200 rounded-lg focus:border-indigo-500 focus:outline-none"
+                                />
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Kondisi Awal */}
+                          <td className="py-4 px-3 text-center">
+                            <div className="space-y-1">
+                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                                Sebelum
+                              </span>
+                              <div className="inline-block px-3 py-1.5 rounded-xl border border-slate-200 bg-white font-extrabold text-slate-800 text-xs shadow-2xs">
+                                <input
+                                  type="text"
+                                  value={row.awal}
+                                  onChange={(e) => {
+                                    const list = [...sambungDraft.nyatakan.dataDampak];
+                                    list[idx].awal = e.target.value;
+                                    setSambungDraft({
+                                      ...sambungDraft,
+                                      nyatakan: { ...sambungDraft.nyatakan, dataDampak: list },
+                                    });
+                                  }}
+                                  className="w-12 text-center font-black text-slate-800 focus:outline-none bg-transparent"
+                                />
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Setelah SAMBUNG */}
+                          <td className="py-4 px-3 text-center">
+                            <div className="space-y-1">
+                              <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">
+                                Sesudah
+                              </span>
+                              <div className="inline-block px-3 py-1.5 rounded-xl border border-emerald-300 bg-emerald-50/80 font-extrabold text-emerald-800 text-xs shadow-2xs">
+                                <input
+                                  type="text"
+                                  value={row.akhir}
+                                  onChange={(e) => {
+                                    const list = [...sambungDraft.nyatakan.dataDampak];
+                                    list[idx].akhir = e.target.value;
+                                    setSambungDraft({
+                                      ...sambungDraft,
+                                      nyatakan: { ...sambungDraft.nyatakan, dataDampak: list },
+                                    });
+                                  }}
+                                  className="w-12 text-center font-black text-emerald-800 focus:outline-none bg-transparent"
+                                />
+                              </div>
+                              <span className="inline-block px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-black border border-emerald-200 mt-0.5">
+                                +{delta}%
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* Makna & Uraian Deskriptif Hasil Penilaian Pengawas */}
+                          <td className="py-4 px-4 space-y-2">
+                            {/* Ringkasan Makna */}
+                            <div>
+                              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide block mb-1">
+                                Ringkasan Makna Perubahan:
+                              </span>
+                              <div className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs text-slate-800 shadow-2xs">
+                                <input
+                                  type="text"
+                                  value={row.makna || ''}
+                                  onChange={(e) => {
+                                    const list = [...sambungDraft.nyatakan.dataDampak];
+                                    list[idx].makna = e.target.value;
+                                    setSambungDraft({
+                                      ...sambungDraft,
+                                      nyatakan: { ...sambungDraft.nyatakan, dataDampak: list },
+                                    });
+                                  }}
+                                  placeholder="Ringkasan makna perubahan singkat..."
+                                  className="w-full text-xs font-semibold text-slate-800 focus:outline-none bg-transparent"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Uraian Deskriptif Spesifik Berdasarkan Penilaian Guru */}
+                            <div>
+                              <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-wide block mb-1">
+                                Uraian Deskriptif Hasil Penilaian Supervisi ({currentSupervision.teacherName}):
+                              </span>
+                              <textarea
+                                value={row.deskripsiPenilaian || ''}
+                                rows={3}
+                                onChange={(e) => {
+                                  const list = [...sambungDraft.nyatakan.dataDampak];
+                                  list[idx].deskripsiPenilaian = e.target.value;
+                                  setSambungDraft({
+                                    ...sambungDraft,
+                                    nyatakan: { ...sambungDraft.nyatakan, dataDampak: list },
+                                  });
+                                }}
+                                placeholder={`Tuliskan uraian deskriptif bagaimana ${currentSupervision.teacherName} bertransformasi pada indikator ini sesuai hasil supervisi telaah modul dan observasi kelas...`}
+                                className="w-full text-xs text-slate-800 bg-indigo-50/40 border border-indigo-200/80 rounded-xl p-2.5 focus:border-indigo-600 focus:bg-white focus:outline-none transition-all resize-y leading-relaxed"
+                              />
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
               <p className="text-[11px] text-slate-400 italic mt-1">
-                *Tabel di atas mengadaptasi format indikator dampak dan proporsi keberhasilan implementasi Siklus SAMBUNG.
+                *Data deskriptif di atas terhubung langsung dengan penilaian telaah modul ajar dan observasi tatap muka pengawas sekolah untuk {currentSupervision.teacherName}.
               </p>
             </div>
           </div>

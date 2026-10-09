@@ -290,6 +290,8 @@ export interface SambungDataDampakItem {
   selisih?: string;
   sumber?: string;
   makna?: string;
+  deskripsiPenilaian?: string; // Informasi deskriptif spesifik hasil penilaian guru
+  buktiKegiatan?: string; // Bukti keterlaksanaan kegiatan di kelas guru
 }
 
 export interface SambungTindakLanjutItem {

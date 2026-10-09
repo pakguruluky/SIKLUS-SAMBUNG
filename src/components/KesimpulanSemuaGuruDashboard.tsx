@@ -33,12 +33,6 @@ interface KesimpulanSemuaGuruDashboardProps {
 }
 
 const getPredicateTag = (s: Supervision): string | null => {
-  if (s.teacherName.includes('Hilmia')) return '[B, SB]';
-  if (s.teacherName.includes('Sondang') || s.teacherName.includes('Kirana')) return '[SB, SB]';
-  if (s.teacherName.includes('Alline') || s.teacherName.includes('Ivany')) return '[SB]';
-  if (s.teacherName.includes('Iqbal') || s.teacherName.includes('Widya') || s.teacherName.includes('Saulina')) return '[B]';
-  if (s.teacherName.includes('Lutfiana')) return '[C]';
-
   const t = s.perangkatAjar?.telaahSummary?.predicate;
   const o = s.observasiKelas?.predicate;
   const isSB = (str?: string) => str && (str.toLowerCase().includes('sangat') || str.toLowerCase().includes('amat'));
@@ -51,7 +45,7 @@ const getPredicateTag = (s: Supervision): string | null => {
   if (tagT && tagO) {
     return tagT === tagO ? `[${tagT}]` : `[${tagT}, ${tagO}]`;
   }
-  return tagT ? `[${tagT}]` : null;
+  return tagT ? `[${tagT}]` : tagO ? `[${tagO}]` : null;
 };
 
 // Helper to extract Before and After descriptions resolving from any input section
@@ -215,8 +209,11 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
         : parseFloat(def.akhir.replace(/[^0-9.]/g, '')) || 0;
 
       const delta = avgAkhir - avgAwal;
-      const makna = bucket && bucket.maknaList.length > 0 ? bucket.maknaList[0] : def.makna;
-      const deskripsiPenilaian = bucket && bucket.deskripsiList.length > 0 
+      const isSingleTeacher = targetList.length === 1;
+      const makna = isSingleTeacher && bucket && bucket.maknaList.length > 0 
+        ? bucket.maknaList[0] 
+        : def.makna;
+      const deskripsiPenilaian = isSingleTeacher && bucket && bucket.deskripsiList.length > 0 
         ? bucket.deskripsiList[0] 
         : (def as any).deskripsiPenilaian;
 

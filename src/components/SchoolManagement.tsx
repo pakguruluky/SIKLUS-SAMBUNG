@@ -35,7 +35,7 @@ export const SchoolManagement: React.FC<SchoolManagementProps> = ({
       setSyncSuccessMsg('');
       await resetToDefaultSchools();
       await onRefreshSchools();
-      setSyncSuccessMsg('7 Satuan Pendidikan Binaan Resmi berhasil disinkronkan ke basis data!');
+      setSyncSuccessMsg('11 Satuan Pendidikan Binaan Resmi berhasil disinkronkan ke basis data!');
       setTimeout(() => setSyncSuccessMsg(''), 5000);
     } catch (err: any) {
       console.error(err);

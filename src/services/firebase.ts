@@ -280,7 +280,7 @@ export async function ensureInitialSchools(): Promise<School[]> {
   }
 }
 
-// Reset/Sync all 7 official schools explicitly
+// Reset/Sync all 11 official schools explicitly
 export async function resetToDefaultSchools(): Promise<School[]> {
   const allowedIds = new Set(DEFAULT_SCHOOLS.map(s => s.id));
   const currentSnap = await getDocs(collection(db, 'schools'));

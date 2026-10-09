@@ -30,7 +30,7 @@ export const SAMPLE_SUPERVISIONS: Supervision[] = [
     perangkatAjar: {
       driveLinks: {
         cpTpAtpUrl: 'https://drive.google.com/file/d/1DemoCPTPATPFisikaSMA/view?usp=sharing',
-        modulAjarUrl: 'https://drive.google.com/file/d/1DemoModulAjarTermodinamika/view?usp=sharing',
+        modulAjarUrl: 'https://drive.google.com/file/d/1DemoModulAjarListrikDC/view?usp=sharing',
         bahanAjarUrl: 'https://drive.google.com/file/d/1DemoBahanAjarDigital/view?usp=sharing',
         asesmenUrl: 'https://drive.google.com/file/d/1DemoRubrikAsesmenOtentik/view?usp=sharing',
       },
@@ -42,9 +42,9 @@ export const SAMPLE_SUPERVISIONS: Supervision[] = [
       telaahComments: {
         1: 'Identitas modul sangat lengkap, mencakup alokasi waktu dan fase F yang tepat.',
         4: 'Dimensi Bergotong Royong dan Bernalar Kritis tertuang jelas pada alur kegiatan.',
-        8: 'Model Problem-Based Learning (PBL) sangat relevan dengan materi Termodinamika.',
-        12: 'Aktivitas mengonstruksi pemahaman disajikan runtut dari apersepsi kontekstual mesin pendingin.',
-        15: 'Budaya saling memuliakan dan inklusivitas tampak dalam pembagian kelompok diskusi.',
+        8: 'Model Problem-Based Learning (PBL) sangat relevan dengan materi Rangkaian Listrik Arus Searah (DC).',
+        12: 'Aktivitas mengonstruksi pemahaman disajikan runtut dari apersepsi kontekstual instalasi kelistrikan rumah dan baterai.',
+        15: 'Budaya saling memuliakan dan inklusivitas tampak dalam pembagian kelompok diskusi praktikum.',
         21: 'Rubrik asesmen memuat KKTP dengan indikator operasional yang objektif.'
       },
       telaahSummary: {
@@ -54,15 +54,15 @@ export const SAMPLE_SUPERVISIONS: Supervision[] = [
         predicate: 'Sangat Baik'
       },
       feedback: {
-        kelebihan: 'Modul ajar mengintegrasikan konsep kontekstual hemat energi dengan simulasi PhET interactive simulation, rubrik penilaian kinerja sangat operasional.',
-        perbaikan: 'Perkuat kemitraan dengan industri atau praktisi pendingin/AC untuk projek riil siswa.',
+        kelebihan: 'Modul ajar mengintegrasikan konsep kontekstual hemat energi dengan simulasi PhET Circuit Construction Kit DC, rubrik unjuk kerja sangat operasional.',
+        perbaikan: 'Perkuat kemitraan dengan teknisi instalasi kelistrikan atau praktisi panel surya untuk projek riil siswa.',
         rekomendasi: 'Dapat dijadikan model praktik baik (Best Practice) bagi MGMP Fisika SMA Kota Bogor.'
       },
       reviewedAt: '2025-08-25T14:00:00.000Z',
       reviewedBy: 'Kusnandar, M.Si',
       revisi: {
-        modulAjarRevisiUrl: 'https://drive.google.com/file/d/1DemoModulFisikaRevisi/view?usp=sharing',
-        catatanRevisiGuru: 'Telah ditambahkan integrasi projek hemat energi dan rubrik peer-review asesmen otentik.',
+        modulAjarRevisiUrl: 'https://drive.google.com/file/d/1DemoModulFisikaListrikRevisi/view?usp=sharing',
+        catatanRevisiGuru: 'Telah ditambahkan integrasi projek hemat energi rumah tangga dan rubrik peer-review asesmen otentik.',
         revisiSubmittedAt: '2025-08-27T10:00:00.000Z',
         revisiStatus: 'disetujui',
       },
@@ -70,34 +70,34 @@ export const SAMPLE_SUPERVISIONS: Supervision[] = [
 
     praObservasi: {
       interviewDurationMinutes: 30,
-      q1_kd_indikator: 'Menganalisis hukum-hukum termodinamika dan penerapannya dalam siklus Carnot serta efisiensi mesin.',
+      q1_kd_indikator: 'Menganalisis prinsip kelistrikan arus searah (DC), hukum Ohm, dan hukum Kirchhoff pada rangkaian tertutup serta penerapannya dalam kehidupan sehari-hari.',
       q2_metode: 'Problem-Based Learning dengan pendekatan Deep Learning (Bermakna, Berkesadaran, Menggembirakan).',
-      q3_alat_bahan: 'Simulasi virtual PhET Thermodynamics, LKPD Kolaboratif, Termometer digital dan wadah kalorimeter sederhana.',
+      q3_alat_bahan: 'Simulasi virtual PhET Circuit Construction Kit DC, trainer kit breadboard rangkaian tertutup, multimeter digital, dan LKPD Kolaboratif.',
       q4_tahapan: 'Pendahuluan (Apersepsi & motivasi), Orientasi Masalah, Investigasi Mandiri & Kelompok, Penyajian Karya, Analisis & Evaluasi.',
       q5_persiapan: 'Modul ajar lengkap, tayangan interaktif Canva, rubrik observasi profil pelajar Pancasila, dan LKPD digital.',
-      q6_materi_sulit: 'Menghitung siklus termodinamika pada diagram P-V; diantisipasi dengan grafik interaktif dan bimbingan scaffolding.',
-      q7_target_kompetensi: 'Kemampuan berpikir kritis menganalisis efisiensi mesin serta kolaborasi kerja tim ilmiah.',
-      q8_perhatian_khusus: 'Fokus pada partisipasi murid yang cenderung pasif saat diskusi kelompok dan pembagian peran berkeadilan.',
+      q6_materi_sulit: 'Menghitung loop majemuk pada diagram sirkuit Hukum II Kirchhoff; diantisipasi dengan grafik simulasi interaktif dan bimbingan scaffolding.',
+      q7_target_kompetensi: 'Kemampuan berpikir kritis menganalisis arus dan tegangan sirkuit tertutup serta kolaborasi kerja tim ilmiah.',
+      q8_perhatian_khusus: 'Fokus pada partisipasi murid yang cenderung pasif saat perakitan sirkuit kelompok dan pembagian peran berkeadilan.',
       supervisorNotes: 'Kesiapan guru sangat matang, instrumen dan modul dirancang sistematis. Siap untuk observasi tatap muka di kelas.',
       completedAt: '2025-08-28T09:30:00.000Z'
     },
 
     observasiKelas: {
       items: {
-        pendahuluan_1: { status: 'Ya', note: 'Doa, presensi teratur, apersepsi mengaitkan kulkas di rumah' },
+        pendahuluan_1: { status: 'Ya', note: 'Doa, presensi teratur, apersepsi mengaitkan aki kendaraan dan baterai smartphone' },
         pendahuluan_2: { status: 'Ya', note: 'Motivasi sangat memantik rasa ingin tahu murid' },
         pendahuluan_3: { status: 'Ya', note: 'Tujuan & langkah jelas ditayangkan' },
-        inti_penguasaan_1: { status: 'Ya', note: 'Penguasaan konsep energi dan entropi sangat mendalam' },
-        inti_penguasaan_2: { status: 'Ya', note: 'Keterkaitan dengan krisis energi global sangat aktual' },
+        inti_penguasaan_1: { status: 'Ya', note: 'Penguasaan konsep kuat arus, tegangan, hambatan, dan hukum Kirchhoff sangat mendalam' },
+        inti_penguasaan_2: { status: 'Ya', note: 'Keterkaitan dengan krisis energi dan bahaya korsleting listrik sangat aktual' },
         inti_penguasaan_3: { status: 'Ya', note: 'Waktu terjaga dengan presisi sesuai RPP' },
         inti_penguasaan_4: { status: 'Ya', note: 'Kelas tertib, interaksi guru-murid hangat dan penuh penghargaan' },
-        pelibatan_1: { status: 'Ya', note: 'Seluruh kelompok aktif mencoba simulator PhET' },
+        pelibatan_1: { status: 'Ya', note: 'Seluruh kelompok aktif mencoba simulator PhET Circuit Kit dan merakit sirkuit tertutup' },
         pelibatan_2: { status: 'Ya', note: 'Guru berkeliling memberikan bimbingan bagi murid yang kesulitan' },
         pelibatan_3: { status: 'Ya', note: 'Kerja sama antaranggota kelompok tampak seimbang' },
-        integrasi_1: { status: 'Ya', note: '4C tampak nyata dalam sesi pemaparan hasil diskusi' },
+        integrasi_1: { status: 'Ya', note: '4C tampak nyata dalam sesi pemaparan hasil diskusi rangkaian' },
         integrasi_2: { status: 'Ya', note: 'Soal pemantik memicu nalar tingkat tinggi (HOTS)' },
-        integrasi_3: { status: 'Ya', note: '5M terintegrasi mulus dalam penyelidikan siklus gas' },
-        integrasi_4: { status: 'Ya', note: 'Mencapai ranah metakognitif saat murid merefleksikan efisiensi energi' },
+        integrasi_3: { status: 'Ya', note: '5M terintegrasi mulus dalam penyelidikan kuat arus pada percabangan' },
+        integrasi_4: { status: 'Ya', note: 'Mencapai ranah metakognitif saat murid merefleksikan efisiensi daya listrik' },
         media_1: { status: 'Ya', note: 'Layar proyektor & Chromebook murid termanfaatkan optimal' },
         media_2: { status: 'Ya', note: 'Sumber belajar digital dan modul lokal berjalan harmonis' },
         media_3: { status: 'Ya', note: 'Murid mengoperasikan simulator mandiri' },
@@ -106,7 +106,7 @@ export const SAMPLE_SUPERVISIONS: Supervision[] = [
         penilaian_3: { status: 'Ya', note: 'Lembar ceklis unjuk kerja terisi rapi oleh guru' },
         bahasa_1: { status: 'Ya', note: 'Bahasa santun, komunikatif, artikulatif' },
         bahasa_2: { status: 'Ya', note: 'Gestur ramah, tatapan menyeluruh ke seluruh sudut ruang' },
-        penutup_1: { status: 'Ya', note: 'Siswa menyimpulkan sendiri esensi hukum termodinamika' },
+        penutup_1: { status: 'Ya', note: 'Siswa menyimpulkan sendiri esensi hukum Kirchhoff dan hukum Ohm' },
         penutup_2: { status: 'Ya', note: 'RTL diumumkan dan ditutup doa bersama' }
       },
       totalYa: 24,
@@ -118,14 +118,14 @@ export const SAMPLE_SUPERVISIONS: Supervision[] = [
     },
 
     pascaObservasi: {
-      q1_kesan: 'Merasa lega dan puas karena siswa sangat antusias saat simulasi interaktif termodinamika.',
+      q1_kesan: 'Merasa lega dan puas karena siswa sangat antusias saat simulasi interaktif sirkuit DC dan merakit rangkaian.',
       q2_sesuai_rencana: 'Ya, seluruh tahapan dalam modul ajar terlaksana tepat waktu.',
-      q3_hal_memuaskan: 'Dua siswa yang biasanya pendiam ikut aktif berbicara saat presentasi kelompok.',
+      q3_hal_memuaskan: 'Dua siswa yang biasanya pendiam ikut aktif berbicara saat presentasi kelompok perakitan sirkuit.',
       q4_hal_kurang: 'Waktu per kelompok untuk tanya jawab masih agak sempit karena antusiasme tinggi.',
       q5_ketercapaian_tujuan: 'Sekitar 92% siswa berhasil mencapai kriteria ketercapaian tujuan asesmen formatif.',
-      q6_kesulitan_siswa: 'Beberapa siswa masih ragu membaca kemiringan kurva adiabatik vs isotermik.',
-      q7_alternatif_solusi: 'Diberikan video mikrolearning pengayaan berdurasi 3 menit di Google Classroom.',
-      q8_rencana_tindak_lanjut: 'Melanjutkan materi ke efisiensi mesin pendingin Refrigerator pada pertemuan mendatang.',
+      q6_kesulitan_siswa: 'Beberapa siswa masih ragu menentukan tanda polaritas loop pada rangkaian tertutup majemuk.',
+      q7_alternatif_solusi: 'Diberikan video mikrolearning pengayaan berdurasi 3 menit analisis loop Kirchhoff di Google Classroom.',
+      q8_rencana_tindak_lanjut: 'Melanjutkan materi ke analisis daya listrik dan efisiensi energi rumah tangga pada pertemuan mendatang.',
       q9_pengembangan_diri: 'Ingin mendalami pemanfaatan AI untuk asesmen diagnostik personal murid.',
       generalImpression: 'Guru menunjukkan dedikasi dan kompetensi pedagogik serta profesional yang sangat unggul.',
       recommendations: 'Disarankan menyusun tulisan karya ilmiah / best practice pembelajaran untuk kenaikan pangkat.',

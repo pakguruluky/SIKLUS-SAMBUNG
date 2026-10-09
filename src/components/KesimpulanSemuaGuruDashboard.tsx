@@ -309,10 +309,10 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
 
           <div className="max-w-3xl">
             <h2 className="text-xl sm:text-3xl font-extrabold text-white tracking-tight">
-              Kesimpulan Transformasi Pembelajaran Seluruh Guru Binaan
+              Dashboard Kesimpulan Transformasi Seluruh Guru Pasca Siklus SAMBUNG
             </h2>
             <p className="text-xs sm:text-sm text-indigo-200/90 mt-2 leading-relaxed">
-              Rekapitulasi otomatis dan terhubung real-time dari seluruh tahapan <strong>Siklus SAMBUNG</strong> (Selidiki, Arahkan, Maknai, Berdayakan, Uji, Nyatakan, Gerakkan). Menghubungkan telaah modul ajar, observasi kelas, dan data dampak kuantitatif murid.
+              Rekapitulasi otomatis dan terhubung real-time dari seluruh tahapan <strong>Siklus SAMBUNG</strong> (Selidiki, Arahkan, Maknai, Berdayakan, Uji, Nyatakan, Gerakkan). Menghubungkan telaah modul ajar, observasi kelas, dan data dampak kuantitatif murid per guru binaan.
             </p>
           </div>
 

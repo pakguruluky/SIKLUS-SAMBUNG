@@ -13,6 +13,7 @@ import { PascaObservasiModal } from './components/forms/PascaObservasiModal';
 import { EvaluasiTahunanModal } from './components/forms/EvaluasiTahunanModal';
 import { NewSupervisionModal } from './components/forms/NewSupervisionModal';
 import { SambungInstrumentView } from './components/SambungInstrumentView';
+import { KesimpulanSemuaGuruDashboard } from './components/KesimpulanSemuaGuruDashboard';
 import { LocalStorageBackupModal } from './components/LocalStorageBackupModal';
 
 import { 
@@ -338,6 +339,7 @@ export default function App() {
                 onApproveTeacher={handleApproveTeacher}
                 onOpenSambung={handleOpenSambung}
                 onOpenStorageModal={() => setIsLocalStorageModalOpen(true)}
+                onNavigateKesimpulan={() => setActiveTab('kesimpulan-sambung')}
               />
             )}
 
@@ -348,6 +350,16 @@ export default function App() {
                 schools={schools}
                 initialSupervisionId={selectedSambungId}
                 onUpdateSupervision={handleUpdateSupervision}
+              />
+            )}
+
+            {activeTab === 'kesimpulan-sambung' && (
+              <KesimpulanSemuaGuruDashboard
+                supervisions={visibleSupervisions}
+                currentUser={currentUser}
+                onOpenSambungTeacher={(supervisionId) => {
+                  handleOpenSambung(supervisionId);
+                }}
               />
             )}
 

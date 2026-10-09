@@ -64,6 +64,7 @@ interface DashboardOverviewProps {
   onApproveTeacher?: (uid: string) => void;
   onOpenSambung?: (supervisionId?: string) => void;
   onOpenStorageModal?: () => void;
+  onNavigateKesimpulan?: () => void;
   users?: UserProfile[];
 }
 
@@ -78,6 +79,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   onApproveTeacher,
   onOpenSambung,
   onOpenStorageModal,
+  onNavigateKesimpulan,
   users = [],
 }) => {
   const getPredicateTag = (s: Supervision): string | null => {
@@ -622,7 +624,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
           }`}
         >
           <Sparkles className={`w-4 h-4 ${dashboardTab === 'kesimpulan' ? 'text-amber-300' : 'text-amber-500'}`} />
-          <span>Dashboard Kesimpulan Semua Guru</span>
+          <span>Kesimpulan Siklus SAMBUNG</span>
           <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold ${
             dashboardTab === 'kesimpulan' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800'
           }`}>

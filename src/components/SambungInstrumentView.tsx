@@ -3409,7 +3409,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                     className="px-3 py-1.5 rounded-xl border border-rose-200 bg-rose-50/70 hover:bg-rose-100 text-rose-800 text-xs font-semibold flex items-center gap-1.5 transition-colors"
                   >
                     <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                    <span>Dashboard Kesimpulan Semua Guru</span>
+                    <span>Kesimpulan Siklus SAMBUNG</span>
                   </button>
                   <button
                     type="button"

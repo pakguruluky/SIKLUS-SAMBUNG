@@ -9,7 +9,8 @@ import {
   LogOut, 
   LogIn, 
   BookOpen,
-  HardDrive
+  HardDrive,
+  Sparkles
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -109,6 +110,18 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <BookOpen className="w-3.5 h-3.5 text-indigo-600" />
                 <span>Instrumen SAMBUNG</span>
               </button>
+
+              <button
+                onClick={() => setActiveTab('kesimpulan-sambung')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+                  activeTab === 'kesimpulan-sambung'
+                    ? 'bg-slate-100 text-indigo-700 font-bold'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                <span>Kesimpulan Siklus SAMBUNG</span>
+              </button>
             </div>
           )}
 
@@ -198,7 +211,14 @@ export const Navbar: React.FC<NavbarProps> = ({
             className={`flex flex-col items-center gap-1 ${activeTab === 'sambung' ? 'text-indigo-600 font-bold' : 'text-slate-500'}`}
           >
             <BookOpen className="w-4 h-4" />
-            <span>Instrumen SAMBUNG</span>
+            <span>Instrumen</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('kesimpulan-sambung')}
+            className={`flex flex-col items-center gap-1 ${activeTab === 'kesimpulan-sambung' ? 'text-indigo-600 font-bold' : 'text-slate-500'}`}
+          >
+            <Sparkles className="w-4 h-4 text-amber-500" />
+            <span>Kesimpulan</span>
           </button>
           <button
             onClick={onNewSupervision}

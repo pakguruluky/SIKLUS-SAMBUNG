@@ -1,6 +1,7 @@
 import React from 'react';
 import { Supervision } from '../types';
 import { Printer, X, Download, ShieldCheck } from 'lucide-react';
+import { DEFAULT_MATRIKS_BEFORE, DEFAULT_MATRIKS_AFTER } from '../data/sambungSeed';
 
 interface SambungPrintModalProps {
   isOpen: boolean;
@@ -185,9 +186,83 @@ export const SambungPrintModal: React.FC<SambungPrintModalProps> = ({
                 ))}
               </tbody>
             </table>
-            <p className="text-[10px] text-slate-500 italic">
+            <p className="text-[10px] text-slate-500 italic mb-4">
               Tandai aspek yang paling banyak perlu penguatan sebagai prioritas pembinaan. {sambung.selidiki.catatanPrioritas && `(Catatan: ${sambung.selidiki.catatanPrioritas})`}
             </p>
+
+            {/* Tabel Kesimpulan Selidiki: Indikator dan Selidiki */}
+            <div className="mt-3 pt-3 border-t border-slate-300">
+              <h4 className="font-bold text-xs text-slate-900 mb-1">
+                Kesimpulan Selidiki: Tabel Indikator dan Selidiki (Kondisi Awal / Baseline Guru)
+              </h4>
+              <p className="text-[10px] text-slate-600 mb-2">
+                Rangkuman 4 indikator kunci kondisi awal pembelajaran guru berdasarkan hasil telaah modul ajar, pra-observasi, observasi kelas tatap muka, dan pasca-observasi awal.
+              </p>
+              <table className="w-full border-collapse border border-slate-300 text-[11px]">
+                <thead>
+                  <tr className="bg-slate-100 text-slate-800 font-bold">
+                    <th className="border border-slate-300 px-2 py-1.5 w-8 text-center">No</th>
+                    <th className="border border-slate-300 px-2 py-1.5 w-60 text-left">Indikator Pembelajaran</th>
+                    <th className="border border-slate-300 px-2 py-1.5 text-left">Kesimpulan Selidiki (Kondisi Awal / Baseline)</th>
+                    <th className="border border-slate-300 px-2 py-1.5 w-52 text-left">Arah Transformasi Sasaran</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="border border-slate-300 px-2 py-1.5 text-center font-semibold">1</td>
+                    <td className="border border-slate-300 px-2 py-1.5 font-bold text-slate-900 bg-slate-50/50">
+                      Guru berorientasi pada pengalaman belajar murid
+                      <span className="block text-[9px] text-indigo-700 font-normal">Aspek: Peran Guru</span>
+                    </td>
+                    <td className="border border-slate-300 px-2 py-1.5 text-slate-700">
+                      {sambung.selidiki.matriksBefore?.peranGuru || DEFAULT_MATRIKS_BEFORE.peranGuru}
+                    </td>
+                    <td className="border border-slate-300 px-2 py-1.5 text-indigo-900 text-[10px]">
+                      &rarr; Dari ceramah materi menuju perancang pengalaman belajar aktif murid
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="border border-slate-300 px-2 py-1.5 text-center font-semibold">2</td>
+                    <td className="border border-slate-300 px-2 py-1.5 font-bold text-slate-900 bg-slate-50/50">
+                      Murid aktif mengaplikasikan pengetahuan
+                      <span className="block text-[9px] text-purple-700 font-normal">Aspek: Aktivitas Murid</span>
+                    </td>
+                    <td className="border border-slate-300 px-2 py-1.5 text-slate-700">
+                      {sambung.selidiki.matriksBefore?.aktivitasMurid || DEFAULT_MATRIKS_BEFORE.aktivitasMurid}
+                    </td>
+                    <td className="border border-slate-300 px-2 py-1.5 text-purple-900 text-[10px]">
+                      &rarr; Dari penerima pasif menuju aktif mengaplikasikan pengetahuan kontekstual
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="border border-slate-300 px-2 py-1.5 text-center font-semibold">3</td>
+                    <td className="border border-slate-300 px-2 py-1.5 font-bold text-slate-900 bg-slate-50/50">
+                      Pembelajaran terhubung dengan konteks kehidupan nyata murid
+                      <span className="block text-[9px] text-amber-700 font-normal">Aspek: Konteks Nyata</span>
+                    </td>
+                    <td className="border border-slate-300 px-2 py-1.5 text-slate-700">
+                      {sambung.selidiki.matriksBefore?.konteksNyata || DEFAULT_MATRIKS_BEFORE.konteksNyata}
+                    </td>
+                    <td className="border border-slate-300 px-2 py-1.5 text-amber-900 text-[10px]">
+                      &rarr; Dari belum konsisten menjadi mulai dirancang terhubung situasi riil
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="border border-slate-300 px-2 py-1.5 text-center font-semibold">4</td>
+                    <td className="border border-slate-300 px-2 py-1.5 font-bold text-slate-900 bg-slate-50/50">
+                      Refleksi menjadi bagian rutin dalam proses pembelajaran
+                      <span className="block text-[9px] text-blue-700 font-normal">Aspek: Refleksi Murid</span>
+                    </td>
+                    <td className="border border-slate-300 px-2 py-1.5 text-slate-700">
+                      {sambung.selidiki.matriksBefore?.refleksiMurid || DEFAULT_MATRIKS_BEFORE.refleksiMurid}
+                    </td>
+                    <td className="border border-slate-300 px-2 py-1.5 text-blue-900 text-[10px]">
+                      &rarr; Dari belum rutin menjadi bagian integral pembelajaran harian
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
 
           {/* A — RENCANA AKSI PEMBINAAN PEMBELAJARAN */}
@@ -470,6 +545,80 @@ export const SambungPrintModal: React.FC<SambungPrintModalProps> = ({
                 </tr>
               </tbody>
             </table>
+
+            {/* Tabel Kesimpulan Uji: Indikator dan Uji */}
+            <div className="mt-3 pt-3 border-t border-slate-300">
+              <h4 className="font-bold text-xs text-slate-900 mb-1">
+                Kesimpulan Hasil Uji: Tabel Indikator dan Uji (Kondisi Setelah Perbaikan / Hasil Uji Coba)
+              </h4>
+              <p className="text-[10px] text-slate-600 mb-2">
+                Rangkuman 4 indikator kunci kondisi setelah perbaikan guru dari hasil telaah modul revisi, observasi tatap muka verifikasi, angket suara murid (U-2), dan pasca-observasi.
+              </p>
+              <table className="w-full border-collapse border border-slate-300 text-[11px]">
+                <thead>
+                  <tr className="bg-slate-100 text-slate-800 font-bold">
+                    <th className="border border-slate-300 px-2 py-1.5 w-8 text-center">No</th>
+                    <th className="border border-slate-300 px-2 py-1.5 w-60 text-left">Indikator Pembelajaran</th>
+                    <th className="border border-slate-300 px-2 py-1.5 text-left">Kesimpulan Uji (Kondisi Setelah Perbaikan)</th>
+                    <th className="border border-slate-300 px-2 py-1.5 w-44 text-center">Status Pembuktian Uji</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="border border-slate-300 px-2 py-1.5 text-center font-semibold">1</td>
+                    <td className="border border-slate-300 px-2 py-1.5 font-bold text-slate-900 bg-slate-50/50">
+                      Guru berorientasi pada pengalaman belajar murid
+                      <span className="block text-[9px] text-indigo-700 font-normal">Aspek: Peran Guru</span>
+                    </td>
+                    <td className="border border-slate-300 px-2 py-1.5 text-slate-800 font-medium">
+                      {sambung.uji.matriksAfter?.peranGuru || DEFAULT_MATRIKS_AFTER.peranGuru}
+                    </td>
+                    <td className="border border-slate-300 px-2 py-1.5 text-center text-emerald-800 font-bold text-[10px] bg-emerald-50/40">
+                      Terverifikasi Uji Lapangan
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="border border-slate-300 px-2 py-1.5 text-center font-semibold">2</td>
+                    <td className="border border-slate-300 px-2 py-1.5 font-bold text-slate-900 bg-slate-50/50">
+                      Murid aktif mengaplikasikan pengetahuan
+                      <span className="block text-[9px] text-purple-700 font-normal">Aspek: Aktivitas Murid</span>
+                    </td>
+                    <td className="border border-slate-300 px-2 py-1.5 text-slate-800 font-medium">
+                      {sambung.uji.matriksAfter?.aktivitasMurid || DEFAULT_MATRIKS_AFTER.aktivitasMurid}
+                    </td>
+                    <td className="border border-slate-300 px-2 py-1.5 text-center text-emerald-800 font-bold text-[10px] bg-emerald-50/40">
+                      Terverifikasi Uji Lapangan
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="border border-slate-300 px-2 py-1.5 text-center font-semibold">3</td>
+                    <td className="border border-slate-300 px-2 py-1.5 font-bold text-slate-900 bg-slate-50/50">
+                      Pembelajaran terhubung dengan konteks kehidupan nyata murid
+                      <span className="block text-[9px] text-amber-700 font-normal">Aspek: Konteks Nyata</span>
+                    </td>
+                    <td className="border border-slate-300 px-2 py-1.5 text-slate-800 font-medium">
+                      {sambung.uji.matriksAfter?.konteksNyata || DEFAULT_MATRIKS_AFTER.konteksNyata}
+                    </td>
+                    <td className="border border-slate-300 px-2 py-1.5 text-center text-emerald-800 font-bold text-[10px] bg-emerald-50/40">
+                      Terverifikasi Uji Lapangan
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="border border-slate-300 px-2 py-1.5 text-center font-semibold">4</td>
+                    <td className="border border-slate-300 px-2 py-1.5 font-bold text-slate-900 bg-slate-50/50">
+                      Refleksi menjadi bagian rutin dalam proses pembelajaran
+                      <span className="block text-[9px] text-blue-700 font-normal">Aspek: Refleksi Murid</span>
+                    </td>
+                    <td className="border border-slate-300 px-2 py-1.5 text-slate-800 font-medium">
+                      {sambung.uji.matriksAfter?.refleksiMurid || DEFAULT_MATRIKS_AFTER.refleksiMurid}
+                    </td>
+                    <td className="border border-slate-300 px-2 py-1.5 text-center text-emerald-800 font-bold text-[10px] bg-emerald-50/40">
+                      Terverifikasi Uji Lapangan
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
 
           {/* N — BEFORE-AFTER DAN DATA DAMPAK */}
@@ -484,25 +633,88 @@ export const SambungPrintModal: React.FC<SambungPrintModalProps> = ({
               </div>
             </div>
 
-            <h4 className="font-bold text-xs text-slate-800 mb-1">1. Matriks Perubahan Before &ndash; After</h4>
+            <h4 className="font-bold text-xs text-slate-800 mb-1">
+              1. Tabel Kesimpulan Nyatakan: Indikator, Selidiki (Before) dan Uji (After)
+            </h4>
             <table className="w-full border-collapse border border-slate-300 text-[11px] mb-4">
               <thead>
                 <tr className="bg-slate-100 text-slate-800 font-bold">
-                  <th className="border border-slate-300 px-2 py-1.5 w-40 text-left">Aspek Perubahan</th>
-                  <th className="border border-slate-300 px-2 py-1.5 text-left">Sebelum SAMBUNG</th>
-                  <th className="border border-slate-300 px-2 py-1.5 text-left">Setelah SAMBUNG</th>
+                  <th className="border border-slate-300 px-2 py-1.5 w-8 text-center">No</th>
+                  <th className="border border-slate-300 px-2 py-1.5 w-48 text-left">Indikator Pembelajaran</th>
+                  <th className="border border-slate-300 px-2 py-1.5 text-left">Selidiki (Before)</th>
+                  <th className="border border-slate-300 px-2 py-1.5 text-left">Uji (After)</th>
+                  <th className="border border-slate-300 px-2 py-1.5 text-left w-48">Arah Transformasi yang Terlihat</th>
                 </tr>
               </thead>
               <tbody>
-                {sambung.nyatakan.beforeAfter
-                  .filter(item => item.aspek !== 'Asesmen dan umpan balik' && item.aspek !== 'Tindak lanjut supervisi')
-                  .map((item, idx) => (
-                  <tr key={idx}>
-                    <td className="border border-slate-300 px-2 py-1.5 font-bold text-slate-800 bg-slate-50/40">{item.aspek}</td>
-                    <td className="border border-slate-300 px-2 py-1.5 text-slate-600">{item.sebelumSambung}</td>
-                    <td className="border border-slate-300 px-2 py-1.5 text-slate-900 font-medium">{item.setelahSambung}</td>
-                  </tr>
-                ))}
+                {/* Row 1 */}
+                <tr>
+                  <td className="border border-slate-300 px-2 py-1.5 text-center font-semibold">1</td>
+                  <td className="border border-slate-300 px-2 py-1.5 font-bold text-slate-800 bg-slate-50/40">
+                    Guru berorientasi pada pengalaman belajar murid
+                    <span className="block text-[9px] text-indigo-700 font-normal">Aspek: Peran Guru</span>
+                  </td>
+                  <td className="border border-slate-300 px-2 py-1.5 text-slate-600">
+                    {sambung.selidiki.matriksBefore?.peranGuru || DEFAULT_MATRIKS_BEFORE.peranGuru}
+                  </td>
+                  <td className="border border-slate-300 px-2 py-1.5 text-slate-900 font-medium">
+                    {sambung.uji.matriksAfter?.peranGuru || DEFAULT_MATRIKS_AFTER.peranGuru}
+                  </td>
+                  <td className="border border-slate-300 px-2 py-1.5 text-indigo-900 text-[10px]">
+                    Dari ceramah materi menuju perancang pengalaman belajar aktif murid
+                  </td>
+                </tr>
+                {/* Row 2 */}
+                <tr>
+                  <td className="border border-slate-300 px-2 py-1.5 text-center font-semibold">2</td>
+                  <td className="border border-slate-300 px-2 py-1.5 font-bold text-slate-800 bg-slate-50/40">
+                    Murid aktif mengaplikasikan pengetahuan
+                    <span className="block text-[9px] text-purple-700 font-normal">Aspek: Aktivitas Murid</span>
+                  </td>
+                  <td className="border border-slate-300 px-2 py-1.5 text-slate-600">
+                    {sambung.selidiki.matriksBefore?.aktivitasMurid || DEFAULT_MATRIKS_BEFORE.aktivitasMurid}
+                  </td>
+                  <td className="border border-slate-300 px-2 py-1.5 text-slate-900 font-medium">
+                    {sambung.uji.matriksAfter?.aktivitasMurid || DEFAULT_MATRIKS_AFTER.aktivitasMurid}
+                  </td>
+                  <td className="border border-slate-300 px-2 py-1.5 text-purple-900 text-[10px]">
+                    Dari penerima pasif menuju aktif mengaplikasikan pengetahuan
+                  </td>
+                </tr>
+                {/* Row 3 */}
+                <tr>
+                  <td className="border border-slate-300 px-2 py-1.5 text-center font-semibold">3</td>
+                  <td className="border border-slate-300 px-2 py-1.5 font-bold text-slate-800 bg-slate-50/40">
+                    Pembelajaran terhubung dengan konteks kehidupan nyata murid
+                    <span className="block text-[9px] text-amber-700 font-normal">Aspek: Konteks Nyata</span>
+                  </td>
+                  <td className="border border-slate-300 px-2 py-1.5 text-slate-600">
+                    {sambung.selidiki.matriksBefore?.konteksNyata || DEFAULT_MATRIKS_BEFORE.konteksNyata}
+                  </td>
+                  <td className="border border-slate-300 px-2 py-1.5 text-slate-900 font-medium">
+                    {sambung.uji.matriksAfter?.konteksNyata || DEFAULT_MATRIKS_AFTER.konteksNyata}
+                  </td>
+                  <td className="border border-slate-300 px-2 py-1.5 text-amber-900 text-[10px]">
+                    Dari belum konsisten menjadi mulai dirancang terhubung situasi riil
+                  </td>
+                </tr>
+                {/* Row 4 */}
+                <tr>
+                  <td className="border border-slate-300 px-2 py-1.5 text-center font-semibold">4</td>
+                  <td className="border border-slate-300 px-2 py-1.5 font-bold text-slate-800 bg-slate-50/40">
+                    Refleksi menjadi bagian rutin dalam proses pembelajaran
+                    <span className="block text-[9px] text-blue-700 font-normal">Aspek: Refleksi Murid</span>
+                  </td>
+                  <td className="border border-slate-300 px-2 py-1.5 text-slate-600">
+                    {sambung.selidiki.matriksBefore?.refleksiMurid || DEFAULT_MATRIKS_BEFORE.refleksiMurid}
+                  </td>
+                  <td className="border border-slate-300 px-2 py-1.5 text-slate-900 font-medium">
+                    {sambung.uji.matriksAfter?.refleksiMurid || DEFAULT_MATRIKS_AFTER.refleksiMurid}
+                  </td>
+                  <td className="border border-slate-300 px-2 py-1.5 text-blue-900 text-[10px]">
+                    Dari belum rutin menjadi bagian integral pembelajaran harian
+                  </td>
+                </tr>
               </tbody>
             </table>
 

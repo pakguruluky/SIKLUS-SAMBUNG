@@ -676,11 +676,11 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                   }`}
                 >
                   <Sparkles className="w-4 h-4 text-amber-400" />
-                  <span>3. Kesimpulan Data Awal: Matriks Perubahan BEFORE</span>
+                  <span>3. Kesimpulan Selidiki: Tabel Indikator &amp; Selidiki</span>
                   <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
                     sSubTab === 'kesimpulan_before' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
                   }`}>
-                    4 Aspek Kunci
+                    4 Indikator Kunci
                   </span>
                 </button>
               </div>
@@ -1203,10 +1203,10 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                         <span>Kesimpulan Baseline &bull; Kondisi Awal Sebelum Siklus SAMBUNG</span>
                       </div>
                       <h4 className="text-base sm:text-lg font-bold text-white">
-                        Kesimpulan Data Awal: MATRIKS PERUBAHAN BEFORE &bull; {currentSupervision.teacherName}
+                        Kesimpulan Selidiki: TABEL INDIKATOR &amp; SELIDIKI &bull; {currentSupervision.teacherName}
                       </h4>
                       <p className="text-xs text-indigo-200/90 max-w-3xl leading-relaxed">
-                        Data kesimpulan kondisi awal pembelajaran guru ini dirangkum dari telaah modul ajar, pra-observasi, observasi kelas baseline, dan pasca-observasi awal. Mencakup 4 pilar kunci (Peran Guru, Aktivitas Murid, Konteks Kehidupan Nyata, Refleksi Murid) yang otomatis menjadi data Before pembanding langsung pada Tahap Uji dan Tahap Nyatakan.
+                        Data kesimpulan kondisi awal pembelajaran guru ini dirangkum dari telaah modul ajar, pra-observasi, observasi kelas baseline, dan pasca-observasi awal. Menyajikan 4 indikator kunci kondisi awal (Selidiki) yang otomatis menjadi data Before pembanding langsung pada Tahap Uji dan Tahap Nyatakan.
                       </p>
                     </div>
 
@@ -1456,13 +1456,18 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                   </div>
                 </div>
 
-                {/* Table Preview */}
-                <div className="bg-slate-50 rounded-2xl border border-slate-200 p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h5 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                      <Layers className="w-4 h-4 text-indigo-600" />
-                      <span>Ringkasan Tabel Matriks Perubahan Before (Baseline)</span>
-                    </h5>
+                {/* TABEL KESIMPULAN SELIDIKI: INDIKATOR DAN SELIDIKI */}
+                <div className="bg-white rounded-2xl border border-indigo-200 p-5 shadow-xs">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3 border-b border-slate-100 pb-3">
+                    <div>
+                      <h5 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                        <Layers className="w-4 h-4 text-indigo-600" />
+                        <span>Tabel Kesimpulan Selidiki: Indikator &amp; Selidiki (Kondisi Awal / Baseline Guru)</span>
+                      </h5>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Rekapitulasi 4 indikator kunci hasil supervisi akademik kondisi awal (baseline) untuk {currentSupervision.teacherName}.
+                      </p>
+                    </div>
                     <button
                       type="button"
                       onClick={() => {
@@ -1484,40 +1489,116 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                         setSaveToast('Template standar kesimpulan awal berhasil dipulihkan!');
                         setTimeout(() => setSaveToast(null), 3000);
                       }}
-                      className="text-[11px] text-indigo-600 hover:text-indigo-800 font-semibold underline"
+                      className="text-xs text-indigo-600 hover:text-indigo-800 font-bold bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-xl border border-indigo-200 transition-colors self-start sm:self-auto"
                     >
                       Pulihkan Deskripsi Standar
                     </button>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs bg-white rounded-xl border border-slate-200 overflow-hidden">
-                      <thead className="bg-slate-100/70 text-slate-700 font-bold uppercase text-[11px] border-b border-slate-200">
+                      <thead className="bg-slate-100/90 text-slate-800 font-bold uppercase text-[11px] border-b border-slate-200">
                         <tr>
-                          <th className="py-2.5 px-3 w-48">Aspek Perubahan</th>
-                          <th className="py-2.5 px-3">Deskripsi Kondisi Awal (Before)</th>
-                          <th className="py-2.5 px-3 w-44 text-center">Arah Transformasi</th>
+                          <th className="py-3 px-3.5 w-12 text-center">No</th>
+                          <th className="py-3 px-3.5 w-60">Indikator Pembelajaran</th>
+                          <th className="py-3 px-3.5">Kesimpulan Selidiki (Kondisi Awal / Baseline Guru)</th>
+                          <th className="py-3 px-3.5 w-56 text-center">Arah Transformasi Sasaran</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        <tr>
-                          <td className="py-2.5 px-3 font-bold text-slate-900 bg-slate-50/50">Peran guru</td>
-                          <td className="py-2.5 px-3 text-slate-700">{sambungDraft.selidiki.matriksBefore?.peranGuru || DEFAULT_MATRIKS_BEFORE.peranGuru}</td>
-                          <td className="py-2.5 px-3 text-center text-indigo-700 font-semibold bg-indigo-50/30 text-[11px]">&rarr; Pengalaman belajar murid</td>
+                        {/* Row 1: Peran Guru */}
+                        <tr className="hover:bg-indigo-50/20">
+                          <td className="py-3 px-3.5 text-center font-bold text-slate-400 align-top">1</td>
+                          <td className="py-3 px-3.5 font-bold text-slate-900 bg-slate-50/60 align-top">
+                            <div className="flex items-start gap-2">
+                              <User className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
+                              <div>
+                                <span className="font-extrabold text-slate-900 block leading-snug">Guru berorientasi pada pengalaman belajar murid</span>
+                                <span className="text-[10px] text-indigo-600 font-bold uppercase tracking-wider">Aspek: Peran Guru</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3 px-3.5 text-slate-700 align-top">
+                            <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 leading-relaxed text-xs">
+                              {sambungDraft.selidiki.matriksBefore?.peranGuru || DEFAULT_MATRIKS_BEFORE.peranGuru}
+                            </div>
+                          </td>
+                          <td className="py-3 px-3.5 text-center text-indigo-700 font-semibold bg-indigo-50/30 text-xs align-top">
+                            <span className="inline-block p-2 rounded-lg bg-white border border-indigo-200/80 font-bold text-indigo-900 leading-snug">
+                              &rarr; Dari ceramah materi menuju perancang pengalaman belajar aktif murid
+                            </span>
+                          </td>
                         </tr>
-                        <tr>
-                          <td className="py-2.5 px-3 font-bold text-slate-900 bg-slate-50/50">Aktivitas murid</td>
-                          <td className="py-2.5 px-3 text-slate-700">{sambungDraft.selidiki.matriksBefore?.aktivitasMurid || DEFAULT_MATRIKS_BEFORE.aktivitasMurid}</td>
-                          <td className="py-2.5 px-3 text-center text-purple-700 font-semibold bg-purple-50/30 text-[11px]">&rarr; Aktif mengaplikasikan</td>
+
+                        {/* Row 2: Aktivitas Murid */}
+                        <tr className="hover:bg-purple-50/20">
+                          <td className="py-3 px-3.5 text-center font-bold text-slate-400 align-top">2</td>
+                          <td className="py-3 px-3.5 font-bold text-slate-900 bg-slate-50/60 align-top">
+                            <div className="flex items-start gap-2">
+                              <Users className="w-4 h-4 text-purple-600 shrink-0 mt-0.5" />
+                              <div>
+                                <span className="font-extrabold text-slate-900 block leading-snug">Murid aktif mengaplikasikan pengetahuan</span>
+                                <span className="text-[10px] text-purple-600 font-bold uppercase tracking-wider">Aspek: Aktivitas Murid</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3 px-3.5 text-slate-700 align-top">
+                            <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 leading-relaxed text-xs">
+                              {sambungDraft.selidiki.matriksBefore?.aktivitasMurid || DEFAULT_MATRIKS_BEFORE.aktivitasMurid}
+                            </div>
+                          </td>
+                          <td className="py-3 px-3.5 text-center text-purple-700 font-semibold bg-purple-50/30 text-xs align-top">
+                            <span className="inline-block p-2 rounded-lg bg-white border border-purple-200/80 font-bold text-purple-900 leading-snug">
+                              &rarr; Dari penerima pasif menuju aktif mengaplikasikan pengetahuan kontekstual
+                            </span>
+                          </td>
                         </tr>
-                        <tr>
-                          <td className="py-2.5 px-3 font-bold text-slate-900 bg-slate-50/50">Konteks nyata</td>
-                          <td className="py-2.5 px-3 text-slate-700">{sambungDraft.selidiki.matriksBefore?.konteksNyata || DEFAULT_MATRIKS_BEFORE.konteksNyata}</td>
-                          <td className="py-2.5 px-3 text-center text-amber-700 font-semibold bg-amber-50/30 text-[11px]">&rarr; Mulai dirancang konsisten</td>
+
+                        {/* Row 3: Konteks Nyata */}
+                        <tr className="hover:bg-amber-50/20">
+                          <td className="py-3 px-3.5 text-center font-bold text-slate-400 align-top">3</td>
+                          <td className="py-3 px-3.5 font-bold text-slate-900 bg-slate-50/60 align-top">
+                            <div className="flex items-start gap-2">
+                              <Compass className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                              <div>
+                                <span className="font-extrabold text-slate-900 block leading-snug">Pembelajaran terhubung dengan konteks kehidupan nyata murid</span>
+                                <span className="text-[10px] text-amber-600 font-bold uppercase tracking-wider">Aspek: Konteks Nyata</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3 px-3.5 text-slate-700 align-top">
+                            <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 leading-relaxed text-xs">
+                              {sambungDraft.selidiki.matriksBefore?.konteksNyata || DEFAULT_MATRIKS_BEFORE.konteksNyata}
+                            </div>
+                          </td>
+                          <td className="py-3 px-3.5 text-center text-amber-700 font-semibold bg-amber-50/30 text-xs align-top">
+                            <span className="inline-block p-2 rounded-lg bg-white border border-amber-200/80 font-bold text-amber-900 leading-snug">
+                              &rarr; Dari belum konsisten menjadi mulai dirancang terhubung situasi riil
+                            </span>
+                          </td>
                         </tr>
-                        <tr>
-                          <td className="py-2.5 px-3 font-bold text-slate-900 bg-slate-50/50">Refleksi</td>
-                          <td className="py-2.5 px-3 text-slate-700">{sambungDraft.selidiki.matriksBefore?.refleksiMurid || DEFAULT_MATRIKS_BEFORE.refleksiMurid}</td>
-                          <td className="py-2.5 px-3 text-center text-blue-700 font-semibold bg-blue-50/30 text-[11px]">&rarr; Bagian pembelajaran rutin</td>
+
+                        {/* Row 4: Refleksi Murid */}
+                        <tr className="hover:bg-blue-50/20">
+                          <td className="py-3 px-3.5 text-center font-bold text-slate-400 align-top">4</td>
+                          <td className="py-3 px-3.5 font-bold text-slate-900 bg-slate-50/60 align-top">
+                            <div className="flex items-start gap-2">
+                              <Sparkles className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                              <div>
+                                <span className="font-extrabold text-slate-900 block leading-snug">Refleksi menjadi bagian rutin dalam proses pembelajaran</span>
+                                <span className="text-[10px] text-blue-600 font-bold uppercase tracking-wider">Aspek: Refleksi Murid</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3 px-3.5 text-slate-700 align-top">
+                            <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 leading-relaxed text-xs">
+                              {sambungDraft.selidiki.matriksBefore?.refleksiMurid || DEFAULT_MATRIKS_BEFORE.refleksiMurid}
+                            </div>
+                          </td>
+                          <td className="py-3 px-3.5 text-center text-blue-700 font-semibold bg-blue-50/30 text-xs align-top">
+                            <span className="inline-block p-2 rounded-lg bg-white border border-blue-200/80 font-bold text-blue-900 leading-snug">
+                              &rarr; Dari belum rutin menjadi bagian integral pembelajaran harian
+                            </span>
+                          </td>
                         </tr>
                       </tbody>
                     </table>
@@ -2134,11 +2215,11 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                   }`}
                 >
                   <Sparkles className="w-4 h-4 text-amber-300" />
-                  <span>4. Kesimpulan Hasil Uji: Matriks Perubahan AFTER</span>
+                  <span>4. Kesimpulan Hasil Uji: Tabel Indikator &amp; Uji</span>
                   <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
                     uSubTab === 'kesimpulan_after' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
                   }`}>
-                    4 Aspek Transformasi
+                    4 Indikator Transformasi
                   </span>
                 </button>
               </div>
@@ -2886,10 +2967,10 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                         <span>Kesimpulan Hasil Evaluasi &bull; Dampak Perbaikan SIKLUS SAMBUNG</span>
                       </div>
                       <h4 className="text-base sm:text-lg font-bold text-white">
-                        Kesimpulan Hasil Uji Coba: MATRIKS PERUBAHAN AFTER &bull; {currentSupervision.teacherName}
+                        Kesimpulan Hasil Uji Coba: TABEL INDIKATOR &amp; UJI &bull; {currentSupervision.teacherName}
                       </h4>
                       <p className="text-xs text-purple-200/90 max-w-3xl leading-relaxed">
-                        Data kesimpulan kondisi setelah perbaikan ini dirumuskan dari hasil telaah modul ajar revisi, pra-observasi lanjutan, observasi kelas tatap muka verifikasi lapangan, angket suara murid (U-2), dan pasca-observasi perbaikan. Menjadi data AFTER pembanding yang otomatis dipaparkan di Tahap Nyatakan.
+                        Data kesimpulan kondisi setelah perbaikan ini dirumuskan dari hasil telaah modul ajar revisi, pra-observasi lanjutan, observasi kelas tatap muka verifikasi lapangan, angket suara murid (U-2), dan pasca-observasi perbaikan. Menyajikan 4 indikator kunci kondisi hasil uji coba (Uji) yang otomatis dipaparkan di Tahap Nyatakan.
                       </p>
                     </div>
 
@@ -3139,13 +3220,18 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                   </div>
                 </div>
 
-                {/* Table Preview After */}
-                <div className="bg-slate-50 rounded-2xl border border-slate-200 p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h5 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                      <Layers className="w-4 h-4 text-purple-600" />
-                      <span>Ringkasan Tabel Matriks Perubahan After (Hasil Uji Coba)</span>
-                    </h5>
+                {/* TABEL KESIMPULAN UJI: INDIKATOR DAN UJI */}
+                <div className="bg-white rounded-2xl border border-purple-200 p-5 shadow-xs">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3 border-b border-slate-100 pb-3">
+                    <div>
+                      <h5 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                        <Layers className="w-4 h-4 text-purple-600" />
+                        <span>Tabel Kesimpulan Uji: Indikator &amp; Uji (Kondisi Setelah Perbaikan / Hasil Uji Coba)</span>
+                      </h5>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Rekapitulasi 4 indikator kunci kondisi setelah perbaikan hasil uji coba lapangan untuk {currentSupervision.teacherName}.
+                      </p>
+                    </div>
                     <button
                       type="button"
                       onClick={() => {
@@ -3167,40 +3253,116 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                         setSaveToast('Template standar kesimpulan hasil uji berhasil dipulihkan!');
                         setTimeout(() => setSaveToast(null), 3000);
                       }}
-                      className="text-[11px] text-purple-600 hover:text-purple-800 font-semibold underline"
+                      className="text-xs text-purple-600 hover:text-purple-800 font-bold bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-xl border border-purple-200 transition-colors self-start sm:self-auto"
                     >
                       Pulihkan Deskripsi Standar
                     </button>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs bg-white rounded-xl border border-slate-200 overflow-hidden">
-                      <thead className="bg-slate-100/70 text-slate-700 font-bold uppercase text-[11px] border-b border-slate-200">
+                      <thead className="bg-slate-100/90 text-slate-800 font-bold uppercase text-[11px] border-b border-slate-200">
                         <tr>
-                          <th className="py-2.5 px-3 w-48">Aspek Perubahan</th>
-                          <th className="py-2.5 px-3">Deskripsi Kondisi Setelah Perbaikan (After)</th>
-                          <th className="py-2.5 px-3 w-40 text-center">Status Pembuktian</th>
+                          <th className="py-3 px-3.5 w-12 text-center">No</th>
+                          <th className="py-3 px-3.5 w-60">Indikator Pembelajaran</th>
+                          <th className="py-3 px-3.5">Kesimpulan Uji (Kondisi Setelah Perbaikan / Hasil Uji Coba)</th>
+                          <th className="py-3 px-3.5 w-48 text-center">Status Pembuktian Uji</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        <tr>
-                          <td className="py-2.5 px-3 font-bold text-slate-900 bg-slate-50/50">Peran guru</td>
-                          <td className="py-2.5 px-3 text-slate-700">{sambungDraft.uji.matriksAfter?.peranGuru || DEFAULT_MATRIKS_AFTER.peranGuru}</td>
-                          <td className="py-2.5 px-3 text-center text-emerald-700 font-semibold bg-emerald-50/30 text-[11px]">Terverifikasi Uji</td>
+                        {/* Row 1: Peran Guru */}
+                        <tr className="hover:bg-purple-50/20">
+                          <td className="py-3 px-3.5 text-center font-bold text-slate-400 align-top">1</td>
+                          <td className="py-3 px-3.5 font-bold text-slate-900 bg-slate-50/60 align-top">
+                            <div className="flex items-start gap-2">
+                              <User className="w-4 h-4 text-purple-600 shrink-0 mt-0.5" />
+                              <div>
+                                <span className="font-extrabold text-slate-900 block leading-snug">Guru berorientasi pada pengalaman belajar murid</span>
+                                <span className="text-[10px] text-purple-600 font-bold uppercase tracking-wider">Aspek: Peran Guru</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3 px-3.5 text-slate-900 align-top">
+                            <div className="p-2.5 rounded-xl bg-purple-50/40 border border-purple-200/80 leading-relaxed text-xs font-medium">
+                              {sambungDraft.uji.matriksAfter?.peranGuru || DEFAULT_MATRIKS_AFTER.peranGuru}
+                            </div>
+                          </td>
+                          <td className="py-3 px-3.5 text-center align-top">
+                            <span className="inline-block px-3 py-1.5 rounded-xl bg-emerald-100 text-emerald-800 font-extrabold text-xs border border-emerald-300 shadow-2xs">
+                              Terverifikasi Uji Lapangan
+                            </span>
+                          </td>
                         </tr>
-                        <tr>
-                          <td className="py-2.5 px-3 font-bold text-slate-900 bg-slate-50/50">Aktivitas murid</td>
-                          <td className="py-2.5 px-3 text-slate-700">{sambungDraft.uji.matriksAfter?.aktivitasMurid || DEFAULT_MATRIKS_AFTER.aktivitasMurid}</td>
-                          <td className="py-2.5 px-3 text-center text-emerald-700 font-semibold bg-emerald-50/30 text-[11px]">Terverifikasi Uji</td>
+
+                        {/* Row 2: Aktivitas Murid */}
+                        <tr className="hover:bg-emerald-50/20">
+                          <td className="py-3 px-3.5 text-center font-bold text-slate-400 align-top">2</td>
+                          <td className="py-3 px-3.5 font-bold text-slate-900 bg-slate-50/60 align-top">
+                            <div className="flex items-start gap-2">
+                              <Users className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                              <div>
+                                <span className="font-extrabold text-slate-900 block leading-snug">Murid aktif mengaplikasikan pengetahuan</span>
+                                <span className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider">Aspek: Aktivitas Murid</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3 px-3.5 text-slate-900 align-top">
+                            <div className="p-2.5 rounded-xl bg-emerald-50/40 border border-emerald-200/80 leading-relaxed text-xs font-medium">
+                              {sambungDraft.uji.matriksAfter?.aktivitasMurid || DEFAULT_MATRIKS_AFTER.aktivitasMurid}
+                            </div>
+                          </td>
+                          <td className="py-3 px-3.5 text-center align-top">
+                            <span className="inline-block px-3 py-1.5 rounded-xl bg-emerald-100 text-emerald-800 font-extrabold text-xs border border-emerald-300 shadow-2xs">
+                              Terverifikasi Uji Lapangan
+                            </span>
+                          </td>
                         </tr>
-                        <tr>
-                          <td className="py-2.5 px-3 font-bold text-slate-900 bg-slate-50/50">Konteks nyata</td>
-                          <td className="py-2.5 px-3 text-slate-700">{sambungDraft.uji.matriksAfter?.konteksNyata || DEFAULT_MATRIKS_AFTER.konteksNyata}</td>
-                          <td className="py-2.5 px-3 text-center text-emerald-700 font-semibold bg-emerald-50/30 text-[11px]">Terverifikasi Uji</td>
+
+                        {/* Row 3: Konteks Nyata */}
+                        <tr className="hover:bg-amber-50/20">
+                          <td className="py-3 px-3.5 text-center font-bold text-slate-400 align-top">3</td>
+                          <td className="py-3 px-3.5 font-bold text-slate-900 bg-slate-50/60 align-top">
+                            <div className="flex items-start gap-2">
+                              <Compass className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                              <div>
+                                <span className="font-extrabold text-slate-900 block leading-snug">Pembelajaran terhubung dengan konteks kehidupan nyata murid</span>
+                                <span className="text-[10px] text-amber-600 font-bold uppercase tracking-wider">Aspek: Konteks Nyata</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3 px-3.5 text-slate-900 align-top">
+                            <div className="p-2.5 rounded-xl bg-amber-50/40 border border-amber-200/80 leading-relaxed text-xs font-medium">
+                              {sambungDraft.uji.matriksAfter?.konteksNyata || DEFAULT_MATRIKS_AFTER.konteksNyata}
+                            </div>
+                          </td>
+                          <td className="py-3 px-3.5 text-center align-top">
+                            <span className="inline-block px-3 py-1.5 rounded-xl bg-emerald-100 text-emerald-800 font-extrabold text-xs border border-emerald-300 shadow-2xs">
+                              Terverifikasi Uji Lapangan
+                            </span>
+                          </td>
                         </tr>
-                        <tr>
-                          <td className="py-2.5 px-3 font-bold text-slate-900 bg-slate-50/50">Refleksi</td>
-                          <td className="py-2.5 px-3 text-slate-700">{sambungDraft.uji.matriksAfter?.refleksiMurid || DEFAULT_MATRIKS_AFTER.refleksiMurid}</td>
-                          <td className="py-2.5 px-3 text-center text-emerald-700 font-semibold bg-emerald-50/30 text-[11px]">Terverifikasi Uji</td>
+
+                        {/* Row 4: Refleksi Murid */}
+                        <tr className="hover:bg-blue-50/20">
+                          <td className="py-3 px-3.5 text-center font-bold text-slate-400 align-top">4</td>
+                          <td className="py-3 px-3.5 font-bold text-slate-900 bg-slate-50/60 align-top">
+                            <div className="flex items-start gap-2">
+                              <Sparkles className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                              <div>
+                                <span className="font-extrabold text-slate-900 block leading-snug">Refleksi menjadi bagian rutin dalam proses pembelajaran</span>
+                                <span className="text-[10px] text-blue-600 font-bold uppercase tracking-wider">Aspek: Refleksi Murid</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3 px-3.5 text-slate-900 align-top">
+                            <div className="p-2.5 rounded-xl bg-blue-50/40 border border-blue-200/80 leading-relaxed text-xs font-medium">
+                              {sambungDraft.uji.matriksAfter?.refleksiMurid || DEFAULT_MATRIKS_AFTER.refleksiMurid}
+                            </div>
+                          </td>
+                          <td className="py-3 px-3.5 text-center align-top">
+                            <span className="inline-block px-3 py-1.5 rounded-xl bg-emerald-100 text-emerald-800 font-extrabold text-xs border border-emerald-300 shadow-2xs">
+                              Terverifikasi Uji Lapangan
+                            </span>
+                          </td>
                         </tr>
                       </tbody>
                     </table>
@@ -3228,16 +3390,16 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
               </p>
             </div>
 
-            {/* 1. Matriks Perubahan Before - After */}
+            {/* 1. Tabel Kesimpulan Nyatakan: Indikator, Selidiki (Before) dan Uji (After) */}
             <div className="space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
                   <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
                     <Layers className="w-4 h-4 text-rose-600" />
-                    <span>1. Matriks Perubahan Before &ndash; After (Data Deskripsi Kesimpulan Guru)</span>
+                    <span>1. Tabel Kesimpulan Nyatakan: Indikator, Selidiki (Before) dan Uji (After)</span>
                   </h4>
                   <p className="text-[11px] text-slate-500">
-                    Otomatis terhubung dengan kesimpulan Tahap Selidiki (Before) dan Tahap Uji (After) untuk {currentSupervision.teacherName}.
+                    Menghubungkan secara komparatif data kesimpulan Tahap Selidiki (Before) dan Tahap Uji (After) per indikator pembelajaran untuk {currentSupervision.teacherName}.
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 shrink-0 self-start sm:self-auto">
@@ -3282,20 +3444,25 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
               <div className="overflow-x-auto">
                 <table className="w-full text-xs border-collapse rounded-2xl overflow-hidden border border-slate-200 bg-white">
                   <thead>
-                    <tr className="bg-slate-100/80 text-slate-700 font-bold border-b border-slate-200 uppercase text-[11px]">
-                      <th className="py-3 px-3.5 text-left w-48">Aspek Perubahan</th>
-                      <th className="py-3 px-3.5 text-left">Sebelum SAMBUNG (Kesimpulan Selidiki)</th>
-                      <th className="py-3 px-3.5 text-left">Setelah SAMBUNG (Kesimpulan Uji)</th>
+                    <tr className="bg-slate-100/90 text-slate-800 font-bold border-b border-slate-200 uppercase text-[11px]">
+                      <th className="py-3 px-3.5 text-center w-12">No</th>
+                      <th className="py-3 px-3.5 text-left w-56">Indikator Pembelajaran</th>
+                      <th className="py-3 px-3.5 text-left">Selidiki (Before)</th>
+                      <th className="py-3 px-3.5 text-left">Uji (After)</th>
                       <th className="py-3 px-3.5 text-left w-64">Arah Transformasi yang Terlihat</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {/* Row 1: Peran Guru */}
                     <tr className="hover:bg-slate-50/50">
+                      <td className="py-3 px-3.5 text-center font-bold text-slate-400 align-top">1</td>
                       <td className="py-3 px-3.5 font-bold text-slate-900 align-top bg-slate-50/60">
-                        <div className="flex items-center gap-1.5">
-                          <User className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-                          <span>Peran guru</span>
+                        <div className="flex items-start gap-2">
+                          <User className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
+                          <div>
+                            <span className="font-extrabold text-slate-900 block leading-snug">Guru berorientasi pada pengalaman belajar murid</span>
+                            <span className="text-[10px] text-indigo-600 font-bold uppercase tracking-wider">Aspek: Peran Guru</span>
+                          </div>
                         </div>
                       </td>
                       <td className="py-3 px-3.5 align-top">
@@ -3354,10 +3521,14 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
 
                     {/* Row 2: Aktivitas Murid */}
                     <tr className="hover:bg-slate-50/50">
+                      <td className="py-3 px-3.5 text-center font-bold text-slate-400 align-top">2</td>
                       <td className="py-3 px-3.5 font-bold text-slate-900 align-top bg-slate-50/60">
-                        <div className="flex items-center gap-1.5">
-                          <Users className="w-3.5 h-3.5 text-purple-600 shrink-0" />
-                          <span>Aktivitas murid</span>
+                        <div className="flex items-start gap-2">
+                          <Users className="w-4 h-4 text-purple-600 shrink-0 mt-0.5" />
+                          <div>
+                            <span className="font-extrabold text-slate-900 block leading-snug">Murid aktif mengaplikasikan pengetahuan</span>
+                            <span className="text-[10px] text-purple-600 font-bold uppercase tracking-wider">Aspek: Aktivitas Murid</span>
+                          </div>
                         </div>
                       </td>
                       <td className="py-3 px-3.5 align-top">
@@ -3416,10 +3587,14 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
 
                     {/* Row 3: Konteks Kehidupan Nyata */}
                     <tr className="hover:bg-slate-50/50">
+                      <td className="py-3 px-3.5 text-center font-bold text-slate-400 align-top">3</td>
                       <td className="py-3 px-3.5 font-bold text-slate-900 align-top bg-slate-50/60">
-                        <div className="flex items-center gap-1.5">
-                          <Compass className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                          <span>Konteks nyata</span>
+                        <div className="flex items-start gap-2">
+                          <Compass className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                          <div>
+                            <span className="font-extrabold text-slate-900 block leading-snug">Pembelajaran terhubung dengan konteks kehidupan nyata murid</span>
+                            <span className="text-[10px] text-amber-600 font-bold uppercase tracking-wider">Aspek: Konteks Nyata</span>
+                          </div>
                         </div>
                       </td>
                       <td className="py-3 px-3.5 align-top">
@@ -3478,10 +3653,14 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
 
                     {/* Row 4: Refleksi Murid */}
                     <tr className="hover:bg-slate-50/50">
+                      <td className="py-3 px-3.5 text-center font-bold text-slate-400 align-top">4</td>
                       <td className="py-3 px-3.5 font-bold text-slate-900 align-top bg-slate-50/60">
-                        <div className="flex items-center gap-1.5">
-                          <Sparkles className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                          <span>Refleksi</span>
+                        <div className="flex items-start gap-2">
+                          <Sparkles className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                          <div>
+                            <span className="font-extrabold text-slate-900 block leading-snug">Refleksi menjadi bagian rutin dalam proses pembelajaran</span>
+                            <span className="text-[10px] text-blue-600 font-bold uppercase tracking-wider">Aspek: Refleksi Murid</span>
+                          </div>
                         </div>
                       </td>
                       <td className="py-3 px-3.5 align-top">

@@ -93,6 +93,7 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
   const [selectedSchool, setSelectedSchool] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [chartViewMode, setChartViewMode] = useState<'bars' | 'trajectory'>('bars');
+  const [matrixViewMode, setMatrixViewMode] = useState<'nyatakan' | 'selidiki' | 'uji'>('nyatakan');
 
   // Extract unique schools dynamically from supervisions
   const schoolOptions = useMemo(() => {
@@ -935,16 +936,88 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
           </div>
         </div>
 
+        {/* 3-Mode View Switcher: Nyatakan (Before-After), Selidiki (Baseline), Uji (Setelah Perbaikan) */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 p-2.5 rounded-2xl border border-slate-200">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setMatrixViewMode('nyatakan')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                matrixViewMode === 'nyatakan'
+                  ? 'bg-rose-600 text-white shadow-xs'
+                  : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+              }`}
+            >
+              <Layers className="w-4 h-4" />
+              <span>Tabel Nyatakan: Indikator, Selidiki (Before) &amp; Uji (After)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setMatrixViewMode('selidiki')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                matrixViewMode === 'selidiki'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+              }`}
+            >
+              <Sparkles className="w-4 h-4 text-amber-400" />
+              <span>Tabel Selidiki: Indikator &amp; Selidiki (Baseline)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setMatrixViewMode('uji')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                matrixViewMode === 'uji'
+                  ? 'bg-purple-600 text-white shadow-xs'
+                  : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+              }`}
+            >
+              <TrendingUp className="w-4 h-4" />
+              <span>Tabel Uji: Indikator &amp; Uji (Setelah Perbaikan)</span>
+            </button>
+          </div>
+
+          <span className="text-[11px] text-slate-500 font-medium px-2">
+            Menampilkan 4 indikator kunci per guru binaan
+          </span>
+        </div>
+
         {/* Big Detailed Matrix Table */}
         <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-xs">
           <table className="w-full text-xs border-collapse min-w-[900px]">
             <thead>
               <tr className="bg-slate-100/90 text-slate-800 font-bold border-b border-slate-200 uppercase text-[11px]">
                 <th className="py-3.5 px-4 text-left w-56 font-bold">Identitas Guru &amp; Sekolah</th>
-                <th className="py-3.5 px-4 text-left w-64 font-bold">Peran Guru (Before &rarr; After)</th>
-                <th className="py-3.5 px-4 text-left w-64 font-bold">Aktivitas Murid (Before &rarr; After)</th>
-                <th className="py-3.5 px-4 text-left w-64 font-bold">Konteks Nyata (Before &rarr; After)</th>
-                <th className="py-3.5 px-4 text-left w-64 font-bold">Refleksi Murid (Before &rarr; After)</th>
+                <th className="py-3.5 px-4 text-left w-64 font-bold">
+                  {matrixViewMode === 'selidiki' 
+                    ? '1. Peran Guru (Selidiki / Kondisi Awal)' 
+                    : matrixViewMode === 'uji' 
+                    ? '1. Peran Guru (Uji / Setelah Perbaikan)' 
+                    : '1. Peran Guru (Before → After)'}
+                </th>
+                <th className="py-3.5 px-4 text-left w-64 font-bold">
+                  {matrixViewMode === 'selidiki' 
+                    ? '2. Aktivitas Murid (Selidiki / Kondisi Awal)' 
+                    : matrixViewMode === 'uji' 
+                    ? '2. Aktivitas Murid (Uji / Setelah Perbaikan)' 
+                    : '2. Aktivitas Murid (Before → After)'}
+                </th>
+                <th className="py-3.5 px-4 text-left w-64 font-bold">
+                  {matrixViewMode === 'selidiki' 
+                    ? '3. Konteks Nyata (Selidiki / Kondisi Awal)' 
+                    : matrixViewMode === 'uji' 
+                    ? '3. Konteks Nyata (Uji / Setelah Perbaikan)' 
+                    : '3. Konteks Nyata (Before → After)'}
+                </th>
+                <th className="py-3.5 px-4 text-left w-64 font-bold">
+                  {matrixViewMode === 'selidiki' 
+                    ? '4. Refleksi Murid (Selidiki / Kondisi Awal)' 
+                    : matrixViewMode === 'uji' 
+                    ? '4. Refleksi Murid (Uji / Setelah Perbaikan)' 
+                    : '4. Refleksi Murid (Before → After)'}
+                </th>
                 <th className="py-3.5 px-3 text-center w-28 font-bold">Aksi</th>
               </tr>
             </thead>
@@ -1001,90 +1074,170 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
 
                       {/* Peran Guru */}
                       <td className="py-4 px-4">
-                        <div className="space-y-2">
-                          <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80">
-                            <span className="text-[10px] font-bold text-slate-500 uppercase block mb-0.5">
-                              Before (Awal):
+                        {matrixViewMode === 'selidiki' ? (
+                          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
+                            <span className="text-[10px] font-bold text-indigo-700 uppercase block mb-1">
+                              Kesimpulan Selidiki (Baseline):
                             </span>
                             <p className="text-slate-700 leading-relaxed text-[11px]">
                               {aspects.peranGuru.before}
                             </p>
                           </div>
-                          <div className="p-2.5 rounded-xl bg-indigo-50/70 border border-indigo-200">
-                            <span className="text-[10px] font-bold text-indigo-700 uppercase block mb-0.5">
-                              After (Setelah SAMBUNG):
+                        ) : matrixViewMode === 'uji' ? (
+                          <div className="p-3 rounded-xl bg-purple-50/70 border border-purple-200">
+                            <span className="text-[10px] font-bold text-purple-700 uppercase block mb-1">
+                              Kesimpulan Uji (Setelah Perbaikan):
                             </span>
-                            <p className="text-indigo-950 font-medium leading-relaxed text-[11px]">
+                            <p className="text-purple-950 font-medium leading-relaxed text-[11px]">
                               {aspects.peranGuru.after}
                             </p>
                           </div>
-                        </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80">
+                              <span className="text-[10px] font-bold text-slate-500 uppercase block mb-0.5">
+                                Selidiki (Before):
+                              </span>
+                              <p className="text-slate-700 leading-relaxed text-[11px]">
+                                {aspects.peranGuru.before}
+                              </p>
+                            </div>
+                            <div className="p-2.5 rounded-xl bg-indigo-50/70 border border-indigo-200">
+                              <span className="text-[10px] font-bold text-indigo-700 uppercase block mb-0.5">
+                                Uji (After):
+                              </span>
+                              <p className="text-indigo-950 font-medium leading-relaxed text-[11px]">
+                                {aspects.peranGuru.after}
+                              </p>
+                            </div>
+                          </div>
+                        )}
                       </td>
 
                       {/* Aktivitas Murid */}
                       <td className="py-4 px-4">
-                        <div className="space-y-2">
-                          <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80">
-                            <span className="text-[10px] font-bold text-slate-500 uppercase block mb-0.5">
-                              Before (Awal):
+                        {matrixViewMode === 'selidiki' ? (
+                          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
+                            <span className="text-[10px] font-bold text-purple-700 uppercase block mb-1">
+                              Kesimpulan Selidiki (Baseline):
                             </span>
                             <p className="text-slate-700 leading-relaxed text-[11px]">
                               {aspects.aktivitasMurid.before}
                             </p>
                           </div>
-                          <div className="p-2.5 rounded-xl bg-purple-50/70 border border-purple-200">
-                            <span className="text-[10px] font-bold text-purple-700 uppercase block mb-0.5">
-                              After (Setelah SAMBUNG):
+                        ) : matrixViewMode === 'uji' ? (
+                          <div className="p-3 rounded-xl bg-purple-50/70 border border-purple-200">
+                            <span className="text-[10px] font-bold text-purple-700 uppercase block mb-1">
+                              Kesimpulan Uji (Setelah Perbaikan):
                             </span>
                             <p className="text-purple-950 font-medium leading-relaxed text-[11px]">
                               {aspects.aktivitasMurid.after}
                             </p>
                           </div>
-                        </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80">
+                              <span className="text-[10px] font-bold text-slate-500 uppercase block mb-0.5">
+                                Selidiki (Before):
+                              </span>
+                              <p className="text-slate-700 leading-relaxed text-[11px]">
+                                {aspects.aktivitasMurid.before}
+                              </p>
+                            </div>
+                            <div className="p-2.5 rounded-xl bg-purple-50/70 border border-purple-200">
+                              <span className="text-[10px] font-bold text-purple-700 uppercase block mb-0.5">
+                                Uji (After):
+                              </span>
+                              <p className="text-purple-950 font-medium leading-relaxed text-[11px]">
+                                {aspects.aktivitasMurid.after}
+                              </p>
+                            </div>
+                          </div>
+                        )}
                       </td>
 
                       {/* Konteks Nyata */}
                       <td className="py-4 px-4">
-                        <div className="space-y-2">
-                          <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80">
-                            <span className="text-[10px] font-bold text-slate-500 uppercase block mb-0.5">
-                              Before (Awal):
+                        {matrixViewMode === 'selidiki' ? (
+                          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
+                            <span className="text-[10px] font-bold text-amber-700 uppercase block mb-1">
+                              Kesimpulan Selidiki (Baseline):
                             </span>
                             <p className="text-slate-700 leading-relaxed text-[11px]">
                               {aspects.konteksNyata.before}
                             </p>
                           </div>
-                          <div className="p-2.5 rounded-xl bg-amber-50/70 border border-amber-200">
-                            <span className="text-[10px] font-bold text-amber-700 uppercase block mb-0.5">
-                              After (Setelah SAMBUNG):
+                        ) : matrixViewMode === 'uji' ? (
+                          <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200">
+                            <span className="text-[10px] font-bold text-amber-700 uppercase block mb-1">
+                              Kesimpulan Uji (Setelah Perbaikan):
                             </span>
                             <p className="text-amber-950 font-medium leading-relaxed text-[11px]">
                               {aspects.konteksNyata.after}
                             </p>
                           </div>
-                        </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80">
+                              <span className="text-[10px] font-bold text-slate-500 uppercase block mb-0.5">
+                                Selidiki (Before):
+                              </span>
+                              <p className="text-slate-700 leading-relaxed text-[11px]">
+                                {aspects.konteksNyata.before}
+                              </p>
+                            </div>
+                            <div className="p-2.5 rounded-xl bg-amber-50/70 border border-amber-200">
+                              <span className="text-[10px] font-bold text-amber-700 uppercase block mb-0.5">
+                                Uji (After):
+                              </span>
+                              <p className="text-amber-950 font-medium leading-relaxed text-[11px]">
+                                {aspects.konteksNyata.after}
+                              </p>
+                            </div>
+                          </div>
+                        )}
                       </td>
 
                       {/* Refleksi Murid */}
                       <td className="py-4 px-4">
-                        <div className="space-y-2">
-                          <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80">
-                            <span className="text-[10px] font-bold text-slate-500 uppercase block mb-0.5">
-                              Before (Awal):
+                        {matrixViewMode === 'selidiki' ? (
+                          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
+                            <span className="text-[10px] font-bold text-blue-700 uppercase block mb-1">
+                              Kesimpulan Selidiki (Baseline):
                             </span>
                             <p className="text-slate-700 leading-relaxed text-[11px]">
                               {aspects.refleksiMurid.before}
                             </p>
                           </div>
-                          <div className="p-2.5 rounded-xl bg-blue-50/70 border border-blue-200">
-                            <span className="text-[10px] font-bold text-blue-700 uppercase block mb-0.5">
-                              After (Setelah SAMBUNG):
+                        ) : matrixViewMode === 'uji' ? (
+                          <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-200">
+                            <span className="text-[10px] font-bold text-blue-700 uppercase block mb-1">
+                              Kesimpulan Uji (Setelah Perbaikan):
                             </span>
                             <p className="text-blue-950 font-medium leading-relaxed text-[11px]">
                               {aspects.refleksiMurid.after}
                             </p>
                           </div>
-                        </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80">
+                              <span className="text-[10px] font-bold text-slate-500 uppercase block mb-0.5">
+                                Selidiki (Before):
+                              </span>
+                              <p className="text-slate-700 leading-relaxed text-[11px]">
+                                {aspects.refleksiMurid.before}
+                              </p>
+                            </div>
+                            <div className="p-2.5 rounded-xl bg-blue-50/70 border border-blue-200">
+                              <span className="text-[10px] font-bold text-blue-700 uppercase block mb-0.5">
+                                Uji (After):
+                              </span>
+                              <p className="text-blue-950 font-medium leading-relaxed text-[11px]">
+                                {aspects.refleksiMurid.after}
+                              </p>
+                            </div>
+                          </div>
+                        )}
                       </td>
 
                       {/* Aksi Button */}

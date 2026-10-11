@@ -90,13 +90,20 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
   currentUser,
   onOpenSambungTeacher,
 }) => {
-  const [selectedSchool, setSelectedSchool] = useState<string>('all');
+  const isKepsek = currentUser.role === 'kepsek';
+  const isGuru = currentUser.role === 'guru';
+
+  const defaultSchool = isKepsek ? (currentUser.schoolName || 'SMAN 4 Bogor') : 'all';
+  const [selectedSchool, setSelectedSchool] = useState<string>(defaultSchool);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [chartViewMode, setChartViewMode] = useState<'bars' | 'trajectory'>('bars');
   const [matrixViewMode, setMatrixViewMode] = useState<'nyatakan' | 'selidiki' | 'uji'>('nyatakan');
 
   // Extract unique schools dynamically from supervisions
   const schoolOptions = useMemo(() => {
+    if (isKepsek && currentUser.schoolName) {
+      return [currentUser.schoolName];
+    }
     const map = new Map<string, string>();
     supervisions.forEach(s => {
       if (s.schoolName) {
@@ -104,11 +111,28 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
       }
     });
     return Array.from(map.values()).sort();
-  }, [supervisions]);
+  }, [supervisions, isKepsek, currentUser.schoolName]);
 
   // Filtered supervisions based on selected school and search term
   const filteredSupervisions = useMemo(() => {
     return supervisions.filter(s => {
+      if (isGuru) {
+        return s.teacherId === currentUser.uid ||
+               s.teacherName.toLowerCase().trim() === currentUser.displayName?.toLowerCase().trim();
+      }
+
+      if (isKepsek) {
+        const userSch = (currentUser.schoolName || '').toLowerCase().trim();
+        const supSch = (s.schoolName || '').toLowerCase().trim();
+        const matchSchool = (currentUser.schoolId && s.schoolId === currentUser.schoolId) ||
+                            (userSch && (supSch.includes(userSch) || userSch.includes(supSch)));
+        const q = searchQuery.toLowerCase().trim();
+        const matchQuery = q === '' ||
+          s.teacherName.toLowerCase().includes(q) ||
+          s.subject.toLowerCase().includes(q);
+        return matchSchool && matchQuery;
+      }
+
       const matchSchool = selectedSchool === 'all' || s.schoolName === selectedSchool;
       const q = searchQuery.toLowerCase().trim();
       const matchQuery = 
@@ -118,7 +142,7 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
         s.schoolName.toLowerCase().includes(q);
       return matchSchool && matchQuery;
     });
-  }, [supervisions, selectedSchool, searchQuery]);
+  }, [supervisions, selectedSchool, searchQuery, isGuru, isKepsek, currentUser]);
 
   // Dynamic aggregation of quantitative impact data (Awal vs Setelah SAMBUNG)
   // connected in real-time to what the supervisor inputs or defaults

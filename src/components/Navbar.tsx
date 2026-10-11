@@ -10,7 +10,8 @@ import {
   LogIn, 
   BookOpen,
   HardDrive,
-  Sparkles
+  Sparkles,
+  Users
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -35,11 +36,14 @@ export const Navbar: React.FC<NavbarProps> = ({
   const getRoleLabel = (role: Role) => {
     switch (role) {
       case 'admin':
-        return 'Pengawas Pembina';
+      case 'pengawas':
+        return 'Pengawas Pembina / Admin';
       case 'kepsek':
         return 'Kepala Sekolah';
       case 'guru':
         return 'Guru Mapel';
+      default:
+        return 'Pengawas Pembina';
     }
   };
 
@@ -85,18 +89,32 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span>Dashboard</span>
               </button>
 
-              {currentUser.role === 'admin' && (
-                <button
-                  onClick={() => setActiveTab('schools')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 ${
-                    activeTab === 'schools'
-                      ? 'bg-slate-100 text-indigo-700'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                  }`}
-                >
-                  <Building2 className="w-3.5 h-3.5 text-indigo-600" />
-                  <span>Sekolah Binaan</span>
-                </button>
+              {(currentUser.role === 'admin' || (currentUser.role as string) === 'pengawas') && (
+                <>
+                  <button
+                    onClick={() => setActiveTab('schools')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+                      activeTab === 'schools'
+                        ? 'bg-slate-100 text-indigo-700'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                    }`}
+                  >
+                    <Building2 className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>Sekolah Binaan</span>
+                  </button>
+
+                  <button
+                    onClick={() => setActiveTab('users')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+                      activeTab === 'users'
+                        ? 'bg-slate-100 text-indigo-700 font-bold'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                    }`}
+                  >
+                    <Users className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>Kelola Pengguna</span>
+                  </button>
+                </>
               )}
 
               <button

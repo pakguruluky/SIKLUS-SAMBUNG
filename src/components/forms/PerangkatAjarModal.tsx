@@ -95,8 +95,10 @@ export const PerangkatAjarModal: React.FC<PerangkatAjarModalProps> = ({
   const [saving, setSaving] = useState(false);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
 
-  const isSupervisor = currentUser.role === 'admin' || currentUser.role === 'kepsek';
+  const isSupervisor = currentUser.role === 'admin' || (currentUser.role as string) === 'pengawas' || currentUser.role === 'kepsek';
   const isGuru = currentUser.role === 'guru';
+  // Guru and supervisor can add and evaluate Perangkat Ajar & Telaah Modul Ajar (22 Aspek)
+  const canEditTelaah = true;
 
   // Check if telaah has been reviewed by supervisor
   const isReviewed = Boolean(supervision.perangkatAjar?.reviewedAt);
@@ -127,12 +129,10 @@ export const PerangkatAjarModal: React.FC<PerangkatAjarModalProps> = ({
   else if (finalScore >= 66) predicate = 'Cukup';
 
   const handleScoreChange = (id: number, val: number | 'NA') => {
-    if (!isSupervisor) return; // Guru cannot change scores
     setScores(prev => ({ ...prev, [id]: val }));
   };
 
   const handleCommentChange = (id: number, text: string) => {
-    if (!isSupervisor) return; // Guru cannot change supervisor comments
     setComments(prev => ({ ...prev, [id]: text }));
   };
 
@@ -702,7 +702,7 @@ export const PerangkatAjarModal: React.FC<PerangkatAjarModalProps> = ({
                           <label
                             key={val}
                             className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
-                              isSupervisor ? 'cursor-pointer' : 'cursor-default opacity-85'
+                              canEditTelaah ? 'cursor-pointer' : 'cursor-default opacity-85'
                             } transition-all ${
                               scores[item.id] === val
                                 ? val === 2
@@ -719,7 +719,7 @@ export const PerangkatAjarModal: React.FC<PerangkatAjarModalProps> = ({
                               type="radio"
                               name={`telaah_score_${item.id}`}
                               value={val}
-                              disabled={!isSupervisor}
+                              disabled={!canEditTelaah}
                               checked={scores[item.id] === val}
                               onChange={() => handleScoreChange(item.id, val as any)}
                               className="sr-only"
@@ -732,10 +732,10 @@ export const PerangkatAjarModal: React.FC<PerangkatAjarModalProps> = ({
                       {/* Komentar Kritis */}
                       <input
                         type="text"
-                        disabled={!isSupervisor}
+                        disabled={!canEditTelaah}
                         value={comments[item.id] || ''}
                         onChange={(e) => handleCommentChange(item.id, e.target.value)}
-                        placeholder={isSupervisor ? "Komentar telaah..." : "Catatan supervisor"}
+                        placeholder="Catatan / komentar indikator..."
                         className="w-full sm:w-44 px-2.5 py-1 text-xs rounded-xl border border-slate-200 focus:outline-indigo-600 bg-white disabled:bg-slate-100"
                       />
                     </div>

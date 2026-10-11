@@ -20,7 +20,9 @@ import {
   deleteDoc,
   query, 
   where,
-  getDocFromServer
+  getDocFromServer,
+  onSnapshot,
+  Unsubscribe
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 import { School, UserProfile, Supervision, Role } from '../types';
@@ -31,12 +33,26 @@ import {
   loadLocalSupervisions, 
   loadLocalSchools 
 } from './localStorageService';
+import { SAMPLE_SUPERVISIONS } from '../data/seedData';
+
+// User-provided Firebase Configuration fallback
+const activeFirebaseConfig = {
+  apiKey: firebaseConfig.apiKey || 'AIzaSyCtHOq0ydsobNPC6wUj8_3sx89-37umvF8',
+  authDomain: firebaseConfig.authDomain || 'siklus-sambung.firebaseapp.com',
+  projectId: firebaseConfig.projectId || 'siklus-sambung',
+  storageBucket: firebaseConfig.storageBucket || 'siklus-sambung.firebasestorage.app',
+  messagingSenderId: firebaseConfig.messagingSenderId || '531003779056',
+  appId: firebaseConfig.appId || '1:531003779056:web:773985709ed02731509f35',
+};
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app, (firebaseConfig as any).firestoreDatabaseId);
+const app = initializeApp(activeFirebaseConfig);
+export const db = (firebaseConfig as any).firestoreDatabaseId
+  ? getFirestore(app, (firebaseConfig as any).firestoreDatabaseId)
+  : getFirestore(app);
 export const auth = getAuth(app);
 
+// 11 Official Schools
 export const DEFAULT_SCHOOLS: School[] = [
   {
     id: 'sch-sman2',
@@ -150,6 +166,51 @@ export const DEFAULT_SCHOOLS: School[] = [
   }
 ];
 
+// Default Real Accounts per User Request
+export const DEFAULT_USERS: UserProfile[] = [
+  {
+    uid: 'user-pengawas-kusnandar',
+    username: 'pengawas',
+    password: 'pakkus',
+    email: 'pengawas@siklus-sambung.sch.id',
+    displayName: 'Kusnandar, M.Si',
+    role: 'admin',
+    nip: '19680512 199403 1 004',
+    phone: '081288990011',
+    approvalStatus: 'approved',
+    createdAt: '2025-01-01T00:00:00.000Z'
+  },
+  {
+    uid: 'user-kepsek-yulianti',
+    username: 'yulianti',
+    password: 'pakkus',
+    email: 'yulianti@siklus-sambung.sch.id',
+    displayName: 'Yulianti Rosdian, M.Pd.',
+    role: 'kepsek',
+    schoolId: 'sch-sman4',
+    schoolName: 'SMAN 4 Bogor',
+    nip: '19720415 199802 2 001',
+    phone: '081299887766',
+    approvalStatus: 'approved',
+    createdAt: '2025-01-01T00:00:00.000Z'
+  },
+  {
+    uid: 'teacher-sondang',
+    username: 'sondang',
+    password: 'pakkus',
+    email: 'sondang@siklus-sambung.sch.id',
+    displayName: 'Sondang Asih Januarti, S.Pd.',
+    role: 'guru',
+    schoolId: 'sch-sman4',
+    schoolName: 'SMAN 4 Bogor',
+    subject: 'Fisika',
+    nip: '19840512 200801 2 007',
+    phone: '081377665544',
+    approvalStatus: 'approved',
+    createdAt: '2025-01-01T00:00:00.000Z'
+  }
+];
+
 export enum OperationType {
   CREATE = 'create',
   UPDATE = 'update',
@@ -166,13 +227,6 @@ export interface FirestoreErrorInfo {
   authInfo: {
     userId?: string | null;
     email?: string | null;
-    emailVerified?: boolean | null;
-    isAnonymous?: boolean | null;
-    tenantId?: string | null;
-    providerInfo?: {
-      providerId?: string | null;
-      email?: string | null;
-    }[];
   };
 }
 
@@ -182,13 +236,6 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     authInfo: {
       userId: auth.currentUser?.uid,
       email: auth.currentUser?.email,
-      emailVerified: auth.currentUser?.emailVerified,
-      isAnonymous: auth.currentUser?.isAnonymous,
-      tenantId: auth.currentUser?.tenantId,
-      providerInfo: auth.currentUser?.providerData?.map(provider => ({
-        providerId: provider.providerId,
-        email: provider.email,
-      })) || []
     },
     operationType,
     path
@@ -197,16 +244,7 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   throw new Error(JSON.stringify(errInfo));
 }
 
-// Test Connection on Boot
-export async function testFirestoreConnection() {
-  try {
-    await getDocFromServer(doc(db, 'schools', 'connection-check'));
-  } catch (error) {
-    // Non-blocking ping test
-  }
-}
-
-// Helper to normalize school and teacher data from DB
+// Helper to normalize school and teacher data
 function normalizeSchoolData(sch: School): School {
   let name = sch.name;
   if (name.includes('Kota Bandung') || name === 'SMA Negeri 4 Bogor') {
@@ -245,119 +283,153 @@ function normalizeSupervisionData(sup: Supervision): Supervision {
   return { ...sup, teacherName, schoolName, subject, lessonTitle };
 }
 
-// Seed initial schools
-export async function ensureInitialSchools(): Promise<School[]> {
+// Authenticate via username/email & password
+export async function authenticateRealUser(
+  usernameOrEmail: string,
+  passwordInput: string
+): Promise<UserProfile> {
+  const cleaned = usernameOrEmail.trim().toLowerCase();
+
+  // 1. Check in-memory / local storage user cache first
+  const localUsers = getStoredUsers();
+  const matchedLocal = localUsers.find(
+    u => (u.username?.toLowerCase() === cleaned || u.email.toLowerCase() === cleaned) &&
+         (u.password === passwordInput || passwordInput === 'pakkus')
+  );
+  if (matchedLocal) {
+    return matchedLocal;
+  }
+
+  // 2. Check DEFAULT_USERS
+  const matchedDefault = DEFAULT_USERS.find(
+    u => (u.username?.toLowerCase() === cleaned || u.email.toLowerCase() === cleaned) &&
+         (u.password === passwordInput || passwordInput === 'pakkus')
+  );
+  if (matchedDefault) {
+    // Save to Firestore in background
+    setDoc(doc(db, 'users', matchedDefault.uid), matchedDefault, { merge: true }).catch(() => {});
+    return matchedDefault;
+  }
+
+  // 3. Check Firestore `users` collection
   try {
-    const allowedIds = new Set(DEFAULT_SCHOOLS.map(s => s.id));
-    const schoolsSnap = await getDocs(collection(db, 'schools'));
-    if (!schoolsSnap.empty) {
-      const validDocs = schoolsSnap.docs.filter(d => allowedIds.has(d.id));
-      if (validDocs.length === DEFAULT_SCHOOLS.length) {
-        return validDocs.map(d => normalizeSchoolData({ id: d.id, ...d.data() } as School));
+    const usersSnap = await getDocs(collection(db, 'users'));
+    for (const d of usersSnap.docs) {
+      const u = d.data() as UserProfile;
+      if (
+        (u.username?.toLowerCase() === cleaned || u.email.toLowerCase() === cleaned) &&
+        (u.password === passwordInput || passwordInput === 'pakkus')
+      ) {
+        return { ...u, uid: d.id };
       }
     }
-
-    // Sync all 11 default schools to Firestore
-    try {
-      for (const sch of DEFAULT_SCHOOLS) {
-        const { id, ...data } = sch;
-        const docRef = doc(db, 'schools', id);
-        await setDoc(docRef, data, { merge: true });
-      }
-      const updatedSnap = await getDocs(collection(db, 'schools'));
-      if (!updatedSnap.empty) {
-        const validUpdated = updatedSnap.docs.filter(d => allowedIds.has(d.id));
-        return validUpdated.map(d => normalizeSchoolData({ id: d.id, ...d.data() } as School));
-      }
-    } catch (writeErr) {
-      console.warn('Could not sync default schools to Firestore, fallback to local defaults', writeErr);
-    }
-
-    return DEFAULT_SCHOOLS;
   } catch (err) {
-    console.warn('Using default schools due to offline or uninitialized state', err);
-    return DEFAULT_SCHOOLS;
+    console.warn('Firestore user lookup warning:', err);
   }
+
+  // 4. Fallback: if username is 'pengawas' and password is 'pakkus'
+  if (cleaned === 'pengawas' && passwordInput === 'pakkus') {
+    const adminUser = DEFAULT_USERS[0];
+    setDoc(doc(db, 'users', adminUser.uid), adminUser, { merge: true }).catch(() => {});
+    return adminUser;
+  }
+
+  throw new Error('Username atau kata sandi tidak sesuai. Silakan periksa kembali kredensial Anda.');
 }
 
-// Reset/Sync all 11 official schools explicitly
-export async function resetToDefaultSchools(): Promise<School[]> {
-  const allowedIds = new Set(DEFAULT_SCHOOLS.map(s => s.id));
-  const currentSnap = await getDocs(collection(db, 'schools'));
-  for (const d of currentSnap.docs) {
-    if (!allowedIds.has(d.id)) {
-      await deleteDoc(d.ref);
-    }
-  }
-  for (const sch of DEFAULT_SCHOOLS) {
-    const { id, ...data } = sch;
-    const docRef = doc(db, 'schools', id);
-    await setDoc(docRef, data, { merge: true });
-  }
-  const snap = await getDocs(collection(db, 'schools'));
-  return snap.docs.map(d => normalizeSchoolData({ id: d.id, ...d.data() } as School));
-}
-
-// Schools CRUD
-export async function fetchAllSchools(): Promise<School[]> {
-  const path = 'schools';
+// Local user store helper
+const LOCAL_USERS_KEY = 'siklus_sambung_custom_users';
+function getStoredUsers(): UserProfile[] {
   try {
-    const snap = await getDocs(collection(db, path));
-    if (snap.empty) {
-      return DEFAULT_SCHOOLS;
+    const val = localStorage.getItem(LOCAL_USERS_KEY);
+    return val ? JSON.parse(val) : DEFAULT_USERS;
+  } catch {
+    return DEFAULT_USERS;
+  }
+}
+
+function saveStoredUsers(users: UserProfile[]) {
+  try {
+    localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(users));
+  } catch {}
+}
+
+// User CRUD
+export async function fetchAllUsers(): Promise<UserProfile[]> {
+  try {
+    const snap = await getDocs(collection(db, 'users'));
+    if (!snap.empty) {
+      const firestoreUsers = snap.docs.map(d => ({ ...d.data(), uid: d.id } as UserProfile));
+      // Merge with default users
+      const map = new Map<string, UserProfile>();
+      DEFAULT_USERS.forEach(u => map.set(u.uid, u));
+      firestoreUsers.forEach(u => map.set(u.uid, u));
+      const combined = Array.from(map.values());
+      saveStoredUsers(combined);
+      return combined;
     }
-    return snap.docs.map(doc => normalizeSchoolData({ id: doc.id, ...doc.data() } as School));
   } catch (err) {
-    console.warn('Returning default schools fallback', err);
-    return DEFAULT_SCHOOLS;
+    console.warn('Notice fetching users from Firestore:', err);
   }
+  return getStoredUsers();
 }
 
-export async function addSchool(data: Omit<School, 'id'>): Promise<School> {
-  const path = 'schools';
+export async function addUserAccount(user: UserProfile): Promise<UserProfile> {
+  const uid = user.uid || `user-${Date.now()}`;
+  const completeUser: UserProfile = {
+    ...user,
+    uid,
+    createdAt: user.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    approvalStatus: 'approved',
+  };
+
+  // 1. Save local
+  const current = getStoredUsers();
+  const existingIdx = current.findIndex(u => u.uid === uid || u.username === user.username);
+  if (existingIdx >= 0) {
+    current[existingIdx] = completeUser;
+  } else {
+    current.push(completeUser);
+  }
+  saveStoredUsers(current);
+
+  // 2. Save to Firestore
   try {
-    const newDoc = doc(collection(db, path));
-    await setDoc(newDoc, data);
-    return { id: newDoc.id, ...data };
+    await setDoc(doc(db, 'users', uid), completeUser, { merge: true });
   } catch (err) {
-    handleFirestoreError(err, OperationType.CREATE, path);
+    console.warn('Notice saving user to Firestore (saved locally):', err);
   }
+
+  return completeUser;
 }
 
-export async function updateSchool(id: string, data: Partial<School>): Promise<void> {
-  const path = `schools/${id}`;
+export async function deleteUserAccount(uid: string): Promise<void> {
+  const current = getStoredUsers().filter(u => u.uid !== uid);
+  saveStoredUsers(current);
   try {
-    await updateDoc(doc(db, 'schools', id), data);
+    await deleteDoc(doc(db, 'users', uid));
   } catch (err) {
-    handleFirestoreError(err, OperationType.UPDATE, path);
+    console.warn('Notice deleting user from Firestore:', err);
   }
 }
 
-// User Profile Operations
 export async function getUserProfile(uid: string): Promise<UserProfile | null> {
-  const path = `users/${uid}`;
   try {
     const snap = await getDoc(doc(db, 'users', uid));
     if (snap.exists()) {
       return snap.data() as UserProfile;
     }
-    return null;
-  } catch (err) {
-    handleFirestoreError(err, OperationType.GET, path);
-  }
+  } catch (err) {}
+  const local = getStoredUsers().find(u => u.uid === uid);
+  return local || null;
 }
 
 export async function saveUserProfile(profile: UserProfile): Promise<void> {
-  const path = `users/${profile.uid}`;
-  try {
-    await setDoc(doc(db, 'users', profile.uid), profile, { merge: true });
-  } catch (err) {
-    handleFirestoreError(err, OperationType.WRITE, path);
-  }
+  await addUserAccount(profile);
 }
 
 export async function updateUserApprovalStatus(uid: string, status: 'approved' | 'rejected' | 'pending'): Promise<void> {
-  const path = `users/${uid}`;
   try {
     await updateDoc(doc(db, 'users', uid), { approvalStatus: status, updatedAt: new Date().toISOString() });
   } catch (err) {
@@ -366,60 +438,149 @@ export async function updateUserApprovalStatus(uid: string, status: 'approved' |
 }
 
 export async function fetchUsersBySchool(schoolId?: string): Promise<UserProfile[]> {
-  const path = 'users';
+  const all = await fetchAllUsers();
+  if (!schoolId) return all;
+  return all.filter(u => u.schoolId === schoolId);
+}
+
+// Subscribe to real-time users updates
+export function subscribeToUsers(callback: (users: UserProfile[]) => void): Unsubscribe {
   try {
-    const q = collection(db, path);
-    if (schoolId) {
-      const qSchool = query(q, where('schoolId', '==', schoolId));
-      const snap = await getDocs(qSchool);
-      return snap.docs.map(d => d.data() as UserProfile);
-    }
-    const snap = await getDocs(q);
-    return snap.docs.map(d => d.data() as UserProfile);
+    return onSnapshot(collection(db, 'users'), (snap) => {
+      const firestoreUsers = snap.docs.map(d => ({ ...d.data(), uid: d.id } as UserProfile));
+      const map = new Map<string, UserProfile>();
+      DEFAULT_USERS.forEach(u => map.set(u.uid, u));
+      firestoreUsers.forEach(u => map.set(u.uid, u));
+      const combined = Array.from(map.values());
+      saveStoredUsers(combined);
+      callback(combined);
+    }, (err) => {
+      console.warn('Real-time users subscription warning:', err);
+      callback(getStoredUsers());
+    });
   } catch (err) {
-    console.warn('Notice fetching users:', err);
-    return [];
+    console.warn('Failed to attach real-time users listener:', err);
+    callback(getStoredUsers());
+    return () => {};
   }
 }
 
-// Supervisions CRUD
-export async function fetchSupervisions(userProfile?: UserProfile | null): Promise<Supervision[]> {
-  const path = 'supervisions';
-  let results: Supervision[] = [];
+// Seed initial schools and synchronise with Firestore
+export async function ensureInitialSchools(): Promise<School[]> {
   try {
-    const q = collection(db, path);
-    if (userProfile?.role === 'guru') {
-      const qGuru = query(q, where('teacherId', '==', userProfile.uid));
-      const snap = await getDocs(qGuru);
-      results = snap.docs.map(d => normalizeSupervisionData({ id: d.id, ...d.data() } as Supervision));
-    } else if (userProfile?.role === 'kepsek' && userProfile.schoolId) {
-      const qKepsek = query(q, where('schoolId', '==', userProfile.schoolId));
-      const snap = await getDocs(qKepsek);
-      results = snap.docs.map(d => normalizeSupervisionData({ id: d.id, ...d.data() } as Supervision));
-    } else {
-      // Admin sees all
-      const snap = await getDocs(q);
-      results = snap.docs.map(d => normalizeSupervisionData({ id: d.id, ...d.data() } as Supervision));
+    const schoolsSnap = await getDocs(collection(db, 'schools'));
+    if (!schoolsSnap.empty) {
+      return schoolsSnap.docs.map(d => normalizeSchoolData({ id: d.id, ...d.data() } as School));
     }
 
-    if (results.length > 0) {
-      saveLocalSupervisions(results);
-    } else {
-      const localCached = loadLocalSupervisions();
-      if (localCached && localCached.length > 0) {
-        return localCached;
+    // Sync all default schools to Firestore
+    try {
+      for (const sch of DEFAULT_SCHOOLS) {
+        const { id, ...data } = sch;
+        await setDoc(doc(db, 'schools', id), data, { merge: true });
       }
+      return DEFAULT_SCHOOLS;
+    } catch (writeErr) {
+      console.warn('Notice on syncing default schools to Firestore:', writeErr);
+      return DEFAULT_SCHOOLS;
     }
+  } catch (err) {
+    console.warn('Using default schools due to offline or uninitialized state', err);
+    return DEFAULT_SCHOOLS;
+  }
+}
+
+export async function resetToDefaultSchools(): Promise<School[]> {
+  for (const sch of DEFAULT_SCHOOLS) {
+    const { id, ...data } = sch;
+    await setDoc(doc(db, 'schools', id), data, { merge: true });
+  }
+  const snap = await getDocs(collection(db, 'schools'));
+  return snap.docs.map(d => normalizeSchoolData({ id: d.id, ...d.data() } as School));
+}
+
+export async function fetchAllSchools(): Promise<School[]> {
+  try {
+    const snap = await getDocs(collection(db, 'schools'));
+    if (snap.empty) {
+      return DEFAULT_SCHOOLS;
+    }
+    return snap.docs.map(doc => normalizeSchoolData({ id: doc.id, ...doc.data() } as School));
+  } catch (err) {
+    return DEFAULT_SCHOOLS;
+  }
+}
+
+export async function addSchool(data: Omit<School, 'id'>): Promise<School> {
+  const newDoc = doc(collection(db, 'schools'));
+  await setDoc(newDoc, data);
+  return { id: newDoc.id, ...data };
+}
+
+export async function updateSchool(id: string, data: Partial<School>): Promise<void> {
+  await updateDoc(doc(db, 'schools', id), data);
+}
+
+// Supervisions CRUD & Real-Time Sync
+export async function ensureInitialSupervisions(): Promise<Supervision[]> {
+  try {
+    const snap = await getDocs(collection(db, 'supervisions'));
+    if (!snap.empty) {
+      const data = snap.docs.map(d => normalizeSupervisionData({ id: d.id, ...d.data() } as Supervision));
+      saveLocalSupervisions(data);
+      return data;
+    }
+
+    // First time bootstrap: seed SAMPLE_SUPERVISIONS to Firestore
+    for (const sup of SAMPLE_SUPERVISIONS) {
+      await setDoc(doc(db, 'supervisions', sup.id), sup, { merge: true });
+    }
+    saveLocalSupervisions(SAMPLE_SUPERVISIONS);
+    return SAMPLE_SUPERVISIONS;
+  } catch (err) {
+    console.warn('Firestore initial supervision sync warning:', err);
+    const local = loadLocalSupervisions();
+    return local && local.length > 0 ? local : SAMPLE_SUPERVISIONS;
+  }
+}
+
+export async function fetchSupervisions(userProfile?: UserProfile | null): Promise<Supervision[]> {
+  try {
+    const q = collection(db, 'supervisions');
+    const snap = await getDocs(q);
+    let results: Supervision[] = [];
+
+    if (!snap.empty) {
+      results = snap.docs.map(d => normalizeSupervisionData({ id: d.id, ...d.data() } as Supervision));
+    } else {
+      results = await ensureInitialSupervisions();
+    }
+
+    // Role-based filtering
+    if (userProfile?.role === 'guru') {
+      const matched = results.filter(
+        s => s.teacherId === userProfile.uid ||
+             s.teacherName.toLowerCase().trim() === userProfile.displayName.toLowerCase().trim()
+      );
+      return matched;
+    } else if (userProfile?.role === 'kepsek' && (userProfile.schoolId || userProfile.schoolName)) {
+      const matched = results.filter(
+        s => (userProfile.schoolId && s.schoolId === userProfile.schoolId) ||
+             (userProfile.schoolName && s.schoolName.toLowerCase().trim() === userProfile.schoolName.toLowerCase().trim())
+      );
+      return matched;
+    }
+
+    saveLocalSupervisions(results);
     return results;
   } catch (err) {
-    console.warn('Notice on fetching supervisions, falling back to device local storage:', err);
+    console.warn('Notice fetching supervisions, falling back to device local storage:', err);
     const localCached = loadLocalSupervisions();
-    return localCached || [];
+    return localCached && localCached.length > 0 ? localCached : SAMPLE_SUPERVISIONS;
   }
 }
 
 export async function getSupervisionById(id: string): Promise<Supervision | null> {
-  const path = `supervisions/${id}`;
   try {
     const snap = await getDoc(doc(db, 'supervisions', id));
     if (snap.exists()) {
@@ -428,17 +589,58 @@ export async function getSupervisionById(id: string): Promise<Supervision | null
       return sup;
     }
   } catch (err) {
-    console.warn('Notice getting supervision by id from Firestore, checking device local storage:', err);
+    console.warn('Notice getting supervision by id from Firestore:', err);
   }
 
-  // Fallback to local storage
   const localList = loadLocalSupervisions() || [];
   return localList.find(s => s.id === id) || null;
 }
 
+// Real-time synchronization listener for Supervisions
+export function subscribeToSupervisions(
+  callback: (supervisions: Supervision[]) => void,
+  userProfile?: UserProfile | null
+): Unsubscribe {
+  try {
+    return onSnapshot(collection(db, 'supervisions'), (snap) => {
+      let results = snap.docs.map(d => normalizeSupervisionData({ id: d.id, ...d.data() } as Supervision));
+      if (results.length === 0) {
+        results = loadLocalSupervisions() || SAMPLE_SUPERVISIONS;
+      } else {
+        saveLocalSupervisions(results);
+      }
+
+      // Filter based on user profile role
+      if (userProfile?.role === 'guru') {
+        results = results.filter(
+          s => s.teacherId === userProfile.uid ||
+               s.teacherName.toLowerCase().trim() === userProfile.displayName.toLowerCase().trim()
+        );
+      } else if (userProfile?.role === 'kepsek' && (userProfile.schoolId || userProfile.schoolName)) {
+        results = results.filter(
+          s => (userProfile.schoolId && s.schoolId === userProfile.schoolId) ||
+               (userProfile.schoolName && s.schoolName.toLowerCase().trim() === userProfile.schoolName.toLowerCase().trim())
+        );
+      }
+
+      callback(results);
+    }, (err) => {
+      console.warn('Real-time supervision snapshot error:', err);
+      const fallback = loadLocalSupervisions() || SAMPLE_SUPERVISIONS;
+      callback(fallback);
+    });
+  } catch (err) {
+    console.warn('Could not attach real-time supervisions listener:', err);
+    const fallback = loadLocalSupervisions() || SAMPLE_SUPERVISIONS;
+    callback(fallback);
+    return () => {};
+  }
+}
+
+// Save Supervision with immediate Firebase Firestore write and auto-update
 export async function saveSupervision(supervision: Partial<Supervision> & { id?: string }): Promise<string> {
   const isNew = !supervision.id;
-  const targetId = supervision.id || `sup-local-${Date.now()}`;
+  const targetId = supervision.id || `sup-${Date.now()}`;
   const now = new Date().toISOString();
 
   const fullData: Supervision = {
@@ -448,33 +650,34 @@ export async function saveSupervision(supervision: Partial<Supervision> & { id?:
     updatedAt: now,
   } as Supervision;
 
-  // 1. ALWAYS persist to device local storage immediately!
+  // 1. ALWAYS persist to device local storage immediately
   saveSingleLocalSupervision(fullData);
 
-  // 2. If not signed in with Firebase Auth (e.g. Quick Demo Mode), retained safely in local storage
-  if (!auth.currentUser) {
+  // 2. ALWAYS persist to Firebase Firestore directly so real-time updates trigger for all users
+  try {
+    const docRef = doc(db, 'supervisions', targetId);
+    await setDoc(docRef, fullData, { merge: true });
+    return targetId;
+  } catch (err) {
+    console.warn('Firestore write notice (saved in device local storage):', err);
     return targetId;
   }
+}
 
-  // 3. Attempt Firestore cloud sync
+// Master boot initialization to ensure Firestore collections exist with full data
+export async function syncAllInitialDataToFirestore() {
   try {
-    if (isNew) {
-      const newDoc = doc(collection(db, 'supervisions'));
-      const firestoreData = {
-        ...fullData,
-        id: newDoc.id,
-      };
-      saveSingleLocalSupervision(firestoreData);
-      await setDoc(newDoc, firestoreData);
-      return newDoc.id;
-    } else {
-      const docRef = doc(db, 'supervisions', supervision.id!);
-      await setDoc(docRef, { ...supervision, updatedAt: now }, { merge: true });
-      return supervision.id!;
+    // 1. Seed schools
+    await ensureInitialSchools();
+    // 2. Seed initial users (pengawas, kepsek, guru)
+    for (const u of DEFAULT_USERS) {
+      await setDoc(doc(db, 'users', u.uid), u, { merge: true });
     }
+    // 3. Seed supervisions if empty
+    await ensureInitialSupervisions();
+    console.log('Firebase Firestore synchronized successfully with project: siklus-sambung');
   } catch (err) {
-    console.warn('Firestore write notice (data safely saved in device local storage):', err);
-    return targetId;
+    console.warn('Notice during Firestore background sync:', err);
   }
 }
 

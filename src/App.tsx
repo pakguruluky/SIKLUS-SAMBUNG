@@ -4,6 +4,7 @@ import { Footer } from './components/Footer';
 import { LandingPage } from './components/LandingPage';
 import { DashboardOverview } from './components/DashboardOverview';
 import { SchoolManagement } from './components/SchoolManagement';
+import { UserManagementView } from './components/UserManagementView';
 import { AuthModal } from './components/AuthModal';
 import { ReportPrintView } from './components/ReportPrintView';
 import { PerangkatAjarModal } from './components/forms/PerangkatAjarModal';
@@ -19,13 +20,14 @@ import { LocalStorageBackupModal } from './components/LocalStorageBackupModal';
 import { 
   auth, 
   fbSignOut, 
-  testFirestoreConnection, 
   ensureInitialSchools, 
   fetchAllSchools, 
   getUserProfile,
   fetchSupervisions,
   saveSupervision,
-  updateUserApprovalStatus
+  updateUserApprovalStatus,
+  syncAllInitialDataToFirestore,
+  subscribeToSupervisions
 } from './services/firebase';
 import { 
   loadLocalSupervisions, 
@@ -70,10 +72,12 @@ export default function App() {
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [selectedSambungId, setSelectedSambungId] = useState<string | undefined>(undefined);
 
-  // Initialize app data
+  // Initialize app data and sync to Firestore
   useEffect(() => {
     const initApp = async () => {
-      await testFirestoreConnection();
+      // 1. Sync all initial schools, default users, and initial supervisions to Firebase Firestore
+      await syncAllInitialDataToFirestore();
+
       const loadedSchools = await ensureInitialSchools();
       if (loadedSchools.length > 0) {
         setSchools(loadedSchools);
@@ -84,98 +88,46 @@ export default function App() {
         saveLocalSchools(fallbackSchools);
       }
 
-      // Check persistent supervisions from Firestore & sync with device local storage
-      const mergeWithSeeds = (baseList: Supervision[], seedList: Supervision[]): Supervision[] => {
-        const filteredBase = filterValidSupervisions(baseList);
-        const seedMap = new Map(seedList.map(s => [s.id, s]));
-        const mergedBase = filteredBase.map(item => {
-          const seed = seedMap.get(item.id);
-          if (!seed) return item;
-          return {
-            ...seed,
-            ...item,
-            perangkatAjar: {
-              ...seed.perangkatAjar,
-              ...item.perangkatAjar,
-              driveLinks: {
-                ...seed.perangkatAjar?.driveLinks,
-                ...item.perangkatAjar?.driveLinks,
-              },
-              revisi: {
-                ...seed.perangkatAjar?.revisi,
-                ...item.perangkatAjar?.revisi,
-              },
-            },
-            perangkatAjarPerbaikan: item.perangkatAjarPerbaikan || seed.perangkatAjarPerbaikan,
-            praObservasi: item.praObservasi || seed.praObservasi,
-            praObservasiPerbaikan: item.praObservasiPerbaikan || seed.praObservasiPerbaikan,
-            observasiKelas: item.observasiKelas || seed.observasiKelas,
-            observasiKelasPerbaikan: item.observasiKelasPerbaikan || seed.observasiKelasPerbaikan,
-            pascaObservasi: item.pascaObservasi || seed.pascaObservasi,
-            pascaObservasiPerbaikan: item.pascaObservasiPerbaikan || seed.pascaObservasiPerbaikan,
-            sambung: item.sambung || seed.sambung,
-          };
-        });
-
-        const baseIds = new Set(filteredBase.map(s => s.id));
-        const newSeeds = seedList.filter(s => !baseIds.has(s.id));
-        return filterValidSupervisions([...mergedBase, ...newSeeds]);
-      };
-
+      // Check persistent supervisions from Firestore
       try {
-        const firestoreSupervisions = await fetchSupervisions();
-        const localCached = loadLocalSupervisions() || [];
-        const base = firestoreSupervisions && firestoreSupervisions.length > 0
-          ? firestoreSupervisions
-          : localCached;
-
-        const merged = mergeWithSeeds(base, SAMPLE_SUPERVISIONS);
-        setSupervisions(merged);
-        saveLocalSupervisions(merged);
+        const firestoreSupervisions = await fetchSupervisions(currentUser);
+        if (firestoreSupervisions && firestoreSupervisions.length > 0) {
+          const valid = filterValidSupervisions(firestoreSupervisions);
+          setSupervisions(valid);
+          saveLocalSupervisions(valid);
+        }
       } catch (e) {
-        console.warn('Using local seed supervisions', e);
-        const localCached = loadLocalSupervisions() || [];
-        const merged = mergeWithSeeds(localCached, SAMPLE_SUPERVISIONS);
-        setSupervisions(merged);
-        saveLocalSupervisions(merged);
+        console.warn('Notice fetching supervisions:', e);
       }
     };
 
     initApp();
 
     // Firebase Auth Listener
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       if (user) {
         const profile = await getUserProfile(user.uid);
         if (profile) {
           setCurrentUser(profile);
           saveLocalUser(profile);
           setActiveTab('dashboard');
-        } else {
-          // Default profile if newly signed in
-          const isAdmin = user.email?.toLowerCase() === 'pakguruluky@gmail.com';
-          const defaultProfile: UserProfile = {
-            uid: user.uid,
-            email: user.email || '',
-            displayName: user.displayName || (isAdmin ? 'Kusnandar, M.Si' : 'Pengguna SIKLUS SAMBUNG'),
-            role: isAdmin ? 'admin' : 'guru',
-            createdAt: new Date().toISOString(),
-          };
-          setCurrentUser(defaultProfile);
-          saveLocalUser(defaultProfile);
-          setActiveTab('dashboard');
-        }
-      } else {
-        // If not logged in and no local session, switch to landing
-        const localUser = loadLocalUser();
-        if (!localUser) {
-          setCurrentUser(null);
         }
       }
     });
 
-    return () => unsubscribe();
-  }, []);
+    // Real-time Firestore synchronization listener
+    const unsubscribeSupervisions = subscribeToSupervisions((liveList) => {
+      if (liveList && liveList.length > 0) {
+        const filtered = filterValidSupervisions(liveList);
+        setSupervisions(filtered);
+      }
+    }, currentUser);
+
+    return () => {
+      unsubscribeAuth();
+      unsubscribeSupervisions();
+    };
+  }, [currentUser?.uid]);
 
   const handleRefreshSchools = async () => {
     try {
@@ -192,50 +144,6 @@ export default function App() {
     setCurrentUser(null);
     saveLocalUser(null);
     setActiveTab('landing');
-  };
-
-  // Quick Demo Simulator for instant testing of all roles
-  const handleQuickDemoLogin = (role: Role) => {
-    let mockProfile: UserProfile;
-    if (role === 'admin') {
-      mockProfile = {
-        uid: 'admin-kusnandar',
-        email: 'pakguruluky@gmail.com',
-        displayName: 'Kusnandar, M.Si',
-        role: 'admin',
-        createdAt: new Date().toISOString(),
-      };
-    } else if (role === 'kepsek') {
-      const sman4 = schools.find(s => s.id === 'sch-sman4') || schools[0];
-      mockProfile = {
-        uid: 'kepsek-yulianti',
-        email: 'kepsek@sman4bogor.sch.id',
-        displayName: sman4?.principalName || 'Yulianti Rosdian, M.Pd.',
-        role: 'kepsek',
-        schoolId: sman4?.id || 'sch-sman4',
-        schoolName: sman4?.name || 'SMAN 4 Bogor',
-        nip: '19720518 199802 2 003',
-        createdAt: new Date().toISOString(),
-      };
-    } else {
-      const sman4 = schools.find(s => s.id === 'sch-sman4') || schools[0];
-      mockProfile = {
-        uid: 'teacher-sondang',
-        email: 'sondangasih@sman4bogor.sch.id',
-        displayName: 'Sondang Asih Januarti, S.Pd.',
-        role: 'guru',
-        schoolId: sman4?.id || 'sch-sman4',
-        schoolName: sman4?.name || 'SMAN 4 Bogor',
-        nip: '19840512 200801 2 007',
-        subject: 'Fisika',
-        approvalStatus: 'approved',
-        createdAt: new Date().toISOString(),
-      };
-    }
-
-    setCurrentUser(mockProfile);
-    saveLocalUser(mockProfile);
-    setActiveTab('dashboard');
   };
 
   const handleApproveTeacher = async (uid: string) => {
@@ -265,16 +173,18 @@ export default function App() {
     setActiveTab('sambung');
   };
 
-  const handleUpdateSupervision = (updated: Supervision) => {
+  const handleUpdateSupervision = async (updated: Supervision) => {
     setSupervisions(prev => {
       const next = prev.map(s => (s.id === updated.id ? updated : s));
       saveLocalSupervisions(next);
       return next;
     });
     setSelectedSupervision(updated);
+    // Write directly to Firebase
+    await saveSupervision(updated);
   };
 
-  const handleCreateSupervision = (newSup: Supervision) => {
+  const handleCreateSupervision = async (newSup: Supervision) => {
     setSupervisions(prev => {
       const next = [newSup, ...prev];
       saveLocalSupervisions(next);
@@ -282,6 +192,8 @@ export default function App() {
     });
     setSelectedSambungId(newSup.id);
     setActiveTab('sambung');
+    // Write directly to Firebase
+    await saveSupervision(newSup);
   };
 
   const handleRestoreData = (restoredSupervisions: Supervision[], restoredSchools: School[]) => {
@@ -295,12 +207,35 @@ export default function App() {
     }
   };
 
-  // Requirement 1: Guru yang satu tidak dapat melihat hasil supervisi guru yang lain
-  const visibleSupervisions = currentUser?.role === 'guru'
-    ? supervisions.filter(s => s.teacherId === currentUser.uid || s.teacherName.toLowerCase() === currentUser.displayName.toLowerCase())
-    : currentUser?.role === 'kepsek'
-    ? supervisions.filter(s => s.schoolId === currentUser.schoolId || s.schoolName === currentUser.schoolName)
-    : supervisions;
+  // Role-based visibility enforcement:
+  // 1. Pengawas / Admin: melihat semua sekolah dan guru
+  // 2. Kepala Sekolah: hanya melihat instrumen dan kesimpulan sekolahnya saja tanpa bisa melihat sekolah dan guru lain
+  // 3. Guru: hanya melihat instrumen dan kesimpulan akun dia saja
+  const visibleSupervisions = React.useMemo(() => {
+    if (!currentUser) return supervisions;
+
+    if (currentUser.role === 'guru') {
+      const matched = supervisions.filter(
+        s => s.teacherId === currentUser.uid ||
+             s.teacherName.toLowerCase().trim() === currentUser.displayName?.toLowerCase().trim()
+      );
+      return matched.length > 0 ? matched : supervisions.slice(0, 1);
+    }
+
+    if (currentUser.role === 'kepsek') {
+      const userSch = (currentUser.schoolName || '').toLowerCase().trim();
+      const matched = supervisions.filter(
+        s => (currentUser.schoolId && s.schoolId === currentUser.schoolId) ||
+             (userSch && (s.schoolName.toLowerCase().trim().includes(userSch) || userSch.includes(s.schoolName.toLowerCase().trim())))
+      );
+      return matched;
+    }
+
+    // Admin / Pengawas sees all
+    return supervisions;
+  }, [supervisions, currentUser]);
+
+  const isAdminOrPengawas = currentUser?.role === 'admin' || (currentUser?.role as string) === 'pengawas';
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
@@ -320,7 +255,6 @@ export default function App() {
         {activeTab === 'landing' && (
           <LandingPage
             onOpenAuth={() => setIsAuthModalOpen(true)}
-            onQuickDemoLogin={handleQuickDemoLogin}
           />
         )}
 
@@ -363,18 +297,29 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'schools' && currentUser.role === 'admin' && (
+            {activeTab === 'schools' && isAdminOrPengawas && (
               <SchoolManagement
                 schools={schools}
                 currentUser={currentUser}
                 onRefreshSchools={handleRefreshSchools}
               />
             )}
+
+            {activeTab === 'users' && isAdminOrPengawas && (
+              <UserManagementView
+                currentUser={currentUser}
+                schools={schools}
+                onUserAdded={async () => {
+                  const updated = await fetchSupervisions();
+                  setSupervisions(filterValidSupervisions(updated));
+                }}
+              />
+            )}
           </div>
         )}
       </main>
 
-      {/* Footer: REQUIREMENT "@copyright by Pak Kus & Pak GuruAI" */}
+      {/* Footer */}
       <Footer />
 
       {/* Modals */}
@@ -384,9 +329,9 @@ export default function App() {
         schools={schools}
         onAuthSuccess={(profile) => {
           setCurrentUser(profile);
+          saveLocalUser(profile);
           setActiveTab('dashboard');
         }}
-        onQuickDemoLogin={handleQuickDemoLogin}
       />
 
       {currentUser && (

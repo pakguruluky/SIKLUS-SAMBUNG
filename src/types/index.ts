@@ -1,4 +1,4 @@
-export type Role = 'admin' | 'kepsek' | 'guru';
+export type Role = 'admin' | 'pengawas' | 'kepsek' | 'guru';
 
 export interface School {
   id: string;
@@ -13,6 +13,8 @@ export interface School {
 
 export interface UserProfile {
   uid: string;
+  username?: string;
+  password?: string;
   email: string;
   displayName: string;
   role: Role;

@@ -1,12 +1,8 @@
 {
-  "projectId": "ordinal-access-q53bd",
-  "appId": "1:318144875825:web:11e6ec21003b9ece7c3410",
-  "apiKey": "AIzaSyA84YJLAW1iIGLtzqDNPqHP0kUVugOv-1g",
-  "authDomain": "ordinal-access-q53bd.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-remixsipandusist-025ca604-1a24-46a3-ad87-fce988e47745",
-  "storageBucket": "ordinal-access-q53bd.firebasestorage.app",
-  "messagingSenderId": "318144875825",
-  "measurementId": "",
-  "oAuthClientId": "318144875825-i7ohisa1e1353cjkjviqqepis6amrha7.apps.googleusercontent.com",
-  "recaptchaSiteKey": ""
+  "projectId": "siklus-sambung",
+  "appId": "1:531003779056:web:773985709ed02731509f35",
+  "apiKey": "AIzaSyCtHOq0ydsobNPC6wUj8_3sx89-37umvF8",
+  "authDomain": "siklus-sambung.firebaseapp.com",
+  "storageBucket": "siklus-sambung.firebasestorage.app",
+  "messagingSenderId": "531003779056"
 }

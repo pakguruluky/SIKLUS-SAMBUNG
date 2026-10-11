@@ -46,7 +46,8 @@ import {
   ArrowRight,
   RefreshCw,
   MessageSquare,
-  Target
+  Target,
+  Lock
 } from 'lucide-react';
 
 interface SambungInstrumentViewProps {
@@ -66,15 +67,22 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
   onUpdateSupervision,
   initialSupervisionId,
 }) => {
+  const canEdit = currentUser.role === 'admin' || (currentUser.role as string) === 'pengawas';
+
   // Filter supervisions according to role
   const availableSupervisions = useMemo(() => {
     if (currentUser.role === 'guru') {
-      return supervisions.filter(
-        (s) => s.teacherId === currentUser.uid || s.teacherName.toLowerCase() === currentUser.displayName.toLowerCase()
+      const match = supervisions.filter(
+        (s) => s.teacherId === currentUser.uid ||
+               s.teacherName.toLowerCase().trim() === currentUser.displayName?.toLowerCase().trim()
       );
+      if (match.length > 0) return match;
+      return supervisions.slice(0, 1);
     } else if (currentUser.role === 'kepsek') {
+      const userSch = (currentUser.schoolName || '').toLowerCase().trim();
       return supervisions.filter(
-        (s) => s.schoolId === currentUser.schoolId || s.schoolName === currentUser.schoolName
+        (s) => (currentUser.schoolId && s.schoolId === currentUser.schoolId) ||
+               (userSch && (s.schoolName.toLowerCase().trim().includes(userSch) || userSch.includes(s.schoolName.toLowerCase().trim())))
       );
     }
     return supervisions;
@@ -384,6 +392,27 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2 self-stretch sm:self-auto">
+            {currentUser.role === 'guru' && (
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveSupervisiModal({ stage: 'perangkat', mode: 'awal' })}
+                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-indigo-500 hover:bg-indigo-400 text-white rounded-xl text-xs font-bold transition-colors shadow-xs"
+                >
+                  <FolderGit2 className="w-3.5 h-3.5" />
+                  <span>Modul Ajar (Sebelum)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveSupervisiModal({ stage: 'perangkat', mode: 'perbaikan' })}
+                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-purple-500 hover:bg-purple-400 text-white rounded-xl text-xs font-bold transition-colors shadow-xs"
+                >
+                  <FolderGit2 className="w-3.5 h-3.5" />
+                  <span>Modul Ajar (Sesudah)</span>
+                </button>
+              </div>
+            )}
+
             <button
               onClick={() => setIsPrintModalOpen(true)}
               className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-semibold backdrop-blur-xs transition-colors border border-white/20"
@@ -391,14 +420,22 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
               <Printer className="w-4 h-4 text-indigo-200" />
               <span>Cetak Portofolio Guru Ini</span>
             </button>
-            <button
-              onClick={handleSave}
-              disabled={isSaving}
-              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-400 hover:bg-amber-300 text-slate-950 rounded-xl text-xs font-bold shadow-md shadow-amber-400/20 transition-colors"
-            >
-              <Save className="w-4 h-4" />
-              <span>{isSaving ? 'Menyimpan...' : 'Simpan Perubahan'}</span>
-            </button>
+
+            {canEdit ? (
+              <button
+                onClick={handleSave}
+                disabled={isSaving}
+                className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-400 hover:bg-amber-300 text-slate-950 rounded-xl text-xs font-bold shadow-md shadow-amber-400/20 transition-colors"
+              >
+                <Save className="w-4 h-4" />
+                <span>{isSaving ? 'Menyimpan...' : 'Simpan Perubahan'}</span>
+              </button>
+            ) : (
+              <div className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white/15 text-white text-xs font-bold border border-white/20 shadow-xs">
+                <Lock className="w-3.5 h-3.5 text-amber-300" />
+                <span>Mode Hanya Lihat ({currentUser.role === 'kepsek' ? 'Kepala Sekolah' : 'Guru Mapel'})</span>
+              </div>
+            )}
           </div>
         </div>
       </div>

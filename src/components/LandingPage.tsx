@@ -18,12 +18,10 @@ import { Role } from '../types';
 
 interface LandingPageProps {
   onOpenAuth: () => void;
-  onQuickDemoLogin: (role: Role) => void;
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({
   onOpenAuth,
-  onQuickDemoLogin,
 }) => {
   return (
     <div className="flex-1 bg-slate-50">
@@ -63,52 +61,22 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <div className="flex flex-wrap items-center justify-center gap-4">
             <button
               onClick={onOpenAuth}
-              className="px-7 py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-base shadow-lg shadow-indigo-600/30 flex items-center gap-2 transition-all hover:scale-102"
+              className="px-8 py-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-base shadow-xl shadow-indigo-600/30 flex items-center gap-2.5 transition-all hover:scale-102"
             >
-              <span>Masuk / Daftar Akun</span>
+              <span>Masuk ke Sistem Supervisi</span>
               <ArrowRight className="w-5 h-5" />
             </button>
           </div>
 
-          {/* Quick Demo Access Bar */}
-          <div className="mt-12 pt-8 border-t border-slate-800/80 max-w-3xl mx-auto">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">
-              Uji Coba Cepat Tanpa Ketik (Mode Simulasi Peran):
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <button
-                onClick={() => onQuickDemoLogin('admin')}
-                className="px-4 py-3 rounded-xl bg-purple-900/40 hover:bg-purple-800/60 border border-purple-500/30 text-purple-200 text-left transition-all hover:border-purple-400 group"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-white group-hover:text-purple-300">Pengawas / Admin</span>
-                  <ShieldCheck className="w-4 h-4 text-purple-400" />
-                </div>
-                <p className="text-[11px] text-slate-400 mt-1">Kusnandar, M.Si</p>
-              </button>
-
-              <button
-                onClick={() => onQuickDemoLogin('kepsek')}
-                className="px-4 py-3 rounded-xl bg-emerald-900/40 hover:bg-emerald-800/60 border border-emerald-500/30 text-emerald-200 text-left transition-all hover:border-emerald-400 group"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-white group-hover:text-emerald-300">Kepala Sekolah</span>
-                  <Users className="w-4 h-4 text-emerald-400" />
-                </div>
-                <p className="text-[11px] text-slate-400 mt-1">Yulianti Rosdian, M.Pd. (SMAN 4 Bogor)</p>
-              </button>
-
-              <button
-                onClick={() => onQuickDemoLogin('guru')}
-                className="px-4 py-3 rounded-xl bg-blue-900/40 hover:bg-blue-800/60 border border-blue-500/30 text-blue-200 text-left transition-all hover:border-blue-400 group"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-white group-hover:text-blue-300">Guru Mata Pelajaran</span>
-                  <GraduationCap className="w-4 h-4 text-blue-400" />
-                </div>
-                <p className="text-[11px] text-slate-400 mt-1">Sondang Asih Januarti, S.Pd. (Fisika)</p>
-              </button>
+          {/* Real Cloud System & Official Credentials Info */}
+          <div className="mt-12 pt-6 border-t border-slate-800/80 max-w-xl mx-auto text-center">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-800/90 border border-slate-700 text-slate-300 text-xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span className="font-medium">Tersinkronisasi ke Firebase Cloud Database (Proyek: siklus-sambung)</span>
             </div>
+            <p className="text-xs text-slate-400 mt-2.5">
+              Akun Pengawas Pembina: Username <span className="text-amber-300 font-mono font-bold">pengawas</span> &bull; Sandi <span className="text-amber-300 font-mono font-bold">pakkus</span>
+            </p>
           </div>
         </div>
       </section>

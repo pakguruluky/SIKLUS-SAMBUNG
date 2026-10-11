@@ -10,23 +10,22 @@ import {
   ShieldCheck, 
   AlertCircle, 
   ArrowRight,
-  Sparkles
+  Sparkles,
+  KeyRound
 } from 'lucide-react';
 import { School, Role, UserProfile } from '../types';
 import { 
   createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword,
   signInWithPopup,
   GoogleAuthProvider
 } from 'firebase/auth';
-import { auth, saveUserProfile, getUserProfile } from '../services/firebase';
+import { auth, saveUserProfile, getUserProfile, authenticateRealUser } from '../services/firebase';
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   schools: School[];
   onAuthSuccess: (profile: UserProfile) => void;
-  onQuickDemoLogin: (role: Role) => void;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
@@ -34,10 +33,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onClose,
   schools,
   onAuthSuccess,
-  onQuickDemoLogin,
 }) => {
   const [isRegister, setIsRegister] = useState(false);
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [role, setRole] = useState<Role>('guru');
@@ -57,23 +55,27 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
     try {
       if (isRegister) {
-        if (role !== 'admin' && !schoolId) {
+        if (role !== 'admin' && role !== 'pengawas' && !schoolId) {
           throw new Error('Harap pilih sekolah tempat Anda bertugas.');
         }
 
+        const email = identifier.includes('@') ? identifier : `${identifier}@siklus-sambung.sch.id`;
         const res = await createUserWithEmailAndPassword(auth, email, password);
         const selectedSchool = schools.find(s => s.id === schoolId);
 
-        // Auto-assign admin if user matches official supervisor email
-        const finalRole: Role = (email.toLowerCase() === 'pakguruluky@gmail.com') ? 'admin' : role;
+        const finalRole: Role = (identifier.toLowerCase() === 'pengawas' || email.toLowerCase() === 'pengawas@siklus-sambung.sch.id') 
+          ? 'admin' 
+          : role;
 
         const newProfile: UserProfile = {
           uid: res.user.uid,
+          username: identifier.includes('@') ? identifier.split('@')[0] : identifier,
+          password,
           email: res.user.email || email,
           displayName: displayName || (finalRole === 'admin' ? 'Kusnandar, M.Si' : 'Pengguna Baru'),
           role: finalRole,
-          schoolId: finalRole === 'admin' ? undefined : schoolId,
-          schoolName: finalRole === 'admin' ? undefined : selectedSchool?.name,
+          schoolId: (finalRole === 'admin' || finalRole === 'pengawas') ? undefined : schoolId,
+          schoolName: (finalRole === 'admin' || finalRole === 'pengawas') ? undefined : selectedSchool?.name,
           nip: nip || undefined,
           phone: phone || undefined,
           subject: finalRole === 'guru' ? subject : undefined,
@@ -84,22 +86,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         onAuthSuccess(newProfile);
         onClose();
       } else {
-        // Login
-        const res = await signInWithEmailAndPassword(auth, email, password);
-        let profile = await getUserProfile(res.user.uid);
-
-        if (!profile) {
-          // Fallback initial profile
-          const isAdminEmail = res.user.email?.toLowerCase() === 'pakguruluky@gmail.com';
-          profile = {
-            uid: res.user.uid,
-            email: res.user.email || '',
-            displayName: res.user.displayName || (isAdminEmail ? 'Kusnandar, M.Si' : 'Pengguna SIKLUS SAMBUNG'),
-            role: isAdminEmail ? 'admin' : 'guru',
-            createdAt: new Date().toISOString(),
-          };
-          await saveUserProfile(profile);
-        }
+        // Real user login with username or email
+        const profile = await authenticateRealUser(identifier, password);
         onAuthSuccess(profile);
         onClose();
       }
@@ -107,9 +95,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       console.error(err);
       let msg = err.message || 'Terjadi kesalahan autentikasi.';
       if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
-        msg = 'Email atau kata sandi tidak cocok.';
+        msg = 'Username / email atau kata sandi tidak cocok.';
       } else if (err.code === 'auth/email-already-in-use') {
-        msg = 'Email ini sudah terdaftar. Silakan login.';
+        msg = 'Email/Username ini sudah terdaftar. Silakan login.';
       } else if (err.code === 'auth/weak-password') {
         msg = 'Kata sandi minimal 6 karakter.';
       }
@@ -127,11 +115,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       const res = await signInWithPopup(auth, provider);
 
       let profile = await getUserProfile(res.user.uid);
-      const isAdminEmail = res.user.email?.toLowerCase() === 'pakguruluky@gmail.com';
+      const isAdminEmail = res.user.email?.toLowerCase().includes('kusnandar') || res.user.email?.toLowerCase() === 'pakguruluky@gmail.com';
 
       if (!profile) {
         profile = {
           uid: res.user.uid,
+          username: res.user.email?.split('@')[0] || 'pengguna',
           email: res.user.email || '',
           displayName: res.user.displayName || (isAdminEmail ? 'Kusnandar, M.Si' : 'Guru SIKLUS SAMBUNG'),
           role: isAdminEmail ? 'admin' : 'guru',
@@ -143,44 +132,62 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       onClose();
     } catch (err: any) {
       console.error(err);
-      setErrorMessage(err.message || 'Gagal masuk dengan Google.');
+      setErrorMessage('Gagal masuk dengan Google: ' + (err.message || ''));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto no-print">
-      <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-100 my-8">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-indigo-700 to-indigo-800 p-6 text-white relative">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs no-print">
+      <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-slate-100 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        {/* Modal Header */}
+        <div className="relative bg-gradient-to-br from-indigo-900 via-indigo-950 to-slate-900 p-6 text-white text-center">
           <button
             onClick={onClose}
-            className="absolute top-5 right-5 p-1 rounded-full text-indigo-200 hover:text-white hover:bg-indigo-600/50 transition-colors"
+            className="absolute top-4 right-4 p-1 rounded-full text-indigo-300 hover:text-white hover:bg-white/10 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs uppercase tracking-wider font-semibold text-amber-300">
-              SIKLUS SAMBUNG SMA
-            </span>
+
+          <div className="w-12 h-12 rounded-2xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center mx-auto mb-3 text-indigo-300 shadow-inner">
+            <GraduationCap className="w-6 h-6" />
           </div>
-          <h2 className="text-2xl font-bold">
-            {isRegister ? 'Pendaftaran Akun Baru' : 'Masuk ke Sistem'}
+
+          <h2 className="text-xl font-bold tracking-tight">
+            {isRegister ? 'Daftar Akun Baru' : 'Masuk ke SIKLUS SAMBUNG'}
           </h2>
-          <p className="text-xs text-indigo-100 mt-1">
-            {isRegister 
-              ? 'Lengkapi profil pengawas, kepala sekolah, atau guru.'
-              : 'Silakan masuk menggunakan akun terdaftar Anda.'}
+          <p className="text-xs text-indigo-200/80 mt-1">
+            Sistem Informasi Supervisi Akademik & Transformasi Guru SMA
           </p>
 
-          {/* Tab switcher */}
-          <div className="flex bg-indigo-900/50 p-1 rounded-xl mt-4">
+          {/* Official Default Account Hint for Users */}
+          {!isRegister && (
+            <div className="mt-3 py-1.5 px-3 rounded-xl bg-white/10 border border-white/15 text-[11px] text-amber-200 flex items-center justify-center gap-1.5">
+              <KeyRound className="w-3.5 h-3.5 text-amber-300" />
+              <span>Akun Pengawas: Username <strong>pengawas</strong> | Password <strong>pakkus</strong></span>
+            </div>
+          )}
+        </div>
+
+        {/* Modal Body */}
+        <div className="p-6">
+          {errorMessage && (
+            <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2 animate-shake">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{errorMessage}</span>
+            </div>
+          )}
+
+          {/* Mode Switcher */}
+          <div className="flex p-1 rounded-xl bg-slate-100 mb-5">
             <button
               type="button"
               onClick={() => { setIsRegister(false); setErrorMessage(''); }}
               className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-                !isRegister ? 'bg-white text-indigo-700 shadow-xs' : 'text-indigo-200 hover:text-white'
+                !isRegister
+                  ? 'bg-white text-indigo-600 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               Masuk (Login)
@@ -189,77 +196,64 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               type="button"
               onClick={() => { setIsRegister(true); setErrorMessage(''); }}
               className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-                isRegister ? 'bg-white text-indigo-700 shadow-xs' : 'text-indigo-200 hover:text-white'
+                isRegister
+                  ? 'bg-white text-indigo-600 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              Daftar Baru (Registrasi)
+              Registrasi
             </button>
           </div>
-        </div>
-
-        {/* Body Form */}
-        <div className="p-6">
-          {errorMessage && (
-            <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{errorMessage}</span>
-            </div>
-          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {isRegister && (
               <>
-                {/* Role Selection */}
+                {/* Role selection */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                    Peran / Status Pengguna
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Peran / Jabatan
                   </label>
                   <div className="grid grid-cols-3 gap-2">
                     <button
                       type="button"
                       onClick={() => setRole('guru')}
-                      className={`p-2.5 rounded-xl border text-left text-xs font-semibold flex flex-col items-center gap-1 transition-all ${
+                      className={`py-2 px-2 rounded-xl text-xs font-semibold border transition-all text-center ${
                         role === 'guru'
-                          ? 'border-indigo-600 bg-indigo-50 text-indigo-700 shadow-xs'
-                          : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                          ? 'bg-indigo-50 border-indigo-500 text-indigo-700'
+                          : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                       }`}
                     >
-                      <GraduationCap className="w-4 h-4" />
-                      <span>Guru</span>
+                      Guru Mapel
                     </button>
-
                     <button
                       type="button"
                       onClick={() => setRole('kepsek')}
-                      className={`p-2.5 rounded-xl border text-left text-xs font-semibold flex flex-col items-center gap-1 transition-all ${
+                      className={`py-2 px-2 rounded-xl text-xs font-semibold border transition-all text-center ${
                         role === 'kepsek'
-                          ? 'border-emerald-600 bg-emerald-50 text-emerald-700 shadow-xs'
-                          : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                          ? 'bg-indigo-50 border-indigo-500 text-indigo-700'
+                          : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                       }`}
                     >
-                      <Building2 className="w-4 h-4" />
-                      <span>Kepala Sekolah</span>
+                      Kepala Sekolah
                     </button>
-
                     <button
                       type="button"
                       onClick={() => setRole('admin')}
-                      className={`p-2.5 rounded-xl border text-left text-xs font-semibold flex flex-col items-center gap-1 transition-all ${
+                      className={`py-2 px-2 rounded-xl text-xs font-semibold border transition-all text-center ${
                         role === 'admin'
-                          ? 'border-purple-600 bg-purple-50 text-purple-700 shadow-xs'
-                          : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                          ? 'bg-indigo-50 border-indigo-500 text-indigo-700'
+                          : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                       }`}
                     >
-                      <ShieldCheck className="w-4 h-4" />
-                      <span>Pengawas</span>
+                      Pengawas
                     </button>
                   </div>
                 </div>
 
-                {/* Display Name */}
+                {/* Full name */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Nama Lengkap &amp; Gelar
+                    Nama Lengkap & Gelar
                   </label>
                   <div className="relative">
                     <User className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
@@ -268,38 +262,38 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       required
                       value={displayName}
                       onChange={(e) => setDisplayName(e.target.value)}
-                      placeholder="Contoh: Dra. Hj. Siti Rohmah, M.Pd."
+                      placeholder="Contoh: Sondang Asih Januarti, S.Pd."
                       className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-indigo-600"
                     />
                   </div>
                 </div>
 
-                {/* School Selection (Required for Guru & Kepsek) */}
-                {role !== 'admin' && (
+                {/* School Selection for Non-admin */}
+                {role !== 'admin' && role !== 'pengawas' && (
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Asal Satuan Pendidikan SMA
+                      Satuan Pendidikan (Sekolah Binaan)
                     </label>
-                    <select
-                      required
-                      value={schoolId}
-                      onChange={(e) => setSchoolId(e.target.value)}
-                      className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-indigo-600 bg-white"
-                    >
-                      <option value="">-- Pilih SMA yang terdaftar --</option>
-                      {schools.map((sch) => (
-                        <option key={sch.id} value={sch.id}>
-                          {sch.name} (NPSN: {sch.npsn})
-                        </option>
-                      ))}
-                    </select>
-                    <p className="text-[11px] text-slate-500 mt-1">
-                      *Catatan: Guru hanya dapat mendaftar jika sekolah sudah didaftarkan oleh Pengawas.
-                    </p>
+                    <div className="relative">
+                      <Building2 className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+                      <select
+                        required
+                        value={schoolId}
+                        onChange={(e) => setSchoolId(e.target.value)}
+                        className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-indigo-600 appearance-none bg-white"
+                      >
+                        <option value="">-- Pilih Satuan Pendidikan --</option>
+                        {schools.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 )}
 
-                {/* Additional Fields for Guru */}
+                {/* Additional Teacher fields */}
                 {role === 'guru' && (
                   <div className="grid grid-cols-2 gap-3">
                     <div>
@@ -311,19 +305,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         required
                         value={subject}
                         onChange={(e) => setSubject(e.target.value)}
-                        placeholder="Contoh: Matematika"
+                        placeholder="Contoh: Fisika"
                         className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-indigo-600"
                       />
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        NIP / NUPTK
+                        NIP (Opsional)
                       </label>
                       <input
                         type="text"
                         value={nip}
                         onChange={(e) => setNip(e.target.value)}
-                        placeholder="198204..."
+                        placeholder="18 digit NIP"
                         className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-indigo-600"
                       />
                     </div>
@@ -332,24 +326,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </>
             )}
 
-            {/* Email & Password */}
+            {/* Username or Email */}
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Alamat Email
+                {isRegister ? 'Alamat Email / Username' : 'Username atau Alamat Email'}
               </label>
               <div className="relative">
-                <Mail className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+                <User className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
                 <input
-                  type="email"
+                  type={isRegister ? 'text' : 'text'}
                   required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="nama@sekolah.sch.id"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  placeholder={isRegister ? 'pengawas atau nama@sekolah.sch.id' : 'Contoh: pengawas atau email Anda'}
                   className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-indigo-600"
                 />
               </div>
             </div>
 
+            {/* Password */}
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
                 Kata Sandi (Password)
@@ -361,7 +356,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Minimal 6 karakter"
+                  placeholder="Masukkan kata sandi"
                   className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-indigo-600"
                 />
               </div>
@@ -408,37 +403,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </svg>
               <span>Lanjutkan dengan Akun Google</span>
             </button>
-          </div>
-
-          {/* Instant Simulation Mode Switcher */}
-          <div className="mt-5 p-3 rounded-2xl bg-slate-50 border border-slate-200">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 mb-2">
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-              <span>Simulasi Cepat 1-Klik (Tanpa Password):</span>
-            </div>
-            <div className="grid grid-cols-3 gap-1.5">
-              <button
-                type="button"
-                onClick={() => { onQuickDemoLogin('admin'); onClose(); }}
-                className="py-1.5 px-2 rounded-lg bg-purple-100 hover:bg-purple-200 text-purple-900 text-[11px] font-semibold transition-colors"
-              >
-                Pengawas
-              </button>
-              <button
-                type="button"
-                onClick={() => { onQuickDemoLogin('kepsek'); onClose(); }}
-                className="py-1.5 px-2 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-900 text-[11px] font-semibold transition-colors"
-              >
-                Kepsek
-              </button>
-              <button
-                type="button"
-                onClick={() => { onQuickDemoLogin('guru'); onClose(); }}
-                className="py-1.5 px-2 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-900 text-[11px] font-semibold transition-colors"
-              >
-                Guru SMA
-              </button>
-            </div>
           </div>
         </div>
       </div>

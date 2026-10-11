@@ -68,15 +68,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </button>
           </div>
 
-          {/* Real Cloud System & Official Credentials Info */}
+          {/* Real Cloud System Status */}
           <div className="mt-12 pt-6 border-t border-slate-800/80 max-w-xl mx-auto text-center">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-800/90 border border-slate-700 text-slate-300 text-xs">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span className="font-medium">Tersinkronisasi ke Firebase Cloud Database (Proyek: siklus-sambung)</span>
+              <span className="font-medium">Tersinkronisasi ke Cloud Database</span>
             </div>
-            <p className="text-xs text-slate-400 mt-2.5">
-              Akun Pengawas Pembina: Username <span className="text-amber-300 font-mono font-bold">pengawas</span> &bull; Sandi <span className="text-amber-300 font-mono font-bold">pakkus</span>
-            </p>
           </div>
         </div>
       </section>

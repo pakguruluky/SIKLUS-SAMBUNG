@@ -161,13 +161,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             Sistem Informasi Supervisi Akademik & Transformasi Guru SMA
           </p>
 
-          {/* Official Default Account Hint for Users */}
-          {!isRegister && (
-            <div className="mt-3 py-1.5 px-3 rounded-xl bg-white/10 border border-white/15 text-[11px] text-amber-200 flex items-center justify-center gap-1.5">
-              <KeyRound className="w-3.5 h-3.5 text-amber-300" />
-              <span>Akun Pengawas: Username <strong>pengawas</strong> | Password <strong>pakkus</strong></span>
-            </div>
-          )}
+
         </div>
 
         {/* Modal Body */}

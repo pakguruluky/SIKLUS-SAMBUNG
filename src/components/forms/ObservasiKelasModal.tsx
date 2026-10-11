@@ -35,7 +35,7 @@ export const ObservasiKelasModal: React.FC<ObservasiKelasModalProps> = ({
   const [saving, setSaving] = useState(false);
 
   const isGuru = currentUser.role === 'guru';
-  const isSupervisor = currentUser.role === 'admin' || currentUser.role === 'kepsek';
+  const isSupervisor = currentUser.role === 'admin' || (currentUser.role as string) === 'pengawas' || currentUser.role === 'kepsek';
 
   if (!isOpen) return null;
 

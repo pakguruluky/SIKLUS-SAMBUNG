@@ -246,6 +246,11 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
 
   // Save handler
   const handleSave = async () => {
+    if (!canEdit) {
+      setSaveToast('Peran Anda (Guru) hanya dapat melihat hasil supervisi ini tanpa mengubahnya.');
+      setTimeout(() => setSaveToast(null), 3000);
+      return;
+    }
     if (!currentSupervision || !sambungDraft) return;
     setIsSaving(true);
 
@@ -400,7 +405,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                   className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-indigo-500 hover:bg-indigo-400 text-white rounded-xl text-xs font-bold transition-colors shadow-xs"
                 >
                   <FolderGit2 className="w-3.5 h-3.5" />
-                  <span>Modul Ajar (Sebelum)</span>
+                  <span>Perangkat Ajar &amp; Telaah (Sebelum)</span>
                 </button>
                 <button
                   type="button"
@@ -408,7 +413,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                   className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-purple-500 hover:bg-purple-400 text-white rounded-xl text-xs font-bold transition-colors shadow-xs"
                 >
                   <FolderGit2 className="w-3.5 h-3.5" />
-                  <span>Modul Ajar (Sesudah)</span>
+                  <span>Perangkat Ajar &amp; Telaah (Sesudah)</span>
                 </button>
               </div>
             )}
@@ -624,6 +629,45 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
       {/* TAB CONTENT SECTIONS */}
       <div className="bg-white rounded-2xl p-6 shadow-xs border border-slate-200">
         
+        {/* Read-Only Info Banner for Guru & Kepsek */}
+        {!canEdit && (
+          <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-start sm:items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-amber-200/80 text-amber-900 shrink-0">
+                <Lock className="w-4 h-4" />
+              </div>
+              <div>
+                <span className="font-extrabold text-amber-950 block">Mode Hanya Lihat (Hasil Supervisi Guru)</span>
+                <p className="text-amber-800 text-[11px] mt-0.5 leading-relaxed">
+                  {currentUser.role === 'guru'
+                    ? 'Anda dapat melihat seluruh instrumen dan hasil supervisi tanpa bisa merubahnya. Anda hanya dapat mengisi & memperbarui berkas Perangkat Ajar & Telaah Modul Ajar / RPP (22 Aspek).'
+                    : 'Kepala Sekolah memantau hasil instrumen supervisi klinis sekolah ini dalam mode hanya lihat.'}
+                </p>
+              </div>
+            </div>
+            {currentUser.role === 'guru' && (
+              <div className="flex items-center gap-2 shrink-0 self-stretch sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => setActiveSupervisiModal({ stage: 'perangkat', mode: 'awal' })}
+                  className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-colors"
+                >
+                  <FolderGit2 className="w-3.5 h-3.5" />
+                  <span>Perangkat Ajar (Sebelum)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveSupervisiModal({ stage: 'perangkat', mode: 'perbaikan' })}
+                  className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-xs transition-colors"
+                >
+                  <FolderGit2 className="w-3.5 h-3.5" />
+                  <span>Perangkat Ajar (Sesudah)</span>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ==================================================== */}
         {/* TAB S: SELIDIKI — SUPERVISI AWAL & LEMBAR PEMETAAN */}
         {/* ==================================================== */}
@@ -648,6 +692,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                   <span className="text-slate-500 font-medium">Tanggal Pemetaan:</span>
                   <input
                     type="date"
+                    disabled={!canEdit}
                     value={sambungDraft.selidiki.tanggal}
                     onChange={(e) =>
                       setSambungDraft({
@@ -655,7 +700,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                         selidiki: { ...sambungDraft.selidiki, tanggal: e.target.value },
                       })
                     }
-                    className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-medium focus:outline-indigo-600 bg-white"
+                    className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-medium focus:outline-indigo-600 bg-white disabled:bg-slate-100 disabled:text-slate-500"
                   />
                 </div>
               </div>
@@ -840,7 +885,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                         className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5"
                       >
                         <FolderGit2 className="w-3.5 h-3.5" />
-                        <span>Unggah &amp; Isi Telaah (22 Aspek)</span>
+                        <span>{currentUser.role === 'guru' ? 'Unggah Berkas & Telaah 22 Aspek' : 'Unggah & Isi Telaah (22 Aspek)'}</span>
                       </button>
                     </div>
                   </div>
@@ -926,7 +971,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                         className="px-3.5 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5"
                       >
                         <Compass className="w-3.5 h-3.5" />
-                        <span>Isi &amp; Buka Pra-Observasi Awal</span>
+                        <span>{currentUser.role === 'guru' ? 'Lihat Hasil Wawancara Pra-Observasi' : 'Isi & Buka Pra-Observasi Awal'}</span>
                       </button>
                     </div>
                   </div>
@@ -1001,7 +1046,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                         className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5"
                       >
                         <FileSpreadsheet className="w-3.5 h-3.5" />
-                        <span>Isi &amp; Buka Observasi Kelas Awal</span>
+                        <span>{currentUser.role === 'guru' ? 'Lihat Hasil Observasi Kelas Tatap Muka' : 'Isi & Buka Observasi Kelas Awal'}</span>
                       </button>
                     </div>
                   </div>
@@ -1079,7 +1124,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                         className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5"
                       >
                         <FileText className="w-3.5 h-3.5" />
-                        <span>Isi &amp; Buka Pasca-Observasi Awal</span>
+                        <span>{currentUser.role === 'guru' ? 'Lihat Hasil Refleksi Pasca-Observasi' : 'Isi & Buka Pasca-Observasi Awal'}</span>
                       </button>
                     </div>
                   </div>
@@ -1089,7 +1134,8 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
 
             {/* SUBTAB 2: LEMBAR PEMETAAN ASPEK SAMBUNG (6 ASPEK) */}
             {sSubTab === 'pemetaan' && (
-              <div className="space-y-6">
+              <fieldset disabled={!canEdit} className="contents border-0 p-0 m-0">
+                <div className="space-y-6">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
                   <div>
                     <h4 className="text-sm font-bold text-slate-900">
@@ -1216,11 +1262,13 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                   />
                 </div>
               </div>
+              </fieldset>
             )}
 
             {/* SUBTAB 3: KESIMPULAN DATA AWAL — MATRIKS PERUBAHAN BEFORE */}
             {sSubTab === 'kesimpulan_before' && (
-              <div className="space-y-6">
+              <fieldset disabled={!canEdit} className="contents border-0 p-0 m-0">
+                <div className="space-y-6">
                 {/* Banner Penjelasan */}
                 <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl p-5 border border-indigo-800/60 shadow-sm">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -1632,6 +1680,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                   </div>
                 </div>
               </div>
+              </fieldset>
             )}
           </div>
         )}
@@ -1640,7 +1689,8 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
         {/* TAB A: ARAHKAN — RENCANA AKSI PEMBINAAN */}
         {/* ==================================================== */}
         {activeTab === 'A' && (
-          <div className="space-y-6">
+          <fieldset disabled={!canEdit} className="contents border-0 p-0 m-0">
+            <div className="space-y-6">
             <div className="border-b border-slate-200 pb-4">
               <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-md bg-blue-100 text-blue-800 text-xs font-bold mb-1">
                 TAHAP A &bull; ARAHKAN
@@ -1875,13 +1925,15 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
               </div>
             </div>
           </div>
-        )}
+        </fieldset>
+      )}
 
         {/* ==================================================== */}
         {/* TAB M: MAKNAI — LEMBAR COACHING (DIALOG REFLEKTIF) */}
         {/* ==================================================== */}
         {activeTab === 'M' && (
-          <div className="space-y-6">
+          <fieldset disabled={!canEdit} className="contents border-0 p-0 m-0">
+            <div className="space-y-6">
             <div className="border-b border-slate-200 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-xs font-bold mb-1">
@@ -2022,13 +2074,15 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
               </div>
             </div>
           </div>
-        )}
+        </fieldset>
+      )}
 
         {/* ==================================================== */}
         {/* TAB B: BERDAYAKAN — LEMBAR RANCANG-COBA-REFLEKSI-PERBAIKI */}
         {/* ==================================================== */}
         {activeTab === 'B' && (
-          <div className="space-y-6">
+          <fieldset disabled={!canEdit} className="contents border-0 p-0 m-0">
+            <div className="space-y-6">
             <div className="border-b border-slate-200 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-md bg-amber-100 text-amber-800 text-xs font-bold mb-1">
@@ -2168,7 +2222,8 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
               ))}
             </div>
           </div>
-        )}
+        </fieldset>
+      )}
 
         {/* ==================================================== */}
         {/* TAB U: UJI — OBSERVASI KELAS (U-1) & ANGKET MURID (U-2) */}
@@ -2382,7 +2437,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                         className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5"
                       >
                         <FolderGit2 className="w-3.5 h-3.5" />
-                        <span>Unggah &amp; Isi Telaah Perbaikan</span>
+                        <span>{currentUser.role === 'guru' ? 'Unggah Berkas Revisi & Telaah 22 Aspek' : 'Unggah & Isi Telaah Perbaikan'}</span>
                       </button>
                     </div>
                   </div>
@@ -2458,7 +2513,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                         className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5"
                       >
                         <Compass className="w-3.5 h-3.5" />
-                        <span>Isi &amp; Buka Pra-Observasi Perbaikan</span>
+                        <span>{currentUser.role === 'guru' ? 'Lihat Wawancara Pra-Observasi Perbaikan' : 'Isi & Buka Pra-Observasi Perbaikan'}</span>
                       </button>
                     </div>
                   </div>
@@ -2536,7 +2591,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                         className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5"
                       >
                         <FileSpreadsheet className="w-3.5 h-3.5" />
-                        <span>Isi &amp; Buka Observasi Perbaikan</span>
+                        <span>{currentUser.role === 'guru' ? 'Lihat Observasi Kelas Perbaikan' : 'Isi & Buka Observasi Perbaikan'}</span>
                       </button>
                     </div>
                   </div>
@@ -2604,7 +2659,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                         className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5"
                       >
                         <FileText className="w-3.5 h-3.5" />
-                        <span>Isi &amp; Buka Pasca-Observasi Perbaikan</span>
+                        <span>{currentUser.role === 'guru' ? 'Lihat Refleksi Pasca-Observasi Perbaikan' : 'Isi & Buka Pasca-Observasi Perbaikan'}</span>
                       </button>
                     </div>
                   </div>
@@ -2614,7 +2669,8 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
 
             {/* SUBTAB U-1 */}
             {uSubTab === 'u1' && (
-              <div className="space-y-5">
+              <fieldset disabled={!canEdit} className="contents border-0 p-0 m-0">
+                <div className="space-y-5">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs bg-slate-50 p-4 rounded-xl border border-slate-200">
                   <div>
                     <label className="font-semibold text-slate-600 block mb-1">Hari &amp; Tanggal:</label>
@@ -2803,11 +2859,13 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                   </div>
                 </div>
               </div>
+              </fieldset>
             )}
 
             {/* SUBTAB U-2 */}
             {uSubTab === 'u2' && (
-              <div className="space-y-5">
+              <fieldset disabled={!canEdit} className="contents border-0 p-0 m-0">
+                <div className="space-y-5">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs bg-slate-50 p-4 rounded-xl border border-slate-200">
                   <div>
                     <label className="font-semibold text-slate-600 block mb-1">Kode Murid / Kelas:</label>
@@ -2980,11 +3038,13 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                   </div>
                 </div>
               </div>
+              </fieldset>
             )}
 
             {/* SUBTAB 4: KESIMPULAN HASIL UJI — MATRIKS PERUBAHAN AFTER */}
             {uSubTab === 'kesimpulan_after' && (
-              <div className="space-y-6">
+              <fieldset disabled={!canEdit} className="contents border-0 p-0 m-0">
+                <div className="space-y-6">
                 {/* Banner Penjelasan */}
                 <div className="bg-gradient-to-r from-purple-950 via-slate-900 to-indigo-950 text-white rounded-2xl p-5 border border-purple-800/60 shadow-sm">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -3396,6 +3456,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                   </div>
                 </div>
               </div>
+              </fieldset>
             )}
           </div>
         )}
@@ -3404,7 +3465,8 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
         {/* TAB N: NYATAKAN — BEFORE-AFTER & DATA DAMPAK */}
         {/* ==================================================== */}
         {activeTab === 'N' && (
-          <div className="space-y-6">
+          <fieldset disabled={!canEdit} className="contents border-0 p-0 m-0">
+            <div className="space-y-6">
             <div className="border-b border-slate-200 pb-4">
               <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-md bg-rose-100 text-rose-800 text-xs font-bold mb-1">
                 TAHAP N &bull; NYATAKAN
@@ -4000,13 +4062,15 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
               </p>
             </div>
           </div>
-        )}
+        </fieldset>
+      )}
 
         {/* ==================================================== */}
         {/* TAB G: GERAKKAN — TINDAK LANJUT & PENGIMBASAN */}
         {/* ==================================================== */}
         {activeTab === 'G' && (
-          <div className="space-y-6">
+          <fieldset disabled={!canEdit} className="contents border-0 p-0 m-0">
+            <div className="space-y-6">
             <div className="border-b border-slate-200 pb-4">
               <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-md bg-cyan-100 text-cyan-800 text-xs font-bold mb-1">
                 TAHAP G &bull; GERAKKAN
@@ -4302,7 +4366,8 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
               </div>
             </div>
           </div>
-        )}
+        </fieldset>
+      )}
 
       </div>
 
@@ -4324,14 +4389,21 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
             <Printer className="w-4 h-4 text-slate-300" />
             <span>Cetak Dokumen</span>
           </button>
-          <button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-md transition-colors"
-          >
-            <Save className="w-4 h-4" />
-            <span>{isSaving ? 'Menyimpan...' : 'Simpan Data SAMBUNG'}</span>
-          </button>
+          {canEdit ? (
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-md transition-colors"
+            >
+              <Save className="w-4 h-4" />
+              <span>{isSaving ? 'Menyimpan...' : 'Simpan Data SAMBUNG'}</span>
+            </button>
+          ) : (
+            <div className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-medium border border-slate-700">
+              <Lock className="w-3.5 h-3.5 text-amber-400" />
+              <span>Mode Hanya Lihat ({currentUser.role === 'guru' ? 'Guru Mapel' : 'Kepala Sekolah'})</span>
+            </div>
+          )}
         </div>
       </div>
 

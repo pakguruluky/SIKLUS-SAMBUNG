@@ -61,7 +61,8 @@ export default function App() {
     saveLocalSupervisions(initialList);
     return initialList;
   });
-  const [activeTab, setActiveTab] = useState<string>(() => loadLocalUser() ? 'dashboard' : 'landing');
+  // Pastikan ketika memasukan alamat aplikasi langsung ke halaman beranda (landing) walaupun sudah pernah membuka sebelumnya
+  const [activeTab, setActiveTab] = useState<string>('landing');
 
   // Modals
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -103,14 +104,13 @@ export default function App() {
 
     initApp();
 
-    // Firebase Auth Listener
+    // Firebase Auth Listener - restore authenticated profile without forcing navigation away from landing
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       if (user) {
         const profile = await getUserProfile(user.uid);
         if (profile) {
           setCurrentUser(profile);
           saveLocalUser(profile);
-          setActiveTab('dashboard');
         }
       }
     });
@@ -255,6 +255,8 @@ export default function App() {
         {activeTab === 'landing' && (
           <LandingPage
             onOpenAuth={() => setIsAuthModalOpen(true)}
+            currentUser={currentUser}
+            onGoToDashboard={() => setActiveTab('dashboard')}
           />
         )}
 

@@ -14,14 +14,18 @@ import {
   School,
   FolderGit2
 } from 'lucide-react';
-import { Role } from '../types';
+import { Role, UserProfile } from '../types';
 
 interface LandingPageProps {
   onOpenAuth: () => void;
+  currentUser?: UserProfile | null;
+  onGoToDashboard?: () => void;
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({
   onOpenAuth,
+  currentUser,
+  onGoToDashboard,
 }) => {
   return (
     <div className="flex-1 bg-slate-50">
@@ -59,13 +63,31 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
           {/* Action CTAs */}
           <div className="flex flex-wrap items-center justify-center gap-4">
-            <button
-              onClick={onOpenAuth}
-              className="px-8 py-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-base shadow-xl shadow-indigo-600/30 flex items-center gap-2.5 transition-all hover:scale-102"
-            >
-              <span>Masuk ke Sistem Supervisi</span>
-              <ArrowRight className="w-5 h-5" />
-            </button>
+            {currentUser && onGoToDashboard ? (
+              <>
+                <button
+                  onClick={onGoToDashboard}
+                  className="px-8 py-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-base shadow-xl shadow-indigo-600/30 flex items-center gap-2.5 transition-all hover:scale-102"
+                >
+                  <span>Buka Dashboard ({currentUser.displayName})</span>
+                  <ArrowRight className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={onOpenAuth}
+                  className="px-6 py-4 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-200 font-semibold text-sm border border-slate-700 transition-colors"
+                >
+                  <span>Ganti / Masuk Akun Lain</span>
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={onOpenAuth}
+                className="px-8 py-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-base shadow-xl shadow-indigo-600/30 flex items-center gap-2.5 transition-all hover:scale-102"
+              >
+                <span>Masuk ke Sistem Supervisi</span>
+                <ArrowRight className="w-5 h-5" />
+              </button>
+            )}
           </div>
 
           {/* Real Cloud System Status */}

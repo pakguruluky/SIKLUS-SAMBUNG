@@ -11,7 +11,8 @@ import {
   BookOpen,
   HardDrive,
   Sparkles,
-  Users
+  Users,
+  Home
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -54,7 +55,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Logo & Brand */}
           <div 
             className="flex items-center gap-3 cursor-pointer select-none shrink-0" 
-            onClick={() => setActiveTab(currentUser ? 'dashboard' : 'landing')}
+            onClick={() => setActiveTab('landing')}
           >
             <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-xs">
               <GraduationCap className="w-5 h-5" />
@@ -78,10 +79,22 @@ export const Navbar: React.FC<NavbarProps> = ({
           {currentUser && (
             <div className="hidden md:flex items-center gap-1">
               <button
+                onClick={() => setActiveTab('landing')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+                  activeTab === 'landing'
+                    ? 'bg-slate-100 text-indigo-700 font-bold'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                }`}
+              >
+                <Home className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Beranda</span>
+              </button>
+
+              <button
                 onClick={() => setActiveTab('dashboard')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 ${
                   activeTab === 'dashboard'
-                    ? 'bg-slate-100 text-indigo-700'
+                    ? 'bg-slate-100 text-indigo-700 font-bold'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                 }`}
               >
@@ -208,6 +221,13 @@ export const Navbar: React.FC<NavbarProps> = ({
       {/* Mobile nav bar if logged in */}
       {currentUser && (
         <div className="md:hidden border-t border-slate-200 px-4 py-2 flex items-center justify-around bg-slate-50 text-[11px]">
+          <button
+            onClick={() => setActiveTab('landing')}
+            className={`flex flex-col items-center gap-1 ${activeTab === 'landing' ? 'text-indigo-600 font-bold' : 'text-slate-500'}`}
+          >
+            <Home className="w-4 h-4" />
+            <span>Beranda</span>
+          </button>
           <button
             onClick={() => setActiveTab('dashboard')}
             className={`flex flex-col items-center gap-1 ${activeTab === 'dashboard' ? 'text-indigo-600 font-bold' : 'text-slate-500'}`}

@@ -1,5 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Supervision, UserProfile, School, SambungData, SambungMaknaiPertanyaanList } from '../types';
+import { 
+  Supervision, 
+  UserProfile, 
+  School, 
+  SambungData, 
+  SambungMaknaiPertanyaanList,
+  SambungUjiPraObservasi,
+  SambungUjiObservasiPelaksanaan,
+  SambungUjiPascaObservasi
+} from '../types';
 import { 
   createDefaultSambungForTeacher, 
   DEFAULT_DATA_DAMPAK,
@@ -63,9 +72,17 @@ import {
   generateTeacherMaknaiData,
   applyMaknaiAutoFillToSupervision,
   generateBerdayakanTelaahPerbaikanData,
-  applyBerdayakanAutoFillToSupervision
+  applyBerdayakanAutoFillToSupervision,
+  generateUjiData,
+  applyUjiAutoFillToSupervision
 } from '../data/autoFillData';
-import { MAKNAI_COACHING_QUESTIONS, TELAAH_ITEMS } from '../data/instrumentData';
+import { 
+  MAKNAI_COACHING_QUESTIONS, 
+  TELAAH_ITEMS, 
+  OBSERVASI_ITEMS, 
+  PRA_OBSERVASI_QUESTIONS,
+  PASCA_OBSERVASI_QUESTIONS
+} from '../data/instrumentData';
 
 interface SambungInstrumentViewProps {
   supervisions: Supervision[];
@@ -116,7 +133,8 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
   // Current active SAMBUNG letter tab
   const [activeTab, setActiveTab] = useState<TabType>('S');
   const [sSubTab, setSSubTab] = useState<'supervisi_awal' | 'pemetaan' | 'kesimpulan_before'>('supervisi_awal');
-  const [uSubTab, setUSubTab] = useState<'supervisi_perbaikan' | 'u1' | 'u2' | 'kesimpulan_after'>('supervisi_perbaikan');
+  const [uSubTab, setUSubTab] = useState<'supervisi_perbaikan' | 'pra_observasi' | 'observasi_25' | 'pasca_observasi' | 'u1' | 'u2' | 'kesimpulan_after'>('supervisi_perbaikan');
+  const [isAutoFillingUji, setIsAutoFillingUji] = useState(false);
   const [activeSupervisiModal, setActiveSupervisiModal] = useState<{
     stage: 'perangkat' | 'pra' | 'observasi' | 'pasca';
     mode: 'awal' | 'perbaikan';
@@ -413,6 +431,28 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
     }
   };
 
+  const handleAutoFillUji = async () => {
+    if (!currentSupervision) return;
+    setIsAutoFillingUji(true);
+    try {
+      const updated = applyUjiAutoFillToSupervision(currentSupervision);
+      if (updated.sambung) {
+        setSambungDraft(updated.sambung);
+      }
+      await saveSupervision(updated);
+      onUpdateSupervision(updated);
+      setSaveToast(
+        `Tahap U (UJI): Instrumen Wawancara Pra-Observasi, Observasi 25 Aspek, Pasca-Observasi, Angket Suara Murid, dan 4 Indikator Transformasi berhasil disinkronkan otomatis sesuai hasil kesimpulan dan tersimpan di Database!`
+      );
+      setTimeout(() => setSaveToast(null), 5000);
+    } catch (err) {
+      console.error('Error auto-filling uji:', err);
+      alert('Gagal menyinkronkan instrumen Uji.');
+    } finally {
+      setIsAutoFillingUji(false);
+    }
+  };
+
   if (!currentSupervision || !sambungDraft) {
     return (
       <div className="bg-white rounded-2xl p-12 text-center border border-slate-200">
@@ -488,11 +528,23 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
           : autoBerdayakan.siklusList,
       };
 
+      const autoUji = generateUjiData(currentSupervision);
+      const ensuredUji = {
+        ...autoUji,
+        ...sambungDraft.uji,
+        praObservasi: sambungDraft.uji?.praObservasi || autoUji.praObservasi,
+        observasiPelaksanaan: sambungDraft.uji?.observasiPelaksanaan || autoUji.observasiPelaksanaan,
+        pascaObservasi: sambungDraft.uji?.pascaObservasi || autoUji.pascaObservasi,
+        kesimpulanUji: sambungDraft.uji?.kesimpulanUji || autoUji.kesimpulanUji,
+        matriksAfter: sambungDraft.uji?.matriksAfter || autoUji.matriksAfter,
+      };
+
       const updatedDraft: SambungData = {
         ...sambungDraft,
         arahkan: ensuredArahkan,
         maknai: ensuredMaknai,
         berdayakan: ensuredBerdayakan,
+        uji: ensuredUji,
         lastUpdated: new Date().toISOString(),
       };
 
@@ -515,13 +567,50 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
           reviewedAt: new Date().toISOString(),
           reviewedBy: ensuredBerdayakan.namaPenelaah,
         },
+        praObservasiPerbaikan: ensuredUji.praObservasi ? {
+          q1_kd_indikator: ensuredUji.praObservasi.q1,
+          q2_metode: ensuredUji.praObservasi.q2,
+          q3_alat_bahan: ensuredUji.praObservasi.q3,
+          q4_tahapan: ensuredUji.praObservasi.q4,
+          q5_persiapan: ensuredUji.praObservasi.q5,
+          q6_materi_sulit: ensuredUji.praObservasi.q6,
+          q7_target_kompetensi: ensuredUji.praObservasi.q7,
+          q8_perhatian_khusus: ensuredUji.praObservasi.q8,
+          supervisorNotes: ensuredUji.praObservasi.supervisorNotes || '',
+          interviewDurationMinutes: 35,
+        } : currentSupervision.praObservasiPerbaikan,
+        observasiKelasPerbaikan: ensuredUji.observasiPelaksanaan ? {
+          items: ensuredUji.observasiPelaksanaan.items,
+          totalYa: 25,
+          totalAspek: 25,
+          totalSkor: ensuredUji.observasiPelaksanaan.totalSkor,
+          score: ensuredUji.observasiPelaksanaan.persentaseCapaian,
+          predicate: ensuredUji.observasiPelaksanaan.predicate,
+          feedbackNotes: `${ensuredUji.observasiPelaksanaan.feedback.kelebihan}\n\nHal yang perlu diperbaiki: ${ensuredUji.observasiPelaksanaan.feedback.perbaikan}\n\nRekomendasi: ${ensuredUji.observasiPelaksanaan.feedback.rekomendasi}`,
+          feedback: ensuredUji.observasiPelaksanaan.feedback,
+          completedAt: ensuredUji.observasiPelaksanaan.completedAt || new Date().toISOString(),
+        } : currentSupervision.observasiKelasPerbaikan,
+        pascaObservasiPerbaikan: ensuredUji.pascaObservasi ? {
+          q1_kesan: ensuredUji.pascaObservasi.pertanyaanList.q1,
+          q2_sesuai_rencana: ensuredUji.pascaObservasi.pertanyaanList.q2,
+          q3_hal_memuaskan: ensuredUji.pascaObservasi.pertanyaanList.q3,
+          q4_hal_kurang: ensuredUji.pascaObservasi.pertanyaanList.q4,
+          q5_ketercapaian_tujuan: ensuredUji.pascaObservasi.pertanyaanList.q5,
+          q6_kesulitan_siswa: ensuredUji.pascaObservasi.pertanyaanList.q6,
+          q7_alternatif_solusi: ensuredUji.pascaObservasi.pertanyaanList.q7,
+          q8_rencana_tindak_lanjut: ensuredUji.pascaObservasi.pertanyaanList.q8,
+          q9_pengembangan_diri: ensuredUji.pascaObservasi.pertanyaanList.q9,
+          generalImpression: ensuredUji.pascaObservasi.kesanUmum,
+          recommendations: ensuredUji.pascaObservasi.saranMasukan,
+          completedAt: ensuredUji.pascaObservasi.completedAt || new Date().toISOString(),
+        } : currentSupervision.pascaObservasiPerbaikan,
         updatedAt: new Date().toISOString(),
       };
 
       await saveSupervision(updatedSupervision);
       onUpdateSupervision(updatedSupervision);
       setSambungDraft(updatedDraft);
-      setSaveToast(`Instrumen SAMBUNG (Amati, Maknai, & Berdayakan) untuk ${currentSupervision.teacherName} berhasil disimpan ke Database Firebase!`);
+      setSaveToast(`Instrumen SAMBUNG (Amati, Maknai, Berdayakan, & Uji) untuk ${currentSupervision.teacherName} berhasil disimpan ke Database Firebase!`);
       setTimeout(() => setSaveToast(null), 3500);
     } catch (err) {
       console.error(err);
@@ -3666,77 +3755,168 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
         {activeTab === 'U' && (
           <div className="space-y-6">
             <div className="border-b border-slate-200 pb-4">
-              <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-md bg-purple-100 text-purple-800 text-xs font-bold mb-1">
-                TAHAP U &bull; UJI
-              </div>
-              <h3 className="text-lg font-bold text-slate-900">
-                Uji: Observasi Kelas &amp; Suara Murid
-              </h3>
-              <p className="text-xs text-slate-500">
-                Kombinasi observasi pembelajaran langsung dan refleksi suara murid (Student Agency).
-              </p>
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-2">
+                <div>
+                  <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-md bg-purple-100 text-purple-800 text-xs font-bold mb-1">
+                    TAHAP U &bull; UJI
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-900">
+                    Uji: Observasi Kelas, Instrumen Supervisi &amp; Suara Murid
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Pembuktian lapangan perbaikan pembelajaran guru {currentSupervision.teacherName} menggunakan instrumen resmi Pengawas Pembina Kusnandar, M.Si, terhubung koheren dari Selidiki, Amati, Maknai, Berdayakan dan selaras dengan hasil kesimpulan.
+                  </p>
+                </div>
 
-              {/* Subtab switcher */}
+                {/* Toolbar Aksi Tahap U */}
+                <div className="flex flex-wrap items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleAutoFillUji}
+                    disabled={isAutoFillingUji}
+                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-700 hover:to-indigo-800 text-white font-extrabold text-xs shadow-md transition-all flex items-center gap-2 cursor-pointer active:scale-95 border border-purple-400/40"
+                    title="Otomatis mengisi Pra-Observasi, 25 Butir Observasi, Pasca-Observasi, Angket Murid & Matriks After yang selaras dari Selidiki sampai Berdayakan"
+                  >
+                    <Sparkles className={`w-4 h-4 text-amber-300 ${isAutoFillingUji ? 'animate-spin' : ''}`} />
+                    <span>{isAutoFillingUji ? 'Menyinkronkan Instrumen Uji...' : 'Isi & Sinkronkan Otomatis Tahap UJI'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsPrintModalOpen(true)}
+                    className="px-3 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-bold text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Printer className="w-4 h-4 text-slate-500" />
+                    <span>Cetak Tahap U</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Save className="w-4 h-4" />
+                    <span>{isSaving ? 'Menyimpan...' : 'Simpan Tahap U'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Subtab switcher (7 Subtabs Lengkap) */}
               <div className="flex flex-wrap items-center gap-2 mt-4">
                 <button
                   type="button"
                   onClick={() => setUSubTab('supervisi_perbaikan')}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
                     uSubTab === 'supervisi_perbaikan'
                       ? 'bg-purple-600 text-white shadow-xs'
                       : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                   }`}
                 >
                   <FolderGit2 className="w-4 h-4" />
-                  <span>1. Supervisi Akademik Pasca-Perbaikan (Data Setelah Ada Perbaikan)</span>
+                  <span>1. Ikhtisar 4 Tahap Perbaikan</span>
                   <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
                     uSubTab === 'supervisi_perbaikan' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
                   }`}>
-                    4 Tahap Perbaikan
+                    4 Tahap
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setUSubTab('pra_observasi')}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    uSubTab === 'pra_observasi'
+                      ? 'bg-purple-600 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  <span>2. Wawancara Pra-Observasi</span>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                    uSubTab === 'pra_observasi' ? 'bg-white/20 text-white' : 'bg-purple-100 text-purple-700'
+                  }`}>
+                    8 Butir
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setUSubTab('observasi_25')}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    uSubTab === 'observasi_25'
+                      ? 'bg-purple-600 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  <CheckCheck className="w-4 h-4" />
+                  <span>3. Observasi Kelas (25 Aspek)</span>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                    uSubTab === 'observasi_25' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800'
+                  }`}>
+                    {sambungDraft.uji?.observasiPelaksanaan?.persentaseCapaian || 100}% &bull; {sambungDraft.uji?.observasiPelaksanaan?.predicate || 'Sangat Baik'}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setUSubTab('pasca_observasi')}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    uSubTab === 'pasca_observasi'
+                      ? 'bg-purple-600 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  <FileText className="w-4 h-4" />
+                  <span>4. Pasca-Observasi &amp; Refleksi</span>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                    uSubTab === 'pasca_observasi' ? 'bg-white/20 text-white' : 'bg-indigo-100 text-indigo-700'
+                  }`}>
+                    Refleksi &amp; RTL
                   </span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setUSubTab('u1')}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
                     uSubTab === 'u1'
                       ? 'bg-purple-600 text-white shadow-xs'
                       : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                   }`}
                 >
                   <FileSpreadsheet className="w-4 h-4" />
-                  <span>2. U-1: Observasi Kelas SAMBUNG ({sambungDraft.uji.u1_observasi.persentaseCapaian.toFixed(1)}%)</span>
+                  <span>5. U-1: Observasi SAMBUNG ({sambungDraft.uji.u1_observasi.persentaseCapaian.toFixed(1)}%)</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setUSubTab('u2')}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
                     uSubTab === 'u2'
                       ? 'bg-purple-600 text-white shadow-xs'
                       : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                   }`}
                 >
                   <Smile className="w-4 h-4" />
-                  <span>3. U-2: Angket Refleksi Murid ({sambungDraft.uji.u2_angketMurid.jumlahResponden} Responden)</span>
+                  <span>6. U-2: Suara Murid ({sambungDraft.uji.u2_angketMurid.jumlahResponden} Murid)</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setUSubTab('kesimpulan_after')}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
                     uSubTab === 'kesimpulan_after'
                       ? 'bg-purple-600 text-white shadow-xs'
                       : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                   }`}
                 >
                   <Sparkles className="w-4 h-4 text-amber-300" />
-                  <span>4. Kesimpulan Hasil Uji: Tabel Indikator &amp; Uji</span>
+                  <span>7. Kesimpulan Hasil Uji (4 Indikator)</span>
                   <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
                     uSubTab === 'kesimpulan_after' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
                   }`}>
-                    4 Indikator Transformasi
+                    Matriks After
                   </span>
                 </button>
               </div>
@@ -4100,6 +4280,710 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                   </div>
                 </div>
               </div>
+            )}
+
+            {/* ========================================================= */}
+            {/* SUBTAB 2: INSTRUMEN RESMI WAWANCARA PRA-OBSERVASI PERBAIKAN */}
+            {/* ========================================================= */}
+            {uSubTab === 'pra_observasi' && (
+              <fieldset disabled={!canEdit} className="contents border-0 p-0 m-0">
+                <div className="space-y-6">
+                  {/* Banner */}
+                  <div className="bg-gradient-to-r from-purple-950 via-slate-900 to-indigo-950 text-white rounded-2xl p-5 border border-purple-800/60 shadow-xs">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 text-purple-300 text-xs font-bold uppercase tracking-wider">
+                          <MessageSquare className="w-4 h-4 text-amber-400" />
+                          <span>Instrumen Resmi Pengawas Pembina Kusnandar, M.Si &bull; Wawancara Pra-Observasi</span>
+                        </div>
+                        <h4 className="text-base sm:text-lg font-bold text-white">
+                          Wawancara Pra-Observasi Pembelajaran Perbaikan &bull; {currentSupervision.teacherName}
+                        </h4>
+                        <p className="text-xs text-purple-200/90 max-w-3xl leading-relaxed">
+                          Dialog pra-observasi menggali kesiapan pedagogis guru dalam mengimplementasikan Modul Ajar revisi, rancangan alur pembelajaran kontekstual, strategi pelibatan aktif murid (Student Agency), dan antisipasi materi menantang.
+                        </p>
+                      </div>
+
+                      <div className="shrink-0 flex items-center gap-2 bg-white/10 px-3.5 py-2 rounded-xl border border-white/10 text-xs font-medium">
+                        <span className="text-purple-200">Mata Pelajaran:</span>
+                        <span className="font-bold text-amber-300">{currentSupervision.subject} ({currentSupervision.classGrade})</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Form 8 Pertanyaan */}
+                  <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+                      <div>
+                        <h5 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                          <MessageSquare className="w-4 h-4 text-purple-600" />
+                          <span>8 Butir Pertanyaan Dialog Wawancara Pra-Observasi</span>
+                        </h5>
+                        <p className="text-xs text-slate-500">
+                          Data ini otomatis diselaraskan dengan Modul Ajar Revisi hasil Tahap Berdayakan dan siklus Selidiki, Amati, Maknai.
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const auto = generateUjiData(currentSupervision);
+                          if (auto.praObservasi) {
+                            setSambungDraft({
+                              ...sambungDraft,
+                              uji: {
+                                ...sambungDraft.uji,
+                                praObservasi: auto.praObservasi,
+                              },
+                            });
+                            setSaveToast('Template pertanyaan Pra-Observasi berhasil dipulihkan!');
+                            setTimeout(() => setSaveToast(null), 3000);
+                          }
+                        }}
+                        className="text-xs text-purple-600 hover:text-purple-800 font-bold bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-xl border border-purple-200 transition-colors self-start sm:self-auto flex items-center gap-1.5"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        <span>Pulihkan Template Jawaban</span>
+                      </button>
+                    </div>
+
+                    <div className="space-y-4">
+                      {PRA_OBSERVASI_QUESTIONS.map((q, idx) => {
+                        const qKey = q.id as 'q1' | 'q2' | 'q3' | 'q4' | 'q5' | 'q6' | 'q7' | 'q8';
+                        const autoUji = generateUjiData(currentSupervision);
+                        const currentVal = ((sambungDraft.uji?.praObservasi && sambungDraft.uji.praObservasi[qKey]) || 
+                                            (autoUji.praObservasi && autoUji.praObservasi[qKey]) || '') as string;
+
+                        return (
+                          <div key={q.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 hover:border-purple-300 transition-colors space-y-2">
+                            <label className="block text-xs font-bold text-slate-800 leading-snug">
+                              {q.label}
+                            </label>
+                            <textarea
+                              rows={3}
+                              value={currentVal}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                const basePra = sambungDraft.uji?.praObservasi || autoUji.praObservasi || {
+                                  q1: '', q2: '', q3: '', q4: '', q5: '', q6: '', q7: '', q8: ''
+                                };
+                                const updatedPra: SambungUjiPraObservasi = {
+                                  ...basePra,
+                                  [qKey]: val,
+                                };
+                                setSambungDraft({
+                                  ...sambungDraft,
+                                  uji: {
+                                    ...sambungDraft.uji,
+                                    praObservasi: updatedPra,
+                                  },
+                                });
+                              }}
+                              placeholder={`Jawaban guru untuk butir ${idx + 1}...`}
+                              className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-purple-600 bg-white text-slate-800 leading-relaxed font-normal"
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Catatan Kesepakatan Wawancara Pengawas */}
+                    <div className="p-4 rounded-xl border border-amber-200 bg-amber-50/60 space-y-2">
+                      <label className="block text-xs font-bold text-amber-950 flex items-center gap-2">
+                        <Award className="w-4 h-4 text-amber-700" />
+                        <span>Catatan Kesepakatan &amp; Arahan Pengawas Pembina (Kusnandar, M.Si):</span>
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={
+                          sambungDraft.uji?.praObservasi?.supervisorNotes ||
+                          generateUjiData(currentSupervision).praObservasi?.supervisorNotes ||
+                          'Guru telah sangat siap mempraktikkan modul ajar revisi dengan media kontekstual dan LKPD diferensiasi.'
+                        }
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          const autoUji = generateUjiData(currentSupervision);
+                          const updatedPra: SambungUjiPraObservasi = {
+                            ...(sambungDraft.uji?.praObservasi || autoUji.praObservasi || {
+                              q1: '', q2: '', q3: '', q4: '', q5: '', q6: '', q7: '', q8: ''
+                            }),
+                            supervisorNotes: val,
+                          };
+                          setSambungDraft({
+                            ...sambungDraft,
+                            uji: {
+                              ...sambungDraft.uji,
+                              praObservasi: updatedPra,
+                            },
+                          });
+                        }}
+                        className="w-full px-3 py-2 rounded-xl border border-amber-300 text-xs focus:outline-amber-600 bg-white text-slate-800 italic"
+                      />
+                    </div>
+
+                    {/* Footer Actions */}
+                    <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                      <div className="flex items-center gap-2 text-xs text-slate-500">
+                        <CheckCircle className="w-4 h-4 text-emerald-600" />
+                        <span>Terintegrasi dengan Formulir Pra-Observasi Perbaikan</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleSave}
+                        disabled={isSaving}
+                        className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-extrabold text-xs shadow-md transition-all flex items-center gap-2 cursor-pointer active:scale-95"
+                      >
+                        <Save className="w-4 h-4" />
+                        <span>{isSaving ? 'Menyimpan...' : 'Simpan Pra-Observasi ke Firebase'}</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </fieldset>
+            )}
+
+            {/* ========================================================= */}
+            {/* SUBTAB 3: INSTRUMEN RESMI OBSERVASI PEMBELAJARAN (25 BUTIR) */}
+            {/* ========================================================= */}
+            {uSubTab === 'observasi_25' && (
+              <fieldset disabled={!canEdit} className="contents border-0 p-0 m-0">
+                <div className="space-y-6">
+                  {/* Banner */}
+                  <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-indigo-950 text-white rounded-2xl p-5 border border-emerald-800/60 shadow-xs">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 text-emerald-300 text-xs font-bold uppercase tracking-wider">
+                          <CheckCheck className="w-4 h-4 text-emerald-400" />
+                          <span>Instrumen Resmi Supervisi Tatap Muka Pengawas Pembina Kusnandar, M.Si</span>
+                        </div>
+                        <h4 className="text-base sm:text-lg font-bold text-white">
+                          Observasi Pelaksanaan Pembelajaran Perbaikan &bull; {currentSupervision.teacherName}
+                        </h4>
+                        <p className="text-xs text-emerald-200/90 max-w-3xl leading-relaxed">
+                          Penilaian 25 butir instrumen supervisi klinis dalam 9 kategori kompetensi. Menguji keterlaksanaan diferensiasi proses, penguatan nalar kritis murid, iklim belajar yang aman dan menyenangkan, serta asesmen formatif berkelanjutan.
+                        </p>
+                      </div>
+
+                      {/* Score Summary Box */}
+                      {(() => {
+                        const autoUji = generateUjiData(currentSupervision);
+                        const obs = sambungDraft.uji?.observasiPelaksanaan || autoUji.observasiPelaksanaan;
+                        const totalScore = obs?.totalSkor || 50;
+                        const pct = obs?.persentaseCapaian || 100;
+                        const pred = obs?.predicate || 'Sangat Baik';
+
+                        return (
+                          <div className="shrink-0 bg-white/10 backdrop-blur-md p-3.5 rounded-2xl border border-white/20 text-center min-w-[170px]">
+                            <span className="text-[10px] text-emerald-200 font-bold uppercase tracking-wider block">Skor &amp; Predikat</span>
+                            <div className="text-2xl font-extrabold text-white mt-0.5">
+                              {totalScore} <span className="text-xs font-normal text-emerald-300">/ 50 ({pct}%)</span>
+                            </div>
+                            <span className="inline-block mt-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-400 text-slate-950">
+                              {pred}
+                            </span>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+
+                  {/* 25 Aspek dalam 9 Kategori */}
+                  <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+                      <div>
+                        <h5 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                          <CheckCheck className="w-4 h-4 text-emerald-600" />
+                          <span>25 Butir Indikator Observasi Kelas (9 Kategori)</span>
+                        </h5>
+                        <p className="text-xs text-slate-500">
+                          Skala: 0 = Tidak Tampak, 1 = Mulai Tampak / Kurang, 2 = Sangat Berkembang / Maksimal (Maks 50 Skor).
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const auto = generateUjiData(currentSupervision);
+                          if (auto.observasiPelaksanaan) {
+                            setSambungDraft({
+                              ...sambungDraft,
+                              uji: {
+                                ...sambungDraft.uji,
+                                observasiPelaksanaan: auto.observasiPelaksanaan,
+                              },
+                            });
+                            setSaveToast('Skor dan catatan 25 butir observasi berhasil dipulihkan!');
+                            setTimeout(() => setSaveToast(null), 3000);
+                          }
+                        }}
+                        className="text-xs text-emerald-700 hover:text-emerald-900 font-bold bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-xl border border-emerald-200 transition-colors self-start sm:self-auto flex items-center gap-1.5"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        <span>Pulihkan Skor &amp; Catatan Observasi</span>
+                      </button>
+                    </div>
+
+                    {/* Group by category */}
+                    {(() => {
+                      const autoUji = generateUjiData(currentSupervision);
+                      const currentObs = sambungDraft.uji?.observasiPelaksanaan || autoUji.observasiPelaksanaan;
+                      const categories = Array.from(new Set(OBSERVASI_ITEMS.map((it) => it.category)));
+
+                      const updateItem = (id: string, score: number, note: string) => {
+                        const existingItems = currentObs?.items || {};
+                        const updatedItems = {
+                          ...existingItems,
+                          [id]: { score, note },
+                        };
+                        let sumScore = 0;
+                        OBSERVASI_ITEMS.forEach((it) => {
+                          const sc = updatedItems[it.id]?.score !== undefined ? Number(updatedItems[it.id].score) : 2;
+                          sumScore += sc;
+                        });
+                        const pct = parseFloat(((sumScore / 50) * 100).toFixed(1));
+                        let pred: 'Sangat Baik' | 'Baik' | 'Cukup' | 'Perlu Perbaikan' = 'Perlu Perbaikan';
+                        if (pct >= 90) pred = 'Sangat Baik';
+                        else if (pct >= 80) pred = 'Baik';
+                        else if (pct >= 70) pred = 'Cukup';
+
+                        const baseObs = currentObs || autoUji.observasiPelaksanaan;
+                        const updatedObs: SambungUjiObservasiPelaksanaan = {
+                          ...baseObs,
+                          maxPossibleScore: baseObs?.maxPossibleScore || 50,
+                          feedback: baseObs?.feedback || { kelebihan: '', perbaikan: '', rekomendasi: '' },
+                          items: updatedItems,
+                          totalSkor: sumScore,
+                          persentaseCapaian: pct,
+                          predicate: pred,
+                        };
+
+                        setSambungDraft({
+                          ...sambungDraft,
+                          uji: {
+                            ...sambungDraft.uji,
+                            observasiPelaksanaan: updatedObs,
+                          },
+                        });
+                      };
+
+                      return (
+                        <div className="space-y-6">
+                          {categories.map((cat, catIdx) => {
+                            const catItems = OBSERVASI_ITEMS.filter((it) => it.category === cat);
+                            return (
+                              <div key={cat} className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+                                <div className="bg-slate-100/80 px-4 py-2.5 border-b border-slate-200 flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <span className="w-5 h-5 rounded-md bg-purple-700 text-white font-bold text-xs flex items-center justify-center">
+                                      {catIdx + 1}
+                                    </span>
+                                    <h6 className="font-extrabold text-xs text-slate-800 tracking-wide uppercase">
+                                      {cat}
+                                    </h6>
+                                  </div>
+                                  <span className="text-[11px] font-semibold text-slate-500">
+                                    {catItems.length} Aspek Penilaian
+                                  </span>
+                                </div>
+
+                                <div className="divide-y divide-slate-100 bg-white">
+                                  {catItems.map((item) => {
+                                    const state = currentObs?.items?.[item.id] || { score: 2, note: '' };
+                                    const curScore = state.score !== undefined ? state.score : 2;
+                                    const curNote = state.note || '';
+
+                                    return (
+                                      <div key={item.id} className="p-4 hover:bg-slate-50/60 transition-colors space-y-3">
+                                        <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-3">
+                                          <div className="flex items-start gap-2.5 flex-1">
+                                            <span className="w-6 h-6 rounded-lg bg-slate-100 text-slate-700 font-extrabold text-xs flex items-center justify-center shrink-0 mt-0.5">
+                                              {item.id}
+                                            </span>
+                                            <div>
+                                              <p className="text-xs font-bold text-slate-900 leading-snug">
+                                                {item.aspect}
+                                              </p>
+                                            </div>
+                                          </div>
+
+                                          {/* Score Selector (0, 1, 2) */}
+                                          <div className="flex items-center gap-2 shrink-0 self-start lg:self-auto">
+                                            <span className="text-[11px] text-slate-500 font-medium mr-1">Skor:</span>
+                                            {[0, 1, 2].map((val) => (
+                                              <button
+                                                key={val}
+                                                type="button"
+                                                onClick={() => updateItem(item.id, val, curNote)}
+                                                className={`w-8 h-8 rounded-lg text-xs font-extrabold transition-all ${
+                                                  curScore === val
+                                                    ? val === 2
+                                                      ? 'bg-emerald-600 text-white shadow-2xs'
+                                                      : val === 1
+                                                      ? 'bg-amber-500 text-white shadow-2xs'
+                                                      : 'bg-rose-500 text-white shadow-2xs'
+                                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                                }`}
+                                              >
+                                                {val}
+                                              </button>
+                                            ))}
+                                            <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold ml-1 ${
+                                              curScore === 2
+                                                ? 'bg-emerald-100 text-emerald-800'
+                                                : curScore === 1
+                                                ? 'bg-amber-100 text-amber-800'
+                                                : 'bg-rose-100 text-rose-800'
+                                            }`}>
+                                              {curScore === 2 ? 'Sangat Baik' : curScore === 1 ? 'Mulai Tampak' : 'Belum Tampak'}
+                                            </span>
+                                          </div>
+                                        </div>
+
+                                        {/* Catatan Bukti Pengamatan */}
+                                        <div>
+                                          <input
+                                            type="text"
+                                            value={curNote}
+                                            onChange={(e) => updateItem(item.id, curScore, e.target.value)}
+                                            placeholder="Catatan bukti pengamatan konkret di kelas..."
+                                            className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-emerald-600 bg-slate-50/50 hover:bg-white focus:bg-white text-slate-800"
+                                          />
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
+
+                    {/* 3-Point Feedback Resmi Supervisi (PDF Hal 12-13) */}
+                    <div className="pt-4 border-t border-slate-200 space-y-4">
+                      <h6 className="font-extrabold text-xs text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                        <Award className="w-4 h-4 text-emerald-600" />
+                        <span>3-Point Feedback Observasi Implementasi Pembelajaran (Dokumen Resmi Halaman 12-13)</span>
+                      </h6>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {/* Kelebihan */}
+                        <div className="p-3.5 rounded-xl border border-emerald-200 bg-emerald-50/50 space-y-1.5">
+                          <label className="block text-xs font-bold text-emerald-950">
+                            1. Kelebihan yang Diamati (Kekuatan Guru):
+                          </label>
+                          <textarea
+                            rows={4}
+                            value={
+                              sambungDraft.uji?.observasiPelaksanaan?.feedback?.kelebihan ||
+                              generateUjiData(currentSupervision).observasiPelaksanaan?.feedback?.kelebihan ||
+                              ''
+                            }
+                            onChange={(e) => {
+                              const autoUji = generateUjiData(currentSupervision);
+                              const baseObs = sambungDraft.uji?.observasiPelaksanaan || autoUji.observasiPelaksanaan;
+                              if (!baseObs) return;
+                              const updatedObs: SambungUjiObservasiPelaksanaan = {
+                                ...baseObs,
+                                feedback: {
+                                  ...baseObs.feedback,
+                                  kelebihan: e.target.value,
+                                },
+                              };
+                              setSambungDraft({
+                                ...sambungDraft,
+                                uji: { ...sambungDraft.uji, observasiPelaksanaan: updatedObs },
+                              });
+                            }}
+                            className="w-full px-3 py-2 rounded-lg border border-emerald-300 text-xs focus:outline-emerald-600 bg-white"
+                          />
+                        </div>
+
+                        {/* Perbaikan */}
+                        <div className="p-3.5 rounded-xl border border-amber-200 bg-amber-50/50 space-y-1.5">
+                          <label className="block text-xs font-bold text-amber-950">
+                            2. Aspek yang Perlu Peningkatan:
+                          </label>
+                          <textarea
+                            rows={4}
+                            value={
+                              sambungDraft.uji?.observasiPelaksanaan?.feedback?.perbaikan ||
+                              generateUjiData(currentSupervision).observasiPelaksanaan?.feedback?.perbaikan ||
+                              ''
+                            }
+                            onChange={(e) => {
+                              const autoUji = generateUjiData(currentSupervision);
+                              const baseObs = sambungDraft.uji?.observasiPelaksanaan || autoUji.observasiPelaksanaan;
+                              if (!baseObs) return;
+                              const updatedObs: SambungUjiObservasiPelaksanaan = {
+                                ...baseObs,
+                                feedback: {
+                                  ...baseObs.feedback,
+                                  perbaikan: e.target.value,
+                                },
+                              };
+                              setSambungDraft({
+                                ...sambungDraft,
+                                uji: { ...sambungDraft.uji, observasiPelaksanaan: updatedObs },
+                              });
+                            }}
+                            className="w-full px-3 py-2 rounded-lg border border-amber-300 text-xs focus:outline-amber-600 bg-white"
+                          />
+                        </div>
+
+                        {/* Rekomendasi */}
+                        <div className="p-3.5 rounded-xl border border-indigo-200 bg-indigo-50/50 space-y-1.5">
+                          <label className="block text-xs font-bold text-indigo-950">
+                            3. Rekomendasi Tindak Lanjut Pengawas:
+                          </label>
+                          <textarea
+                            rows={4}
+                            value={
+                              sambungDraft.uji?.observasiPelaksanaan?.feedback?.rekomendasi ||
+                              generateUjiData(currentSupervision).observasiPelaksanaan?.feedback?.rekomendasi ||
+                              ''
+                            }
+                            onChange={(e) => {
+                              const autoUji = generateUjiData(currentSupervision);
+                              const baseObs = sambungDraft.uji?.observasiPelaksanaan || autoUji.observasiPelaksanaan;
+                              if (!baseObs) return;
+                              const updatedObs: SambungUjiObservasiPelaksanaan = {
+                                ...baseObs,
+                                feedback: {
+                                  ...baseObs.feedback,
+                                  rekomendasi: e.target.value,
+                                },
+                              };
+                              setSambungDraft({
+                                ...sambungDraft,
+                                uji: { ...sambungDraft.uji, observasiPelaksanaan: updatedObs },
+                              });
+                            }}
+                            className="w-full px-3 py-2 rounded-lg border border-indigo-300 text-xs focus:outline-indigo-600 bg-white"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Footer Actions */}
+                    <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                      <div className="flex items-center gap-2 text-xs text-slate-500">
+                        <CheckCircle className="w-4 h-4 text-emerald-600" />
+                        <span>Otomatis mensinkronkan data observasi ke Formulir Supervisi Perbaikan</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleSave}
+                        disabled={isSaving}
+                        className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md transition-all flex items-center gap-2 cursor-pointer active:scale-95"
+                      >
+                        <Save className="w-4 h-4" />
+                        <span>{isSaving ? 'Menyimpan...' : 'Simpan Observasi Kelas ke Firebase'}</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </fieldset>
+            )}
+
+            {/* ========================================================= */}
+            {/* SUBTAB 4: INSTRUMEN RESMI PASCA-OBSERVASI & COACHING */}
+            {/* ========================================================= */}
+            {uSubTab === 'pasca_observasi' && (
+              <fieldset disabled={!canEdit} className="contents border-0 p-0 m-0">
+                <div className="space-y-6">
+                  {/* Banner */}
+                  <div className="bg-gradient-to-r from-indigo-950 via-slate-900 to-purple-950 text-white rounded-2xl p-5 border border-indigo-800/60 shadow-xs">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 text-indigo-300 text-xs font-bold uppercase tracking-wider">
+                          <FileText className="w-4 h-4 text-amber-400" />
+                          <span>Instrumen Resmi Pengawas Pembina Kusnandar, M.Si &bull; Pasca-Observasi &amp; Refleksi</span>
+                        </div>
+                        <h4 className="text-base sm:text-lg font-bold text-white">
+                          Refleksi &amp; Evaluasi Pasca-Observasi Perbaikan &bull; {currentSupervision.teacherName}
+                        </h4>
+                        <p className="text-xs text-indigo-200/90 max-w-3xl leading-relaxed">
+                          Sesi dialog refleksi pasca-observasi mengevaluasi keberhasilan implementasi pembelajaran perbaikan, ketercapaian tujuan, keaktifan partisipasi murid, dan menyepakati komitmen aksi keberlanjutan serta diseminasi praktik baik ke Komunitas Belajar (Kombel).
+                        </p>
+                      </div>
+
+                      <div className="shrink-0 flex items-center gap-2 bg-white/10 px-3.5 py-2 rounded-xl border border-white/10 text-xs font-medium">
+                        <span className="text-indigo-200">Hasil Evaluasi:</span>
+                        <span className="font-bold text-emerald-300">Tercapai &amp; Memuaskan</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Form 10 Pertanyaan Pasca-Observasi */}
+                  <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+                      <div>
+                        <h5 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-indigo-600" />
+                          <span>10 Butir Pertanyaan Dialog Pasca-Observasi &amp; Coaching Alur TIRTA</span>
+                        </h5>
+                        <p className="text-xs text-slate-500">
+                          Refleksi mendalam guru bersama Pengawas Pembina Kusnandar, M.Si setelah pelaksanaan pembelajaran di kelas.
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const auto = generateUjiData(currentSupervision);
+                          if (auto.pascaObservasi) {
+                            setSambungDraft({
+                              ...sambungDraft,
+                              uji: {
+                                ...sambungDraft.uji,
+                                pascaObservasi: auto.pascaObservasi,
+                              },
+                            });
+                            setSaveToast('Catatan refleksi Pasca-Observasi berhasil dipulihkan!');
+                            setTimeout(() => setSaveToast(null), 3000);
+                          }
+                        }}
+                        className="text-xs text-indigo-600 hover:text-indigo-800 font-bold bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-xl border border-indigo-200 transition-colors self-start sm:self-auto flex items-center gap-1.5"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        <span>Pulihkan Template Refleksi</span>
+                      </button>
+                    </div>
+
+                    <div className="space-y-4">
+                      {(() => {
+                        const autoUji = generateUjiData(currentSupervision);
+                        const curPasca = sambungDraft.uji?.pascaObservasi || autoUji.pascaObservasi;
+                        if (!curPasca) return null;
+                        const questions = [
+                          ...PASCA_OBSERVASI_QUESTIONS,
+                          {
+                            id: 'q10',
+                            label: '10. Komitmen aksi nyata keberlanjutan dan rencana diseminasi praktik baik ke Komunitas Belajar (Kombel) / MGMP:',
+                          },
+                        ];
+
+                        return questions.map((q, idx) => {
+                          const qKey = q.id as keyof typeof curPasca.pertanyaanList;
+                          const currentVal = (curPasca.pertanyaanList && curPasca.pertanyaanList[qKey]) || 
+                                             (autoUji.pascaObservasi?.pertanyaanList && autoUji.pascaObservasi.pertanyaanList[qKey]) || '';
+
+                          return (
+                            <div key={q.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 hover:border-indigo-300 transition-colors space-y-2">
+                              <label className="block text-xs font-bold text-slate-800 leading-snug">
+                                {q.label}
+                              </label>
+                              <textarea
+                                rows={3}
+                                value={currentVal}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  const updatedPasca: SambungUjiPascaObservasi = {
+                                    ...curPasca,
+                                    pertanyaanList: {
+                                      ...curPasca.pertanyaanList,
+                                      [qKey]: val,
+                                    },
+                                  };
+                                  setSambungDraft({
+                                    ...sambungDraft,
+                                    uji: {
+                                      ...sambungDraft.uji,
+                                      pascaObservasi: updatedPasca,
+                                    },
+                                  });
+                                }}
+                                placeholder={`Tanggapan reflektif butir ${idx + 1}...`}
+                                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-indigo-600 bg-white text-slate-800 leading-relaxed font-normal"
+                              />
+                            </div>
+                          );
+                        });
+                      })()}
+                    </div>
+
+                    {/* Kesan Umum & Rekomendasi Diseminasi Pengawas */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                      <div className="p-4 rounded-xl border border-indigo-200 bg-indigo-50/60 space-y-2">
+                        <label className="block text-xs font-bold text-indigo-950 flex items-center gap-2">
+                          <CheckCircle className="w-4 h-4 text-indigo-700" />
+                          <span>Kesan Umum Guru Terhadap Hasil Perubahan:</span>
+                        </label>
+                        <textarea
+                          rows={3}
+                          value={
+                            sambungDraft.uji?.pascaObservasi?.kesanUmum ||
+                            generateUjiData(currentSupervision).pascaObservasi?.kesanUmum ||
+                            'Guru merasa jauh lebih percaya diri; murid merespons dengan penuh antusiasme.'
+                          }
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const autoUji = generateUjiData(currentSupervision);
+                            const basePasca = sambungDraft.uji?.pascaObservasi || autoUji.pascaObservasi;
+                            if (!basePasca) return;
+                            setSambungDraft({
+                              ...sambungDraft,
+                              uji: {
+                                ...sambungDraft.uji,
+                                pascaObservasi: { ...basePasca, kesanUmum: val },
+                              },
+                            });
+                          }}
+                          className="w-full px-3 py-2 rounded-xl border border-indigo-300 text-xs focus:outline-indigo-600 bg-white text-slate-800"
+                        />
+                      </div>
+
+                      <div className="p-4 rounded-xl border border-purple-200 bg-purple-50/60 space-y-2">
+                        <label className="block text-xs font-bold text-purple-950 flex items-center gap-2">
+                          <Award className="w-4 h-4 text-purple-700" />
+                          <span>Rekomendasi Diseminasi &amp; Komitmen Pengawas (Kusnandar, M.Si):</span>
+                        </label>
+                        <textarea
+                          rows={3}
+                          value={
+                            sambungDraft.uji?.pascaObservasi?.saranMasukan ||
+                            generateUjiData(currentSupervision).pascaObservasi?.saranMasukan ||
+                            'Praktik baik perbaikan ini sangat layak didiseminasikan dalam Komunitas Belajar (Kombel) sekolah dan forum MGMP.'
+                          }
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const autoUji = generateUjiData(currentSupervision);
+                            const basePasca = sambungDraft.uji?.pascaObservasi || autoUji.pascaObservasi;
+                            if (!basePasca) return;
+                            setSambungDraft({
+                              ...sambungDraft,
+                              uji: {
+                                ...sambungDraft.uji,
+                                pascaObservasi: { ...basePasca, saranMasukan: val },
+                              },
+                            });
+                          }}
+                          className="w-full px-3 py-2 rounded-xl border border-purple-300 text-xs focus:outline-purple-600 bg-white text-slate-800 italic"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Footer Actions */}
+                    <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                      <div className="flex items-center gap-2 text-xs text-slate-500">
+                        <CheckCircle className="w-4 h-4 text-emerald-600" />
+                        <span>Terintegrasi dengan Formulir Pasca-Observasi Perbaikan</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleSave}
+                        disabled={isSaving}
+                        className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs shadow-md transition-all flex items-center gap-2 cursor-pointer active:scale-95"
+                      >
+                        <Save className="w-4 h-4" />
+                        <span>{isSaving ? 'Menyimpan...' : 'Simpan Pasca-Observasi ke Firebase'}</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </fieldset>
             )}
 
             {/* SUBTAB U-1 */}

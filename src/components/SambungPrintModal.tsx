@@ -2,8 +2,8 @@ import React from 'react';
 import { Supervision } from '../types';
 import { Printer, X, Download, ShieldCheck } from 'lucide-react';
 import { DEFAULT_MATRIKS_BEFORE, DEFAULT_MATRIKS_AFTER } from '../data/sambungSeed';
-import { MAKNAI_COACHING_QUESTIONS, TELAAH_ITEMS } from '../data/instrumentData';
-import { generateTeacherMaknaiData, generateBerdayakanTelaahPerbaikanData } from '../data/autoFillData';
+import { MAKNAI_COACHING_QUESTIONS, TELAAH_ITEMS, OBSERVASI_ITEMS, PRA_OBSERVASI_QUESTIONS, PASCA_OBSERVASI_QUESTIONS } from '../data/instrumentData';
+import { generateTeacherMaknaiData, generateBerdayakanTelaahPerbaikanData, generateUjiData } from '../data/autoFillData';
 
 interface SambungPrintModalProps {
   isOpen: boolean;
@@ -764,6 +764,258 @@ export const SambungPrintModal: React.FC<SambungPrintModalProps> = ({
                   <div className="text-center">
                     <p className="text-slate-500 mb-12">Penelaah / Pengawas Pembina,</p>
                     <p className="font-bold underline">{ber.namaPenelaah || 'Kusnandar, M.Si'}</p>
+                    <p className="text-[10px] text-slate-500">NIP. 196805121994121001</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* ========================================================= */}
+          {/* TAHAP U • INSTRUMEN RESMI WAWANCARA PRA-OBSERVASI PERBAIKAN */}
+          {/* ========================================================= */}
+          {(() => {
+            const autoUji = generateUjiData(supervision);
+            const pra = sambung.uji?.praObservasi || autoUji.praObservasi;
+            if (!pra) return null;
+
+            return (
+              <div className="page-break-after">
+                <div className="flex items-center gap-3 mb-3 bg-purple-900 text-white p-2.5 rounded-lg">
+                  <span className="w-7 h-7 rounded-md bg-white text-purple-900 font-extrabold flex items-center justify-center text-sm">
+                    U
+                  </span>
+                  <div>
+                    <h3 className="font-bold text-sm">Wawancara Pra-Observasi Pembelajaran Perbaikan</h3>
+                    <p className="text-[10px] text-purple-200">UJI &bull; Instrumen Resmi Pengawas Pembina Kusnandar, M.Si (8 Butir Pertanyaan)</p>
+                  </div>
+                </div>
+
+                <div className="text-xs mb-3 space-y-0.5 grid grid-cols-2 bg-slate-50 p-2.5 rounded border border-slate-200">
+                  <p><strong>Sekolah / Guru :</strong> {supervision.schoolName} / {supervision.teacherName}</p>
+                  <p><strong>Mata Pelajaran / Kelas :</strong> {supervision.subject} / {supervision.classGrade}</p>
+                  <p><strong>Fokus Pembinaan :</strong> Implementasi Modul Ajar Revisi &amp; Student Agency</p>
+                  <p><strong>Pengawas Pembina :</strong> Kusnandar, M.Si</p>
+                </div>
+
+                <table className="w-full border-collapse border border-slate-300 text-[11px] mb-3">
+                  <thead>
+                    <tr className="bg-slate-100 text-slate-800 font-bold">
+                      <th className="border border-slate-300 px-2 py-1.5 w-8 text-center">No</th>
+                      <th className="border border-slate-300 px-2 py-1.5 w-64 text-left">Pertanyaan Wawancara Pra-Observasi</th>
+                      <th className="border border-slate-300 px-2 py-1.5 text-left">Tanggapan / Jawaban Guru</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {PRA_OBSERVASI_QUESTIONS.map((q, idx) => {
+                      const qKey = q.id as keyof typeof pra;
+                      const ans = (pra[qKey] as string) || (autoUji.praObservasi?.[qKey] as string) || '-';
+
+                      return (
+                        <tr key={q.id}>
+                          <td className="border border-slate-300 px-2 py-1.5 text-center font-bold text-slate-500">{idx + 1}</td>
+                          <td className="border border-slate-300 px-2 py-1.5 font-semibold text-slate-800 bg-slate-50/50">{q.label}</td>
+                          <td className="border border-slate-300 px-2 py-1.5 text-slate-900">{ans}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+
+                <div className="p-2.5 border border-slate-300 rounded bg-slate-50 text-xs mb-3">
+                  <p className="font-bold text-slate-800 mb-1">Catatan Kesepakatan &amp; Pengamatan Pengawas:</p>
+                  <p className="text-slate-700 italic">{pra.supervisorNotes || autoUji.praObservasi?.supervisorNotes || '-'}</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-8 text-xs pt-2">
+                  <div className="text-center">
+                    <p className="text-slate-500 mb-12">Guru Yang Diobservasi,</p>
+                    <p className="font-bold underline">{supervision.teacherName}</p>
+                    <p className="text-[10px] text-slate-500">NIP. {supervision.teacherNip || '-'}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-slate-500 mb-12">Pengawas Pembina,</p>
+                    <p className="font-bold underline">Kusnandar, M.Si</p>
+                    <p className="text-[10px] text-slate-500">NIP. 196805121994121001</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* ========================================================= */}
+          {/* TAHAP U • INSTRUMEN RESMI OBSERVASI KELAS (25 ASPEK) */}
+          {/* ========================================================= */}
+          {(() => {
+            const autoUji = generateUjiData(supervision);
+            const obs = sambung.uji?.observasiPelaksanaan || autoUji.observasiPelaksanaan;
+            if (!obs) return null;
+
+            return (
+              <div className="page-break-after">
+                <div className="flex items-center gap-3 mb-3 bg-emerald-900 text-white p-2.5 rounded-lg">
+                  <span className="w-7 h-7 rounded-md bg-white text-emerald-900 font-extrabold flex items-center justify-center text-sm">
+                    U
+                  </span>
+                  <div>
+                    <h3 className="font-bold text-sm">Observasi Pelaksanaan Pembelajaran Perbaikan</h3>
+                    <p className="text-[10px] text-emerald-200">UJI &bull; Instrumen Resmi Pengawas Pembina Kusnandar, M.Si (25 Butir / 9 Kategori)</p>
+                  </div>
+                </div>
+
+                <div className="text-xs mb-2 space-y-0.5 grid grid-cols-3 bg-slate-50 p-2.5 rounded border border-slate-200">
+                  <p><strong>Sekolah / Guru :</strong> {supervision.schoolName} / {supervision.teacherName}</p>
+                  <p><strong>Mata Pelajaran :</strong> {supervision.subject} ({supervision.classGrade})</p>
+                  <p><strong>Total Skor :</strong> {obs.totalSkor} / 50 ({obs.persentaseCapaian}% &bull; {obs.predicate})</p>
+                </div>
+
+                <table className="w-full border-collapse border border-slate-300 text-[10px] mb-3">
+                  <thead>
+                    <tr className="bg-slate-100 text-slate-800 font-bold text-center">
+                      <th className="border border-slate-300 px-1 py-1 w-6">No</th>
+                      <th className="border border-slate-300 px-2 py-1 text-left">Aspek Pembelajaran (9 Kategori)</th>
+                      <th className="border border-slate-300 px-1.5 py-1 w-12">Terlaksana</th>
+                      <th className="border border-slate-300 px-1.5 py-1 w-12">Skor (0-2)</th>
+                      <th className="border border-slate-300 px-2 py-1 text-left w-52">Catatan Bukti Pengamatan di Kelas</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {OBSERVASI_ITEMS.map((item) => {
+                      const itemState = obs.items?.[item.id] || autoUji.observasiPelaksanaan?.items?.[item.id] || { score: 2, note: '' };
+                      const sc = itemState.score !== undefined ? itemState.score : 2;
+
+                      return (
+                        <tr key={item.id}>
+                          <td className="border border-slate-300 px-1 py-1 text-center font-bold text-slate-500">{item.id}</td>
+                          <td className="border border-slate-300 px-2 py-1">
+                            <span className="text-[9px] text-purple-700 font-bold block uppercase">{item.category}</span>
+                            <span>{item.aspect}</span>
+                          </td>
+                          <td className="border border-slate-300 px-1.5 py-1 text-center font-bold text-emerald-700">
+                            {sc >= 1 ? 'Ya' : 'Tidak'}
+                          </td>
+                          <td className="border border-slate-300 px-1.5 py-1 text-center font-extrabold">
+                            {sc}
+                          </td>
+                          <td className="border border-slate-300 px-2 py-1 text-slate-700">{itemState.note || '-'}</td>
+                        </tr>
+                      );
+                    })}
+                    <tr className="bg-slate-100 font-bold">
+                      <td colSpan={3} className="border border-slate-300 px-2 py-1.5 text-right">
+                        Total Skor Capaian (Maks 50):
+                      </td>
+                      <td className="border border-slate-300 px-1.5 py-1.5 text-center text-xs text-emerald-800">
+                        {obs.totalSkor}
+                      </td>
+                      <td className="border border-slate-300 px-2 py-1.5 text-xs text-emerald-900">
+                        Capaian: {obs.persentaseCapaian}% &bull; Predikat: {obs.predicate}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                {/* 3-Point Feedback */}
+                <div className="grid grid-cols-3 gap-2 text-xs mb-3">
+                  <div className="p-2 border border-slate-200 rounded bg-slate-50">
+                    <p className="font-bold text-emerald-800 mb-0.5">1. Kelebihan yang Diamati:</p>
+                    <p className="text-[10px] text-slate-700 leading-snug">{obs.feedback?.kelebihan || '-'}</p>
+                  </div>
+                  <div className="p-2 border border-slate-200 rounded bg-slate-50">
+                    <p className="font-bold text-amber-800 mb-0.5">2. Aspek Perlu Peningkatan:</p>
+                    <p className="text-[10px] text-slate-700 leading-snug">{obs.feedback?.perbaikan || '-'}</p>
+                  </div>
+                  <div className="p-2 border border-slate-200 rounded bg-slate-50">
+                    <p className="font-bold text-indigo-800 mb-0.5">3. Rekomendasi Tindak Lanjut:</p>
+                    <p className="text-[10px] text-slate-700 leading-snug">{obs.feedback?.rekomendasi || '-'}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-8 text-xs pt-1">
+                  <div className="text-center">
+                    <p className="text-slate-500 mb-10">Guru Yang Diobservasi,</p>
+                    <p className="font-bold underline">{supervision.teacherName}</p>
+                    <p className="text-[10px] text-slate-500">NIP. {supervision.teacherNip || '-'}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-slate-500 mb-10">Pengawas Pembina,</p>
+                    <p className="font-bold underline">Kusnandar, M.Si</p>
+                    <p className="text-[10px] text-slate-500">NIP. 196805121994121001</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* ========================================================= */}
+          {/* TAHAP U • INSTRUMEN RESMI PASCA-OBSERVASI & REFLEKSI */}
+          {/* ========================================================= */}
+          {(() => {
+            const autoUji = generateUjiData(supervision);
+            const pasca = sambung.uji?.pascaObservasi || autoUji.pascaObservasi;
+            if (!pasca) return null;
+
+            return (
+              <div className="page-break-after">
+                <div className="flex items-center gap-3 mb-3 bg-indigo-900 text-white p-2.5 rounded-lg">
+                  <span className="w-7 h-7 rounded-md bg-white text-indigo-900 font-extrabold flex items-center justify-center text-sm">
+                    U
+                  </span>
+                  <div>
+                    <h3 className="font-bold text-sm">Evaluasi &amp; Refleksi Pasca-Observasi Perbaikan</h3>
+                    <p className="text-[10px] text-indigo-200">UJI &bull; Dialog Coaching Alur TIRTA &amp; Komitmen Tindak Lanjut</p>
+                  </div>
+                </div>
+
+                <div className="text-xs mb-3 space-y-0.5 grid grid-cols-2 bg-slate-50 p-2.5 rounded border border-slate-200">
+                  <p><strong>Sekolah / Guru :</strong> {supervision.schoolName} / {supervision.teacherName}</p>
+                  <p><strong>Mata Pelajaran / Kelas :</strong> {supervision.subject} / {supervision.classGrade}</p>
+                </div>
+
+                <table className="w-full border-collapse border border-slate-300 text-[11px] mb-3">
+                  <thead>
+                    <tr className="bg-slate-100 text-slate-800 font-bold">
+                      <th className="border border-slate-300 px-2 py-1.5 w-8 text-center">No</th>
+                      <th className="border border-slate-300 px-2 py-1.5 w-64 text-left">Pertanyaan Dialog Pasca-Observasi</th>
+                      <th className="border border-slate-300 px-2 py-1.5 text-left">Refleksi Guru &amp; Catatan Tindak Lanjut</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {PASCA_OBSERVASI_QUESTIONS.map((q, idx) => {
+                      const qKey = q.id as keyof typeof pasca.pertanyaanList;
+                      const ans = pasca.pertanyaanList?.[qKey] || autoUji.pascaObservasi?.pertanyaanList?.[qKey] || '-';
+
+                      return (
+                        <tr key={q.id}>
+                          <td className="border border-slate-300 px-2 py-1.5 text-center font-bold text-slate-500">{idx + 1}</td>
+                          <td className="border border-slate-300 px-2 py-1.5 font-semibold text-slate-800 bg-slate-50/50">{q.label}</td>
+                          <td className="border border-slate-300 px-2 py-1.5 text-slate-900">{ans}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+
+                <div className="grid grid-cols-2 gap-3 text-xs mb-3">
+                  <div className="p-2.5 border border-slate-300 rounded bg-slate-50">
+                    <p className="font-bold text-slate-800 mb-1">Kesan Umum Guru:</p>
+                    <p className="text-slate-700 text-[11px] italic leading-relaxed">{pasca.kesanUmum || '-'}</p>
+                  </div>
+                  <div className="p-2.5 border border-slate-300 rounded bg-slate-50">
+                    <p className="font-bold text-slate-800 mb-1">Rekomendasi Diseminasi Pengawas (Kusnandar, M.Si):</p>
+                    <p className="text-slate-700 text-[11px] italic leading-relaxed">{pasca.saranMasukan || '-'}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-8 text-xs pt-2">
+                  <div className="text-center">
+                    <p className="text-slate-500 mb-12">Guru Yang Diobservasi,</p>
+                    <p className="font-bold underline">{supervision.teacherName}</p>
+                    <p className="text-[10px] text-slate-500">NIP. {supervision.teacherNip || '-'}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-slate-500 mb-12">Pengawas Pembina,</p>
+                    <p className="font-bold underline">Kusnandar, M.Si</p>
                     <p className="text-[10px] text-slate-500">NIP. 196805121994121001</p>
                   </div>
                 </div>

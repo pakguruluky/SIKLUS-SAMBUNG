@@ -5,8 +5,17 @@ import {
   SambungMaknaiData, 
   SambungMaknaiPertanyaanList,
   SambungBerdayakanData,
-  SambungSiklusBerdayakan 
+  SambungSiklusBerdayakan,
+  SambungUjiData,
+  SambungUjiPraObservasi,
+  SambungUjiObservasiPelaksanaan,
+  SambungUjiPascaObservasi,
+  SambungUjiKesimpulanTransformasi,
+  SambungObservasiIndikator,
+  SambungAngketMuridItem,
+  SambungMatriksPerubahan
 } from '../types';
+import { OBSERVASI_ITEMS } from './instrumentData';
 import { 
   getTeacherDescriptiveDataDampak, 
   DEFAULT_DATA_DAMPAK, 
@@ -1356,3 +1365,346 @@ export function applyBerdayakanAutoFillToSupervision(
     updatedAt: new Date().toISOString(),
   };
 }
+
+/**
+ * TAHAP U • UJI:
+ * Otomatisasi Instrumen Uji Coba Lapangan (Pra-Observasi, Observasi 25 Aspek, Pasca-Observasi, Angket Suara Murid, dan Kesimpulan Transformasi).
+ * Secara koheren menghubungkan:
+ * 1. SELIDIKI: Kelemahan awal modul ajar & observasi awal (baseline)
+ * 2. AMATI: Fokus perubahan dan rencana kegiatan aksi pembinaan
+ * 3. MAKNAI: Kesepakatan coaching alur TIRTA & 10 pertanyaan refleksi
+ * 4. BERDAYAKAN: Hasil telaah RPP perbaikan 22 aspek & siklus rancang-coba
+ * 5. UJI & KESIMPULAN: Pembuktian di ruang kelas dan perumusan 4 indikator transformasi akhir (Peran Guru, Aktivitas Murid, Konteks Nyata, Refleksi Murid)
+ */
+export function generateUjiData(supervision: Supervision): SambungUjiData {
+  const teacherName = supervision.teacherName || 'Guru Binaan';
+  const schoolName = supervision.schoolName || 'SMA Binaan';
+  const subject = supervision.subject || 'Mata Pelajaran';
+  const lessonTitle = supervision.lessonTitle || 'Pembelajaran Kontekstual Berdiferensiasi';
+  const cleanName = teacherName.toLowerCase();
+  const today = new Date().toISOString().split('T')[0];
+
+  // 1. Data Pra-Observasi Perbaikan (8 Butir Pertanyaan)
+  let praObservasi: SambungUjiPraObservasi;
+  if (cleanName.includes('dewi') || subject.toLowerCase().includes('fisika')) {
+    praObservasi = {
+      q1: `Menganalisis karakteristik gelombang bunyi dan menerapkan konsep resonansi pada akustik ruangan nyata melalui investigasi terbimbing. Murid memahaminya lewat simulasi dan eksperimen audio langsung.`,
+      q2: `Pendekatan Saintifik berbasis Inkuiri Terbimbing dan Model Problem-Based Learning. Dipilih karena melatih bernalar kritis dan membiasakan murid membuktikan konsep secara empiris.`,
+      q3: `Aplikasi Frequency Sound Generator smartphone, pipa organa sederhana, simulasi interaktif PhET Waves, dan LKPD kontekstual investigasi kebisingan kelas.`,
+      q4: `Memahami: demonstrasi frekuensi audio; Mengaplikasi: eksperimen penentuan cepat rambat bunyi dan uji bahan peredam; Merefleksi: jurnal refleksi metakognitif 3-2-1.`,
+      q5: `Menghadirkan fenomena akustik gedung bioskop/studio musik yang dekat dengan keseharian murid, memberikan tantangan desain peredam suara, dan mengapresiasi keberagaman ide.`,
+      q6: `Konsep interferensi dan resonansi matematis. Diantisipasi dengan scaffolding bertahap, pembagian kelompok heterogen, dan panduan visual komprehensif.`,
+      q7: `Dimensi Bernalar Kritis (menganalisis data empiris) dan Gotong Royong (kolaborasi investigasi kelompok).`,
+      q8: `Memberikan peran spesifik kepada setiap anggota kelompok (pengukur, pencatat data, analis, juru bicara) agar seluruh murid terlibat aktif dan bertanggung jawab.`,
+      supervisorNotes: `Guru telah sangat siap mempraktikkan modul ajar revisi dengan media alat peraga digital yang relevan dan LKPD kontekstual.`,
+      completedAt: new Date().toISOString(),
+    };
+  } else if (cleanName.includes('budi') || subject.toLowerCase().includes('biologi')) {
+    praObservasi = {
+      q1: `Menganalisis interaksi antar-komponen ekosistem dan jaring-jaring makanan melalui observasi biotik/abiotik di lingkungan taman sekolah.`,
+      q2: `Model Project-Based Learning dan inkuiri lapangan. Dipilih agar murid mengalami langsung proses observasi alam nyata bukan sekadar menghafal skema buku.`,
+      q3: `Lingkungan taman sekolah, mikroskop portabel/kaca pembesar, aplikasi flora-fauna identifier, dan lembar kerja pemetaan rantai makanan.`,
+      q4: `Memahami: eksplorasi jenis interaksi simbiosis di taman; Mengaplikasi: menyusun model piramida biomassa lokal; Merefleksi: menuliskan dampak kepunahan salah satu spesies.`,
+      q5: `Mengaitkan materi dengan isu pelestarian lingkungan lokal sekolah, mengajak belajar di luar ruangan (outdoor learning) yang menyegarkan pikiran.`,
+      q6: `Penghitungan aliran energi antar-trofik. Diantisipasi dengan diagram aliran visual interaktif dan pembimbingan kelompok terfokus.`,
+      q7: `Beriman dan Bertakwa kepada Tuhan YME & Berakhlak Mulia (akhlak kepada alam), serta Bernalar Kritis.`,
+      q8: `Lembar observasi lapangan yang menuntut kerja sama aktif dan pembagian zona pengamatan taman secara merata.`,
+      supervisorNotes: `Rancangan pembelajaran outdoor sangat matang dengan panduan mitigasi keselamatan dan lembar observasi kontekstual yang jelas.`,
+      completedAt: new Date().toISOString(),
+    };
+  } else if (cleanName.includes('siti') || subject.toLowerCase().includes('matematika')) {
+    praObservasi = {
+      q1: `Menyelesaikan masalah kontekstual yang berkaitan dengan Sistem Persamaan Linear Tiga Variabel (SPLTV) dalam kasus perencanaan belanja logistik sekolah.`,
+      q2: `Model Problem-Based Learning (PBL) berbasis studi kasus nyata kehidupan sehari-hari (anggaran kantin dan belanja ATK).`,
+      q3: `Kalkulator grafik GeoGebra, kartu masalah belanja kontekstual, dan LKPD kolaboratif pemodelan matematika bertahap.`,
+      q4: `Memahami: menerjemahkan narasi cerita ke model aljabar; Mengaplikasi: menyelesaikan sistem persamaan dengan metode gabungan; Merefleksi: memeriksa keabsahan solusi matematika terhadap batasan riil.`,
+      q5: `Mengangkat permasalahan riil yang dihadapi OSIS sekolah, menciptakan suasana diskusi kelompok yang saling membantu tanpa rasa takut salah.`,
+      q6: `Transformasi soal cerita naratif kompleks menjadi bentuk matematis formal. Diantisipasi dengan panduan kata kunci dan tabel identifikasi variabel.`,
+      q7: `Bernalar Kritis (analisis logika pemodelan) dan Mandiri (ketekunan menyelesaikan algoritma solusi).`,
+      q8: `Pemberian tugas berjenjang (scaffolded tasks) sesuai kesiapan belajar murid kelompok cepat, sedang, dan butuh bimbingan.`,
+      supervisorNotes: `Skenario diferensiasi proses berbasis tingkat kesiapan murid telah dirancang rapi dengan rubrik pemecahan masalah yang transparan.`,
+      completedAt: new Date().toISOString(),
+    };
+  } else {
+    praObservasi = {
+      q1: `Mewujudkan tujuan pembelajaran ${lessonTitle} pada mata pelajaran ${subject} agar murid mampu menguasai kompetensi esensial dan mengaplikasikannya dalam situasi nyata.`,
+      q2: `Model Pembelajaran Berbasis Masalah (PBL) dipadukan dengan teknik diskusi kolaboratif berdiferensiasi untuk mengakomodir kebutuhan murid.`,
+      q3: `Media pembelajaran multimedia interaktif, LKPD kontekstual, sumber belajar lingkungan sekitar, dan referensi digital relevan.`,
+      q4: `Tahapan memahami konsep dasar, mengaplikasikan dalam studi kasus nyata, dan merefleksikan proses serta hasil belajar secara mandiri.`,
+      q5: `Menghadirkan suasana belajar yang berpusat pada murid, membangun rasa ingin tahu melalui pertanyaan pemantik, serta komunikasi positif yang memuliakan murid.`,
+      q6: `Bagian analisis konsep mendalam diantisipasi melalui scaffolding bertahap dan pendampingan kelompok terfokus.`,
+      q7: `Profil Pelajar Pancasila: Bernalar Kritis, Kreatif, dan Bergotong Royong sesuai capaian pembelajaran fase.`,
+      q8: `Penyediaan lembar aktivitas interaktif yang mendorong setiap murid berani menyampaikan ide dan mengonstruksi pemahamannya sendiri.`,
+      supervisorNotes: `Persiapan pelaksanaan uji coba pembelajaran perbaikan sangat komprehensif dan selaras dengan rekomendasi siklus pendampingan sebelumnya.`,
+      completedAt: new Date().toISOString(),
+    };
+  }
+
+  // 2. Data Observasi Pelaksanaan Pembelajaran (25 Butir OBSERVASI_ITEMS)
+  // Menghasilkan skor 2 (Tampak Nyata/Membudaya) untuk seluruh 25 butir (Skor 50/50, 100%, Sangat Baik)
+  const observasiItems: Record<string, { score: number; note: string }> = {};
+
+  const defaultNotesFor25: Record<string, string> = {
+    '1': `Tujuan pembelajaran terintegrasi utuh antara dimensi sikap (gotong royong), pengetahuan konsep, dan unjuk kerja teramati jelas dalam aktivitas ${subject}.`,
+    '2': `Penilaian formatif autentik berlangsung konsisten selama pembelajaran mengukur ketercapaian dimensi bernalar kritis dan profil lulusan.`,
+    '3': `Alur pembelajaran dari apersepsi, eksplorasi, elaborasi, hingga penutup tertata runtut; murid fokus dan aktif mengikuti instruksi.`,
+    '4': `Aktivitas pembelajaran mengaitkan materi ${subject} secara nyata dengan fenomena lingkungan dan keseharian murid.`,
+    '5': `Murid tampak antusias, bersemangat saat berdiskusi, dan suasana kelas hidup dengan rasa ingin tahu tinggi.`,
+    '6': `Keterlibatan aktif murid terlihat menyeluruh dalam kelompok; murid berdiskusi, bertanya kepada guru, dan menggali data dari berbagai sumber.`,
+    '7': `Murid mampu mempraktikkan konsep secara langsung untuk memecahkan studi kasus kontekstual yang diberikan guru.`,
+    '8': `Sesi refleksi metakognitif terlaksana optimal; murid mengutarakan keberhasilan belajarnya dan mencatat rencana tindak lanjut.`,
+    '9': `Strategi inkuiri dan diferensiasi terlaksana sangat efektif sesuai tujuan yang direncanakan dalam modul ajar perbaikan.`,
+    '10': `Kolaborasi dinamis antara guru-murid dan antar-murid tercipta harmonis dengan interaksi komunikatif yang konstruktif.`,
+    '11': `Suasana kelas tertib, nyaman, aman secara psikologis; murid tidak ragu mengemukakan pendapat atau bertanya.`,
+    '12': `Pemanfaatan media ajar interaktif dan perangkat digital mendukung pemahaman konsep abstrak secara visual dan konkret.`,
+    '13': `Budaya saling menghargai dan memuliakan tercermin nyata; tidak ada intimidasi atau perundungan antarmurid saat presentasi.`,
+    '14': `Murid memahami dengan jelas sasaran belajar hari ini serta mampu mengaitkannya dengan bekal pelajaran sebelumnya.`,
+    '15': `Murid diberikan kebebasan memilih bentuk unjuk kerja kelompok dan melakukan evaluasi diri secara percaya diri.`,
+    '16': `Mayoritas murid mencapai kriteria ketuntasan tujuan pembelajaran (KKTP) terbukti dari hasil lembar kerja yang berkualitas.`,
+    '17': `Kemandirian belajar murid terwujud saat mereka memecahkan persoalan pada lembar kerja tanpa bergantung terus-menerus pada ceramah guru.`,
+    '18': `Guru memberikan perlakuan adil dan scaffolding bervariasi sesuai kesiapan belajar murid (diferensiasi proses terbukti nyata).`,
+    '19': `Pengelolaan waktu dan ruang kelas sangat efektif; peralihan antarfase pembelajaran berjalan mulus dan kontekstual.`,
+    '20': `Refleksi akhir merujuk langsung pada pencapaian tujuan dan menjadi dasar penetapan rencana belajar pertemuan berikutnya.`,
+    '21': `Guru aktif berkeliling memberikan umpan balik formatif yang memberdayakan dan mengoreksi miskonsepsi secara personal.`,
+    '22': `Asesmen unjuk kerja di akhir sesi membuktikan ketercapaian kompetensi esensial murid secara transparan.`,
+    '23': `Guru mencatat temuan asesmen untuk merancang pengayaan bagi kelompok cepat dan bimbingan penguatan bagi yang memerlukan.`,
+    '24': `Praktik pembelajaran mencerminkan visi sekolah yang ramah anak, berorientasi masa depan, dan berpusat pada murid.`,
+    '25': `Guru menunjukkan komitmen tinggi terhadap perbaikan berkelanjutan melalui refleksi mendalam pasca-observasi.`,
+  };
+
+  OBSERVASI_ITEMS.forEach(it => {
+    observasiItems[it.id] = {
+      score: 2,
+      note: defaultNotesFor25[it.id] || `Pelaksanaan pembelajaran pada aspek ${it.category} teramati terlaksana optimal dan membudaya di kelas ${teacherName}.`,
+    };
+  });
+
+  const observasiPelaksanaan: SambungUjiObservasiPelaksanaan = {
+    tanggal: today,
+    hariTanggal: new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+    kelas: supervision.classGrade || 'Fase F / Kelas XI',
+    items: observasiItems,
+    totalSkor: 50,
+    maxPossibleScore: 50,
+    persentaseCapaian: 100,
+    predicate: 'Sangat Baik',
+    kategoriMakna: 'Pembelajaran Sangat Berkembang (SB) & Berpusat Penuh Pada Pengalaman Murid',
+    feedback: {
+      kelebihan: `Transformasi praktik mengajar Ibu/Bapak ${teacherName} sangat nyata dan inspiratif! Guru berhasil beralih dari instruktur dominan menjadi fasilitator yang hangat dan memberdayakan. Murid terlibat aktif 100% dalam investigasi kelompok, diferensiasi proses terwujud nyata, dan iklim saling memuliakan di kelas sangat kental terasa.`,
+      perbaikan: `Pengelolaan alokasi waktu saat sesi tanya jawab antarkelompok dapat diefisiensikan lebih lanjut dengan penetapan batasan waktu juru bicara, sehingga porsi penarikan simpulan mandiri oleh murid semakin mendalam.`,
+      rekomendasi: `Pertahankan praktik pedagogis yang berpusat pada murid ini sebagai standar baku mengajar sehari-hari. Sangat direkomendasikan untuk mendiseminasikan video praktik baik dan modul ajar perbaikan ini dalam forum Komunitas Belajar (Kombel) ${schoolName} dan MGMP ${subject}.`,
+    },
+    completedAt: new Date().toISOString(),
+  };
+
+  // 3. Data Pasca-Observasi Perbaikan (10 Pertanyaan Coaching & Refleksi)
+  const pascaObservasi: SambungUjiPascaObservasi = {
+    pertanyaanList: {
+      q1: `Sangat lega, puas, dan bersyukur. Saya melihat antusiasme murid yang luar biasa berbeda dibanding sebelum perbaikan. Murid aktif berdiskusi dan tidak ada yang pasif mengantuk.`,
+      q2: `Alhamdulillah lebih dari 95% terlaksana sesuai modul ajar perbaikan. Tahap memahami, mengaplikasi, dan merefleksi berjalan berurutan, hanya sedikit penyesuaian waktu presentasi kelompok.`,
+      q3: `Momen paling memuaskan adalah saat kelompok murid yang biasanya pendiam berhasil mempresentasikan hasil analisisnya dengan percaya diri dan mendapat tepuk tangan dari teman-temannya.`,
+      q4: `Tujuan pembelajaran tercapai sangat baik. Terbukti dari hasil asesmen formatif lembar kerja kelompok di mana seluruh kelompok mampu mencapai indikator ketercapaian tujuan pembelajaran.`,
+      q5: `Kesulitan awal murid adalah merumuskan kesimpulan analisis. Saya menanggapi dengan memberikan pertanyaan pemantik dan scaffolding bertahap tanpa mendikte jawabannya.`,
+      q6: `Murid menggunakan lembar refleksi 3-2-1 untuk menilai pemahamannya. Umpan balik yang saya berikan bersifat apresiatif dan membimbing perbaikan konsep secara spesifik.`,
+      q7: `Tantangan utama adalah menjaga ketepatan waktu agar seluruh sintaks model pembelajaran terselesaikan dengan proporsional.`,
+      q8: `Saya akan memanfaatkan timer visual di layar proyektor dan menugaskan time-keeper di masing-masing kelompok pada pertemuan berikutnya.`,
+      q9: `Hal yang telah mantap adalah keterlibatan aktif murid, diferensiasi LKPD, dan media kontekstual (skor 2 di seluruh butir). Hal yang terus dirawat adalah konsistensi budaya refleksi rutin.`,
+      q10: `Saya akan mengimbaskan metode inkuiri berdiferensiasi ini ke materi pelajaran berikutnya dan berbagi pengalaman praktik baik ini kepada rekan sejawat di Kombel sekolah.`,
+    },
+    kesanUmum: `Guru menunjukkan perkembangan kompetensi pedagogis yang luar biasa pasca pendampingan SAMBUNG. Suasana belajar sangat hidup, interaktif, dan berorientasi pada keberhasilan setiap murid.`,
+    saranMasukan: `Lanjutkan konsistensi pembelajaran mendalam dan jadikan lembar refleksi murid sebagai rujukan berkelanjutan dalam merancang modul ajar berikutnya.`,
+    completedAt: new Date().toISOString(),
+  };
+
+  // 4. Data Angket Suara Murid (U-2: Student Agency)
+  const u2Items: SambungAngketMuridItem[] = [
+    {
+      id: 1,
+      pernyataan: 'Guru membantu saya memahami hubungan materi pelajaran dengan kehidupan nyata dan lingkungan sehari-hari.',
+      skorRataRata: 3.9,
+      persentaseSetuju: 97.5,
+    },
+    {
+      id: 2,
+      pernyataan: 'Saya merasa dilibatkan secara aktif dalam diskusi, percobaan/eksplorasi, dan menemukan pemahaman bersama kelompok.',
+      skorRataRata: 3.9,
+      persentaseSetuju: 97.5,
+    },
+    {
+      id: 3,
+      pernyataan: 'Saya merasa didengarkan, dihargai, dan diperlakukan adil oleh guru serta teman-teman saat menyampaikan gagasan.',
+      skorRataRata: 4.0,
+      persentaseSetuju: 100.0,
+    },
+    {
+      id: 4,
+      pernyataan: 'Saya diberi ruang dan kesempatan untuk memilih cara belajar serta menyelesaikan tantangan sesuai minat saya.',
+      skorRataRata: 3.8,
+      persentaseSetuju: 95.0,
+    },
+    {
+      id: 5,
+      pernyataan: 'Saya diajak melakukan refleksi di akhir pelajaran untuk mengetahui apa yang sudah saya kuasai dan apa yang perlu saya perbaiki.',
+      skorRataRata: 3.9,
+      persentaseSetuju: 97.5,
+    },
+  ];
+
+  let quoteBermakna = `“Saya senang sekali belajar ${subject} hari ini karena diajak melakukan analisis langsung dan berdiskusi seru dengan teman-teman, tidak membosankan seperti biasanya yang hanya mendengarkan penjelasan panjang.”`;
+  let quoteKesulitan = `“Awalnya sempat bingung saat membedah soal studi kasus, tapi Ibu/Bapak Guru mendampingi kelompok kami dengan sabar memberi petunjuk tanpa langsung memberi kunci jawaban, sehingga kami bisa memecahkannya sendiri.”`;
+
+  if (cleanName.includes('dewi') || subject.toLowerCase().includes('fisika')) {
+    quoteBermakna = `“Paling seru saat uji coba suara dengan aplikasi generator frekuensi di HP! Saya jadi paham langsung kenapa suara di ruangan berkarpet tidak menggema seperti di ruangan kosong.”`;
+    quoteKesulitan = `“Sempat bingung waktu menghitung panjang gelombang resonansi, tapi setelah dibimbing Ibu Dewi dengan tabel perbandingan visual, kelompok kami jadi mengerti rumusnya.”`;
+  } else if (cleanName.includes('budi') || subject.toLowerCase().includes('biologi')) {
+    quoteBermakna = `“Belajar di taman sekolah sangat menyenangkan! Kami bisa melihat langsung contoh jaring-jaring makanan dan serangga penyerbuk di pohon bunga.”`;
+    quoteKesulitan = `“Sedikit kesulitan mengelompokkan jenis rantai makanan detritus, tapi lembar kerja bergambar sangat membantu kami menemukan jawabannya.”`;
+  } else if (cleanName.includes('siti') || subject.toLowerCase().includes('matematika')) {
+    quoteBermakna = `“Matematika jadi tidak menakutkan karena soal ceritanya tentang menghitung modal belanja kantin OSIS yang biasa kami jumpai sehari-hari!”`;
+    quoteKesulitan = `“Menyusun tiga persamaan aljabar dari cerita agak rumit, tapi dengan kartu kata kunci yang disiapkan Bu Siti, kelompok kami berhasil menyelesaikannya.”`;
+  }
+
+  // 5. Data U-1 Observasi Kompatibilitas (10 Indikator Skor 4)
+  const u1IndikatorList: SambungObservasiIndikator[] = [
+    { id: 1, indikator: 'Murid aktif mengonstruksi pemahaman melalui eksplorasi dan tanya jawab mendalam.', dimensi: 'Memahami (Kognitif)', score: 4, catatan: 'Murid secara mandiri menghubungkan konsep dengan data percobaan kelompok.' },
+    { id: 2, indikator: 'Murid menerapkan pengetahuan materi untuk memecahkan persoalan kontekstual nyata.', dimensi: 'Mengaplikasikan (Kontekstual)', score: 4, catatan: 'Penerapan studi kasus lingkungan berjalan sangat aplikatif dan logis.' },
+    { id: 3, indikator: 'Murid melakukan refleksi diri terhadap proses dan hasil belajar yang telah dicapai.', dimensi: 'Merefleksi (Metakognisi)', score: 4, catatan: 'Lembar refleksi terisi jujur, mendalam, dan memuat target perbaikan.' },
+    { id: 4, indikator: 'Tercipta interaksi saling memuliakan antara guru-murid dan antarmurid di kelas.', dimensi: 'Budaya Memuliakan', score: 4, catatan: 'Komunikasi verbal dan nonverbal sangat positif, santun, dan suportif.' },
+    { id: 5, indikator: 'Guru memfasilitasi kebutuhan belajar murid secara berdiferensiasi (proses/konten).', dimensi: 'Diferensiasi Pembelajaran', score: 4, catatan: 'Guru memberikan bimbingan proporsional pada kelompok yang memerlukan.' },
+    { id: 6, indikator: 'Murid berkolaborasi secara produktif dalam kerja tim heterogen.', dimensi: 'Gotong Royong & Kerja Sama', score: 4, catatan: 'Seluruh anggota kelompok memiliki peran dan kontribusi konkret.' },
+    { id: 7, indikator: 'Penggunaan media pembelajaran dan teknologi digital relevan meningkatkan motivasi.', dimensi: 'Pemanfaatan Digital', score: 4, catatan: 'Media interaktif digunakan secara aktif oleh murid, bukan sekadar pajangan.' },
+    { id: 8, indikator: 'Asesmen formatif terintegrasi memberikan umpan balik tepat waktu sepanjang proses.', dimensi: 'Asesmen Otentik', score: 4, catatan: 'Guru memberikan feedback langsung saat memonitor diskusi kelompok.' },
+    { id: 9, indikator: 'Murid menunjukkan inisiatif, keberanian berpendapat, dan nalar kritis mandiri.', dimensi: 'Student Agency & Inisiatif', score: 4, catatan: 'Murid berani menyanggah secara santun dan mengajukan pertanyaan kritis.' },
+    { id: 10, indikator: 'Suasana kelas aman, tertib, inklusif, dan menyenangkan sepanjang pembelajaran.', dimensi: 'Iklim Belajar Positif', score: 4, catatan: 'Kelas dinamis, tertib, dan bebas dari rasa cemas atau takut salah.' },
+  ];
+
+  // 6. Matriks Perubahan & Kesimpulan Transformasi (4 Indikator Kunci)
+  const kesimpulanUji: SambungUjiKesimpulanTransformasi = {
+    peranGuru: `Guru bertransformasi penuh dari penceramah materi satu arah menjadi fasilitator dan perancang pengalaman belajar mendalam. Mampu memantik nalar kritis murid melalui pertanyaan pemantik kontekstual dan memfasilitasi diferensiasi secara empatik.`,
+    aktivitasMurid: `Murid bertransformasi dari penyimak pasif menjadi pembelajar aktif yang mengonstruksi pengetahuan secara mandiri dan kolaboratif, percaya diri dalam diskusi kelompok, serta terampil memecahkan masalah nyata.`,
+    konteksNyata: `Pembelajaran terhubung erat dan terpadu secara autentik dengan fenomena kehidupan sehari-hari dan lingkungan sekitar murid, menjadikan pembelajaran bermakna dan aplikatif.`,
+    refleksiMurid: `Refleksi menjadi budaya belajar rutin yang mengakar; murid terbiasa mengevaluasi proses pemahaman diri (metakognisi), mengenali capaian belajarnya, dan merencanakan langkah perbaikan berikutnya.`,
+  };
+
+  const matriksAfter: SambungMatriksPerubahan = {
+    ...kesimpulanUji,
+  };
+
+  return {
+    praObservasi,
+    observasiPelaksanaan,
+    pascaObservasi,
+    kesimpulanUji,
+    u1_observasi: {
+      tanggal: today,
+      hariTanggal: observasiPelaksanaan.hariTanggal || today,
+      tahapObservasi: 'akhir',
+      kelas: supervision.classGrade || 'Fase F / Kelas XI',
+      indikatorList: u1IndikatorList,
+      totalSkor: 40,
+      persentaseCapaian: 100.0,
+      apaYangDialamiMurid: `Murid merasakan pengalaman belajar yang menyenangkan, menantang, dan bermakna. Mereka mengalami langsung bagaimana mengonstruksi konsep, berdiskusi memecahkan tantangan riil, dan merasakan dihargai potensinya oleh guru dan teman sekelas.`,
+      kekuatanDanRekomendasi: `Kekuatan utama terletak pada kepiawaian guru mengelola dinamika kelompok dan pemanfaatan media kontekstual. Rekomendasi: pertahankan konsistensi ini dan dokumentasikan sebagai praktik baik sekolah.`,
+    },
+    u2_angketMurid: {
+      kodeMuridKelas: `${supervision.classGrade || 'XI'}-SAMBUNG`,
+      tanggal: today,
+      jumlahResponden: 34,
+      items: u2Items,
+      halPalingBermakna: quoteBermakna,
+      kesulitanMurid: quoteKesulitan,
+    },
+    matriksAfter,
+  };
+}
+
+/**
+ * Menerapkan Auto-Fill Tahap Uji ke Supervisi:
+ * Memperbarui `supervision.sambung.uji`, menyinkronkan data supervisi perbaikan,
+ * dan memperbarui tabel Sebelum-Setelah serta Data Dampak pada Tahap Nyatakan.
+ */
+export function applyUjiAutoFillToSupervision(supervision: Supervision): Supervision {
+  const existingSambung = supervision.sambung || createDefaultSambungForTeacher(
+    supervision.teacherName,
+    supervision.schoolName,
+    supervision.subject
+  );
+
+  const ujiData = generateUjiData(supervision);
+
+  // Perbarui beforeAfter pada Tahap Nyatakan agar selaras sempurna dengan hasil kesimpulan
+  const currentBeforeAfter = existingSambung.nyatakan?.beforeAfter || [];
+  const updatedBeforeAfter = currentBeforeAfter.map(item => {
+    if (item.aspek.toLowerCase().includes('guru')) {
+      return { ...item, setelahSambung: ujiData.kesimpulanUji?.peranGuru || item.setelahSambung };
+    }
+    if (item.aspek.toLowerCase().includes('murid') && !item.aspek.toLowerCase().includes('refleksi')) {
+      return { ...item, setelahSambung: ujiData.kesimpulanUji?.aktivitasMurid || item.setelahSambung };
+    }
+    if (item.aspek.toLowerCase().includes('konteks') || item.aspek.toLowerCase().includes('nyata')) {
+      return { ...item, setelahSambung: ujiData.kesimpulanUji?.konteksNyata || item.setelahSambung };
+    }
+    if (item.aspek.toLowerCase().includes('refleksi')) {
+      return { ...item, setelahSambung: ujiData.kesimpulanUji?.refleksiMurid || item.setelahSambung };
+    }
+    return item;
+  });
+
+  const updatedSambung: SambungData = {
+    ...existingSambung,
+    uji: {
+      ...existingSambung.uji,
+      ...ujiData,
+    },
+    nyatakan: {
+      ...existingSambung.nyatakan,
+      beforeAfter: updatedBeforeAfter,
+    },
+    lastUpdated: new Date().toISOString(),
+  };
+
+  return {
+    ...supervision,
+    sambung: updatedSambung,
+    // Sinkronkan ke formulir supervisi perbaikan
+    praObservasiPerbaikan: {
+      q1_kd_indikator: ujiData.praObservasi?.q1 || '',
+      q2_metode: ujiData.praObservasi?.q2 || '',
+      q3_alat_bahan: ujiData.praObservasi?.q3 || '',
+      q4_tahapan: ujiData.praObservasi?.q4 || '',
+      q5_persiapan: ujiData.praObservasi?.q5 || '',
+      q6_materi_sulit: ujiData.praObservasi?.q6 || '',
+      q7_target_kompetensi: ujiData.praObservasi?.q7 || '',
+      q8_perhatian_khusus: ujiData.praObservasi?.q8 || '',
+      supervisorNotes: ujiData.praObservasi?.supervisorNotes || '',
+      interviewDurationMinutes: 35,
+    },
+    observasiKelasPerbaikan: {
+      items: ujiData.observasiPelaksanaan?.items || {},
+      totalYa: 25,
+      totalAspek: 25,
+      totalSkor: ujiData.observasiPelaksanaan?.totalSkor || 50,
+      score: ujiData.observasiPelaksanaan?.persentaseCapaian || 100,
+      predicate: ujiData.observasiPelaksanaan?.predicate || 'Sangat Baik',
+      feedbackNotes: `${ujiData.observasiPelaksanaan?.feedback.kelebihan}\n\nHal yang perlu diperbaiki: ${ujiData.observasiPelaksanaan?.feedback.perbaikan}\n\nRekomendasi: ${ujiData.observasiPelaksanaan?.feedback.rekomendasi}`,
+      feedback: ujiData.observasiPelaksanaan?.feedback,
+      completedAt: ujiData.observasiPelaksanaan?.completedAt || new Date().toISOString(),
+    },
+    pascaObservasiPerbaikan: {
+      q1_kesan: ujiData.pascaObservasi?.pertanyaanList.q1 || '',
+      q2_sesuai_rencana: ujiData.pascaObservasi?.pertanyaanList.q2 || '',
+      q3_hal_memuaskan: ujiData.pascaObservasi?.pertanyaanList.q3 || '',
+      q4_hal_kurang: ujiData.pascaObservasi?.pertanyaanList.q4 || '',
+      q5_ketercapaian_tujuan: ujiData.pascaObservasi?.pertanyaanList.q5 || '',
+      q6_kesulitan_siswa: ujiData.pascaObservasi?.pertanyaanList.q6 || '',
+      q7_alternatif_solusi: ujiData.pascaObservasi?.pertanyaanList.q7 || '',
+      q8_rencana_tindak_lanjut: ujiData.pascaObservasi?.pertanyaanList.q8 || '',
+      q9_pengembangan_diri: ujiData.pascaObservasi?.pertanyaanList.q9 || '',
+      generalImpression: ujiData.pascaObservasi?.kesanUmum || '',
+      recommendations: ujiData.pascaObservasi?.saranMasukan || '',
+      completedAt: ujiData.pascaObservasi?.completedAt || new Date().toISOString(),
+    },
+    updatedAt: new Date().toISOString(),
+  };
+}
+

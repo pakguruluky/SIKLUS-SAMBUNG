@@ -5,7 +5,7 @@ import {
   SEED_SAMBUNG_SITI,
   createDefaultSambungForTeacher 
 } from './sambungSeed';
-import { generateTeacherMaknaiData, generateAmatiData, generateBerdayakanTelaahPerbaikanData } from './autoFillData';
+import { generateTeacherMaknaiData, generateAmatiData, generateBerdayakanTelaahPerbaikanData, generateUjiData } from './autoFillData';
 
 export const SAMPLE_SUPERVISIONS: Supervision[] = [
   {
@@ -1518,6 +1518,80 @@ SAMPLE_SUPERVISIONS.forEach((sup) => {
           reviewedAt: new Date().toISOString(),
           reviewedBy: berdayakanData.namaPenelaah,
         };
+      }
+    }
+
+    // Pastikan seluruh guru binaan memiliki instrumen Uji (Pra-Observasi, Observasi 25 Aspek, Pasca-Observasi, Angket Murid, dan 4 Indikator Transformasi) lengkap
+    if (!sup.sambung.uji?.observasiPelaksanaan || !sup.sambung.uji?.praObservasi) {
+      const ujiData = generateUjiData(sup);
+      sup.sambung.uji = {
+        ...sup.sambung.uji,
+        ...ujiData,
+      };
+
+      if (!sup.praObservasiPerbaikan) {
+        sup.praObservasiPerbaikan = {
+          q1_kd_indikator: ujiData.praObservasi?.q1 || '',
+          q2_metode: ujiData.praObservasi?.q2 || '',
+          q3_alat_bahan: ujiData.praObservasi?.q3 || '',
+          q4_tahapan: ujiData.praObservasi?.q4 || '',
+          q5_persiapan: ujiData.praObservasi?.q5 || '',
+          q6_materi_sulit: ujiData.praObservasi?.q6 || '',
+          q7_target_kompetensi: ujiData.praObservasi?.q7 || '',
+          q8_perhatian_khusus: ujiData.praObservasi?.q8 || '',
+          supervisorNotes: ujiData.praObservasi?.supervisorNotes || '',
+          interviewDurationMinutes: 35,
+        };
+      }
+
+      if (!sup.observasiKelasPerbaikan) {
+        sup.observasiKelasPerbaikan = {
+          items: ujiData.observasiPelaksanaan?.items || {},
+          totalYa: 25,
+          totalAspek: 25,
+          totalSkor: ujiData.observasiPelaksanaan?.totalSkor || 50,
+          score: ujiData.observasiPelaksanaan?.persentaseCapaian || 100,
+          predicate: ujiData.observasiPelaksanaan?.predicate || 'Sangat Baik',
+          feedbackNotes: `${ujiData.observasiPelaksanaan?.feedback.kelebihan}\n\nHal yang perlu diperbaiki: ${ujiData.observasiPelaksanaan?.feedback.perbaikan}\n\nRekomendasi: ${ujiData.observasiPelaksanaan?.feedback.rekomendasi}`,
+          feedback: ujiData.observasiPelaksanaan?.feedback,
+          completedAt: ujiData.observasiPelaksanaan?.completedAt || new Date().toISOString(),
+        };
+      }
+
+      if (!sup.pascaObservasiPerbaikan) {
+        sup.pascaObservasiPerbaikan = {
+          q1_kesan: ujiData.pascaObservasi?.pertanyaanList.q1 || '',
+          q2_sesuai_rencana: ujiData.pascaObservasi?.pertanyaanList.q2 || '',
+          q3_hal_memuaskan: ujiData.pascaObservasi?.pertanyaanList.q3 || '',
+          q4_hal_kurang: ujiData.pascaObservasi?.pertanyaanList.q4 || '',
+          q5_ketercapaian_tujuan: ujiData.pascaObservasi?.pertanyaanList.q5 || '',
+          q6_kesulitan_siswa: ujiData.pascaObservasi?.pertanyaanList.q6 || '',
+          q7_alternatif_solusi: ujiData.pascaObservasi?.pertanyaanList.q7 || '',
+          q8_rencana_tindak_lanjut: ujiData.pascaObservasi?.pertanyaanList.q8 || '',
+          q9_pengembangan_diri: ujiData.pascaObservasi?.pertanyaanList.q9 || '',
+          generalImpression: ujiData.pascaObservasi?.kesanUmum || '',
+          recommendations: ujiData.pascaObservasi?.saranMasukan || '',
+          completedAt: ujiData.pascaObservasi?.completedAt || new Date().toISOString(),
+        };
+      }
+
+      // Selaraskan 4 Indikator Transformasi pada beforeAfter di Tahap Nyatakan
+      if (sup.sambung.nyatakan?.beforeAfter) {
+        sup.sambung.nyatakan.beforeAfter = sup.sambung.nyatakan.beforeAfter.map(item => {
+          if (item.aspek.toLowerCase().includes('guru') && ujiData.kesimpulanUji?.peranGuru) {
+            return { ...item, setelahSambung: ujiData.kesimpulanUji.peranGuru };
+          }
+          if (item.aspek.toLowerCase().includes('murid') && !item.aspek.toLowerCase().includes('refleksi') && ujiData.kesimpulanUji?.aktivitasMurid) {
+            return { ...item, setelahSambung: ujiData.kesimpulanUji.aktivitasMurid };
+          }
+          if ((item.aspek.toLowerCase().includes('konteks') || item.aspek.toLowerCase().includes('nyata')) && ujiData.kesimpulanUji?.konteksNyata) {
+            return { ...item, setelahSambung: ujiData.kesimpulanUji.konteksNyata };
+          }
+          if (item.aspek.toLowerCase().includes('refleksi') && ujiData.kesimpulanUji?.refleksiMurid) {
+            return { ...item, setelahSambung: ujiData.kesimpulanUji.refleksiMurid };
+          }
+          return item;
+        });
       }
     }
   }

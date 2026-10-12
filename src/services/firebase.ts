@@ -34,7 +34,7 @@ import {
   loadLocalSchools 
 } from './localStorageService';
 import { SAMPLE_SUPERVISIONS } from '../data/seedData';
-import { generateTeacherMaknaiData, generateAmatiData, generateBerdayakanTelaahPerbaikanData } from '../data/autoFillData';
+import { generateTeacherMaknaiData, generateAmatiData, generateBerdayakanTelaahPerbaikanData, generateUjiData } from '../data/autoFillData';
 
 // User-provided Firebase Configuration fallback
 const activeFirebaseConfig = {
@@ -321,11 +321,21 @@ function normalizeSupervisionData(sup: Supervision): Supervision {
       };
     }
 
+    let uji = normalized.sambung.uji;
+    if (!uji?.observasiPelaksanaan || !uji?.praObservasi) {
+      const autoUji = generateUjiData(normalized);
+      uji = {
+        ...uji,
+        ...autoUji,
+      };
+    }
+
     normalized.sambung = {
       ...normalized.sambung,
       maknai,
       arahkan,
       berdayakan,
+      uji,
     };
 
     if (!normalized.perangkatAjarPerbaikan && berdayakan?.telaahScores) {
@@ -344,6 +354,52 @@ function normalizeSupervisionData(sup: Supervision): Supervision {
         catatanRevisiGuru: berdayakan.catatanRefleksiGuru,
         reviewedAt: new Date().toISOString(),
         reviewedBy: berdayakan.namaPenelaah,
+      };
+    }
+
+    if (!normalized.praObservasiPerbaikan && uji?.praObservasi) {
+      normalized.praObservasiPerbaikan = {
+        q1_kd_indikator: uji.praObservasi.q1,
+        q2_metode: uji.praObservasi.q2,
+        q3_alat_bahan: uji.praObservasi.q3,
+        q4_tahapan: uji.praObservasi.q4,
+        q5_persiapan: uji.praObservasi.q5,
+        q6_materi_sulit: uji.praObservasi.q6,
+        q7_target_kompetensi: uji.praObservasi.q7,
+        q8_perhatian_khusus: uji.praObservasi.q8,
+        supervisorNotes: uji.praObservasi.supervisorNotes || '',
+        interviewDurationMinutes: 35,
+      };
+    }
+
+    if (!normalized.observasiKelasPerbaikan && uji?.observasiPelaksanaan) {
+      normalized.observasiKelasPerbaikan = {
+        items: uji.observasiPelaksanaan.items,
+        totalYa: 25,
+        totalAspek: 25,
+        totalSkor: uji.observasiPelaksanaan.totalSkor,
+        score: uji.observasiPelaksanaan.persentaseCapaian,
+        predicate: uji.observasiPelaksanaan.predicate,
+        feedbackNotes: `${uji.observasiPelaksanaan.feedback.kelebihan}\n\nHal yang perlu diperbaiki: ${uji.observasiPelaksanaan.feedback.perbaikan}\n\nRekomendasi: ${uji.observasiPelaksanaan.feedback.rekomendasi}`,
+        feedback: uji.observasiPelaksanaan.feedback,
+        completedAt: uji.observasiPelaksanaan.completedAt || new Date().toISOString(),
+      };
+    }
+
+    if (!normalized.pascaObservasiPerbaikan && uji?.pascaObservasi) {
+      normalized.pascaObservasiPerbaikan = {
+        q1_kesan: uji.pascaObservasi.pertanyaanList.q1,
+        q2_sesuai_rencana: uji.pascaObservasi.pertanyaanList.q2,
+        q3_hal_memuaskan: uji.pascaObservasi.pertanyaanList.q3,
+        q4_hal_kurang: uji.pascaObservasi.pertanyaanList.q4,
+        q5_ketercapaian_tujuan: uji.pascaObservasi.pertanyaanList.q5,
+        q6_kesulitan_siswa: uji.pascaObservasi.pertanyaanList.q6,
+        q7_alternatif_solusi: uji.pascaObservasi.pertanyaanList.q7,
+        q8_rencana_tindak_lanjut: uji.pascaObservasi.pertanyaanList.q8,
+        q9_pengembangan_diri: uji.pascaObservasi.pertanyaanList.q9,
+        generalImpression: uji.pascaObservasi.kesanUmum,
+        recommendations: uji.pascaObservasi.saranMasukan,
+        completedAt: uji.pascaObservasi.completedAt || new Date().toISOString(),
       };
     }
   }

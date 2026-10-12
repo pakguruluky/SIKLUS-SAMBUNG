@@ -13,7 +13,11 @@ import {
   SambungUjiKesimpulanTransformasi,
   SambungObservasiIndikator,
   SambungAngketMuridItem,
-  SambungMatriksPerubahan
+  SambungMatriksPerubahan,
+  SambungRtlNyatakanItem,
+  SambungKesimpulanAlurSambung,
+  SambungTindakLanjutItem,
+  SambungPengimbasanItem
 } from '../types';
 import { OBSERVASI_ITEMS } from './instrumentData';
 import { 
@@ -1707,4 +1711,199 @@ export function applyUjiAutoFillToSupervision(supervision: Supervision): Supervi
     updatedAt: new Date().toISOString(),
   };
 }
+
+/**
+ * Menghasilkan instrumen Tahap G (GERAKKAN): Rencana Tindak Lanjut dari Hasil Nyatakan & Kesimpulan,
+ * serta rencana diseminasi & pengimbasan praktik baik yang menghubungkan seluruh alur SAMBUNG
+ * (Selidiki -> Amati -> Maknai -> Berdayakan -> Uji -> Nyatakan -> Gerakkan).
+ */
+export function generateGerakkanData(supervision: Supervision): {
+  tindakLanjut: SambungTindakLanjutItem[];
+  pengimbasan: SambungPengimbasanItem[];
+  rtlNyatakan: SambungRtlNyatakanItem[];
+  kesimpulanAlurSambung: SambungKesimpulanAlurSambung;
+} {
+  const teacher = supervision.teacherName;
+  const subject = supervision.subject || 'Mata Pelajaran';
+  const school = supervision.schoolName || 'SMA Binaan';
+  const lesson = supervision.lessonTitle || `Pembelajaran ${subject}`;
+  const telaahScore = supervision.perangkatAjar?.telaahSummary?.finalScore ?? 92.5;
+  const telaahPred = supervision.perangkatAjar?.telaahSummary?.predicate || 'Sangat Baik';
+  const obsScore = supervision.observasiKelas?.score ?? 94.0;
+  const obsPred = supervision.observasiKelas?.predicate || 'Sangat Baik';
+  
+  // Mengambil data before & after nyata yang ada di draft
+  const before = supervision.sambung?.selidiki?.matriksBefore || DEFAULT_MATRIKS_BEFORE;
+  const after = supervision.sambung?.uji?.matriksAfter || DEFAULT_MATRIKS_AFTER;
+
+  // 1. Instrumen Utama: Rencana Tindak Lanjut Berdasarkan Hasil Nyatakan & Kesimpulan Uji
+  const rtlNyatakan: SambungRtlNyatakanItem[] = [
+    {
+      id: 1,
+      indikator: 'Peran Guru: Berorientasi pada Pengalaman Belajar & Inkuiri Murid',
+      hasilNyatakan: `Terbukti bertransformasi dari dominasi ceramah satu arah (${before.peranGuru}) menjadi perancang dan fasilitator pengalaman belajar murid melalui inkuiri aktif (${after.peranGuru}). Skor telaah modul: ${telaahScore} (${telaahPred}), Skor observasi kelas: ${obsScore}% (${obsPred}).`,
+      rencanaTindakLanjut: `1. Mempertahankan dan mengoptimalkan peran sebagai fasilitator inkuiri dengan menerapkan teknik bertanya pemantik terbuka (open-ended questions) secara konsisten.\n2. Menyusun 3 variasi panduan diferensiasi proses (tiered learning) agar setiap kelompok murid tertantang sesuai tingkat kesiapannya.\n3. Mengalokasikan 10-15 menit pendampingan kelompok kecil (scaffolding klinis) bagi murid yang mengalami hambatan pemahaman.`,
+      mitraKolaborasi: `Komunitas Belajar (Kombel) Guru ${subject} ${school}, MGMP Kabupaten Bogor, dan Pengawas Pembina Kusnandar, M.Si`,
+      waktuPelaksanaan: '2 Minggu ke depan (Awal unit materi baru)',
+      buktiKeberhasilan: 'Modul Ajar berdiferensiasi terverifikasi, rubrik scaffolding harian, lembar observasi teman sejawat',
+      rekomendasiSupervisi: `Pengawas Pembina merekomendasikan ${teacher} menjadi narasumber/fasilitator model dalam Kombel internal sekolah untuk teknik scaffolding inkuiri.`,
+    },
+    {
+      id: 2,
+      indikator: 'Aktivitas Murid: Student Agency, Kolaborasi & Aplikasi Pengetahuan',
+      hasilNyatakan: `Murid bertransformasi dari sekadar mendengar dan mencatat (${before.aktivitasMurid}) menjadi pelaku aktif yang mengaplikasikan konsep pengetahuan melalui investigasi kelompok dan unjuk kerja nyata (${after.aktivitasMurid}). Respon suara murid (U-2) menunjukkan 88%+ murid merasa antusias dan berani berpendapat.`,
+      rencanaTindakLanjut: `1. Menerapkan model Pembelajaran Berbasis Masalah (PBL) dan Proyek (PjBL) secara berkelanjutan pada materi esensial ${subject}.\n2. Memberikan kebebasan murid memilih bentuk produk tugas (suara & pilihan/student agency) baik video, poster infografis, maupun laporan ilmiah kontekstual.\n3. Mengaktifkan peran rotasi kepemimpinan dalam kerja kelompok heterogen agar seluruh murid terlibat aktif.`,
+      mitraKolaborasi: 'Guru Bimbingan Konseling (BK), Wali Kelas, dan Tim Manajemen Kurikulum Sekolah',
+      waktuPelaksanaan: 'Setiap pertengahan capaian pembelajaran (CP) / Siklus 4-6 minggu',
+      buktiKeberhasilan: 'Portofolio artefak karya digital/fisik murid, lembar penilaian antarteman (peer-review), rekaman unjuk kerja murid',
+      rekomendasiSupervisi: 'Kepala Sekolah mendukung penyediaan ruang pameran karya murid (Gelar Karya Kelas) dan sarana media presentasi yang memadai.',
+    },
+    {
+      id: 3,
+      indikator: 'Konteks Kehidupan Nyata: Relevansi Materi dengan Isu Riil & Lingkungan',
+      hasilNyatakan: `Pembelajaran berhasil mengaitkan materi secara eksplisit (${after.konteksNyata}) dari yang sebelumnya masih bersifat teoretis-tekstual (${before.konteksNyata}). Peningkatan pemahaman kontekstual murid naik lebih dari 40% pada data dampak.`,
+      rencanaTindakLanjut: `1. Menyusun Bank Studi Kasus Kontekstual ${subject} berbasis kearifan lokal Jawa Barat, fenomena lingkungan hidup sekitar Bogor, dan perkembangan teknologi mutakhir.\n2. Merancang Lembar Kerja Peserta Didik (LKPD) berbasis pemecahan masalah riil yang mengasah daya nalar kritis murid.\n3. Mengundang praktisi/alumni atau mengadakan mini-observasi lapangan lingkungan sekolah bila relevan.`,
+      mitraKolaborasi: `MGMP ${subject} Kabupaten Bogor, Tim Pengembang Kurikulum ${school}, dan Praktisi Lapangan/Alumni`,
+      waktuPelaksanaan: '1 Bulan ke depan (Penyusunan modul bab selanjutnya)',
+      buktiKeberhasilan: 'Bank LKPD kontekstual terintegrasi isu lokal, dokumentasi investigasi murid di lingkungan sekolah',
+      rekomendasiSupervisi: 'Pengawas Sekolah mengarahkan integrasi projek lintas mata pelajaran (interdisipliner) untuk efisiensi beban belajar murid.',
+    },
+    {
+      id: 4,
+      indikator: 'Refleksi Murid: Metakognisi & Evaluasi Belajar Rutin Terstruktur',
+      hasilNyatakan: `Refleksi telah melembaga menjadi budaya kelas rutin di setiap akhir pertemuan (${after.refleksiMurid}), berbeda dengan kondisi awal di mana refleksi belum terencana konsisten (${before.refleksiMurid}). Murid mampu mengenali kekuatannya dan memetakan kendala belajarnya.`,
+      rencanaTindakLanjut: `1. Melembagakan Jurnal Refleksi Metakognisi Murid harian/mingguan dengan format bervariasi (Teknik 3-2-1, Traffic Light Cards, dan Google Forms).\n2. Membaca dan menganalisis catatan refleksi murid untuk menentukan intervensi mengajar pada pertemuan berikutnya (Looping Refleksi-Aksi).\n3. Memberikan umpan balik tertulis apresiatif pada catatan refleksi murid secara berkala untuk membangun kedekatan emosional belajar.`,
+      mitraKolaborasi: 'Tim Pembelajaran Mendalam (Deep Learning) Sekolah, Rekan Sejawat, dan Peserta Didik',
+      waktuPelaksanaan: 'Rutin setiap akhir jam pembelajaran tatap muka (10-15 menit)',
+      buktiKeberhasilan: 'Buku Jurnal Refleksi Murid terisi rapi, rekapan angket suara murid, catatan tindak lanjut umpan balik guru',
+      rekomendasiSupervisi: 'Jadikan data refleksi murid sebagai dasar evaluasi diri guru (Self-Regulated Teacher) dalam Penilaian Kinerja Guru (PKG).',
+    },
+    {
+      id: 5,
+      indikator: 'Asesmen Autentik Formatif & Tindak Lanjut Diferensiasi',
+      hasilNyatakan: `Terselenggaranya asesmen autentik yang tidak hanya mengukur capaian akhir (assessment of learning), melainkan memantau proses (assessment for & as learning) dengan rubrik transparan. Skor ketercapaian aspek asesmen telaah dan observasi mencapai predikat ${obsPred}.`,
+      rencanaTindakLanjut: `1. Mengembangkan instrumen asesmen diagnostik kognitif dan non-kognitif sebelum memulai bab baru.\n2. Menggunakan aplikasi asesmen formatif interaktif (Quizizz, Kahoot, Google Form) dengan analisis butir soal instan untuk pemetaan kelompok remidial dan pengayaan.\n3. Melaksanakan program tindak lanjut klinis bagi murid yang belum tuntas tanpa menambah beban psikologis.`,
+      mitraKolaborasi: `Pengawas Pembina Kusnandar, M.Si, Koordinator Penilaian Sekolah, dan Rekan Guru ${subject}`,
+      waktuPelaksanaan: 'Berkala di awal, tengah, dan akhir unit pembelajaran',
+      buktiKeberhasilan: 'Kisi-kisi dan rubrik asesmen autentik, laporan hasil analisis diagnostik, portofolio remidial & pengayaan terstruktur',
+      rekomendasiSupervisi: 'Pengawas Pembina melakukan supervisi berkala terhadap kesahihan dan reliabilitas rubrik asesmen formatif kurikulum.',
+    },
+  ];
+
+  // 2. Rencana Tindak Lanjut Temuan Supervisi
+  const tindakLanjut: SambungTindakLanjutItem[] = [
+    {
+      id: 1,
+      temuanSupervisi: `Optimalisasi Diferensiasi Proses: Masih terdapat beberapa murid yang membutuhkan waktu lebih lama dalam menyelesaikan penyelidikan inkuiri materi ${lesson}.`,
+      tindakLanjut: `Menyusun panduan bertahap (scaffolding guide) dengan kartu bantuan konsep (hint cards) dan memanfaatkan tutor sebaya dalam kelompok belajar heterogen.`,
+      penanggungJawab: teacher,
+      waktu: '2 Minggu ke depan',
+      hasil: 'Seluruh kelompok murid mampu menuntaskan target pembelajaran dengan tingkat kepercayaan diri yang tinggi.',
+    },
+    {
+      id: 2,
+      temuanSupervisi: `Pemanfaatan Media & TIK Interaktif: Integrasi teknologi sudah baik, namun perlu pengayaan simulasi virtual untuk materi abstrak.`,
+      tindakLanjut: `Mengembangkan lembar panduan praktikum virtual interaktif dan memanfaatkan portal Rumah Belajar / PhET / Canva Edukasi secara terarah.`,
+      penanggungJawab: teacher,
+      waktu: '3 Minggu ke depan',
+      hasil: 'Keterlibatan visual dan pemahaman konsep sains/sosial abstrak murid meningkat signifikan.',
+    },
+    {
+      id: 3,
+      temuanSupervisi: `Pendokumentasian Asesmen Portofolio Murid: Lembar hasil kerja murid perlu diarsipkan dalam portofolio digital yang mudah diakses orang tua dan murid.`,
+      tindakLanjut: `Membuat repositori portofolio digital kelas (Google Sites / Google Drive terstruktur) untuk mendokumentasikan karya dan perkembangan murid sepanjang semester.`,
+      penanggungJawab: teacher,
+      waktu: '1 Bulan ke depan',
+      hasil: 'Portofolio digital murid tersusun rapi dan dapat dijadikan bahan pelaporan kemajuan belajar bagi orang tua.',
+    },
+    {
+      id: 4,
+      temuanSupervisi: `Keberlanjutan Budaya Saling Memuliakan: Terciptanya iklim kelas yang aman, saling menghargai, dan bebas dari perundungan verbal saat presentasi.`,
+      tindakLanjut: `Menyepakati kontrak belajar positif (Kesepakatan Kelas) di setiap awal semester dan memberikan apresiasi verbal/tertulis atas kontribusi setiap murid.`,
+      penanggungJawab: teacher,
+      waktu: 'Berkelanjutan sepanjang tahun',
+      hasil: 'Suasana kelas kondusif, murid berani bertanya tanpa rasa takut salah, dan tercipta budaya saling memuliakan martabat murid.',
+    },
+  ];
+
+  // 3. Diseminasi & Pengimbasan Praktik Baik Komunitas
+  const pengimbasan: SambungPengimbasanItem[] = [
+    {
+      id: 1,
+      praktikBaik: `Penerapan Strategi Supervisi SAMBUNG Berorientasi Deep Learning pada Pembelajaran ${subject}`,
+      sasaran: `Komunitas Belajar (Kombel) Pendidik & Tenaga Kependidikan ${school}`,
+      bentuk: 'Workshop & Berbagi Praktik Baik (In-House Sharing Session)',
+      waktu: 'Bulan Depan (Jadwal Rutin Kombel)',
+    },
+    {
+      id: 2,
+      praktikBaik: `Desain Modul Ajar Berdiferensiasi dan Rubrik Asesmen Autentik ${subject} SMA`,
+      sasaran: `Musyawarah Guru Mata Pelajaran (MGMP) ${subject} Tingkat Kabupaten Bogor`,
+      bentuk: 'Presentasi Praktik Baik & Bedah Modul Ajar di MGMP',
+      waktu: 'Pertemuan Rutin MGMP Triwulan Berjalan',
+    },
+    {
+      id: 3,
+      praktikBaik: `Dokumentasi Aksi Nyata: Transformasi Pembelajaran Inkuiri dan Budaya Refleksi Murid`,
+      sasaran: 'Pendidik Seluruh Indonesia melalui Platform Merdeka Mengajar (PMM)',
+      bentuk: 'Publikasi Video Bukti Karya & Modul Ajar di PMM Kemendikbudristek',
+      waktu: 'Akhir Semester Berjalan',
+    },
+    {
+      id: 4,
+      praktikBaik: `Open Class Kolaboratif: Observasi Mengajar Teman Sejawat (Peer Coaching)`,
+      sasaran: `Rekan Guru Serumpun di ${school}`,
+      bentuk: 'Penyelenggaraan Open Class dan Diskusi Refleksi Pasca-Mengajar Sejawat',
+      waktu: '2 Bulan ke depan',
+    },
+  ];
+
+  // 4. Matriks Kesimpulan Alur SAMBUNG (S - A - M - B - U - N -> G)
+  const kesimpulanAlurSambung: SambungKesimpulanAlurSambung = {
+    selidikiBaseline: `Tahap SELIDIKI: Pemetaan awal telaah modul ajar dan wawancara pendahuluan menunjukkan guru ${teacher} memiliki penguasaan materi yang kuat namun proses belajar masih berpusat pada transfer konten ceramah instruksional. Murid pasif mencatat dan belum terbiasa melakukan refleksi metakognisi.`,
+    amatiObservasi: `Tahap AMATI: Observasi tatap muka awal di kelas mengidentifikasi area amatan kritis, yakni perlunya pergeseran peran guru menjadi fasilitator inkuiri, peningkatan keterlibatan kolaboratif murid (student agency), dan penguatan konteks riil kehidupan sehari-hari murid.`,
+    maknaiCoaching: `Tahap MAKNAI: Supervisor (Pengawas Kusnandar, M.Si) melaksanakan dialog coaching reflektif pasca observasi dengan 10 pertanyaan mendalam. Guru menyadari akar persoalan dan membangun komitmen nyata untuk merestrukturisasi desain pembelajaran menjadi bermakna dan menggembirakan.`,
+    berdayakanModul: `Tahap BERDAYAKAN: Guru menyusun dan menyempurnakan Modul Ajar Perbaikan ${lesson} yang berorientasi Pembelajaran Mendalam (Deep Learning). Modul ajar memuat diferensiasi konten/proses/produk, pertanyaan pemantik inkuiri, dan rubrik asesmen formatif autentik.`,
+    ujiPembuktian: `Tahap UJI: Implementasi lapangan diuji secara terukur melalui wawancara pra-observasi 8 butir, observasi pelaksanaan 25 butir (Skor Capaian: ${obsScore}% / ${obsPred}), dialog refleksi pasca-observasi, serta angket suara murid (U-2) yang mencatat kepuasan dan antusiasme belajar murid di atas 85%.`,
+    nyatakanDampak: `Tahap NYATAKAN: Pembuktian perubahan Before vs After dan data dampak kuantitatif-kualitatif membuktikan lonjakan signifikan: peran guru beralih ke fasilitator inkuiri, aktivitas murid bergeser dari pasif ke pengaplikasian pengetahuan riil, materi terhubung isu nyata, dan budaya refleksi melembaga.`,
+    gerakkanKomitmen: `Tahap GERAKKAN: Seluruh hasil supervisi tidak berhenti sebagai dokumen administratif, melainkan diwujudkan dalam 5 Rencana Tindak Lanjut (RTL) Konkret berbasis hasil Nyatakan dan 4 agenda pengimbasan praktik baik di Kombel Sekolah, MGMP Kabupaten, dan PMM.`,
+    catatanPengawas: `Apresiasi tinggi kepada ${teacher} atas integritas profesional, keterbukaan dalam coaching, dan komitmen menuntaskan seluruh 7 siklus SAMBUNG. Transformasi pembelajaran yang dicapai sangat signifikan dan layak dijadikan teladan praktik baik bagi guru-guru SMA lainnya. Teruslah menginspirasi dan memuliakan potensi murid! — Kusnandar, M.Si (Pengawas Pembina).`,
+    dukunganKepalaSekolah: `Pihak sekolah berkomitmen penuh menyediakan sarana prasarana penunjang, memfasilitasi waktu berbagi praktik baik di Komunitas Belajar (Kombel) sekolah, serta mendukung keikutsertaan guru dalam forum peningkatan keprofesian berkelanjutan.`,
+  };
+
+  return {
+    tindakLanjut,
+    pengimbasan,
+    rtlNyatakan,
+    kesimpulanAlurSambung,
+  };
+}
+
+/**
+ * Menyinkronkan dan menerapkan hasil generateGerakkanData ke dalam objek supervisi.
+ */
+export function applyGerakkanAutoFillToSupervision(supervision: Supervision): Supervision {
+  const gerakkanData = generateGerakkanData(supervision);
+  const curSambung = supervision.sambung || createDefaultSambungForTeacher(
+    supervision.teacherName,
+    supervision.subject,
+    supervision.schoolName
+  );
+
+  return {
+    ...supervision,
+    sambung: {
+      ...curSambung,
+      gerakkan: {
+        tindakLanjut: gerakkanData.tindakLanjut,
+        pengimbasan: gerakkanData.pengimbasan,
+        rtlNyatakan: gerakkanData.rtlNyatakan,
+        kesimpulanAlurSambung: gerakkanData.kesimpulanAlurSambung,
+      },
+      lastUpdated: new Date().toISOString(),
+    },
+    updatedAt: new Date().toISOString(),
+  };
+}
+
 

@@ -461,6 +461,29 @@ export interface SambungPengimbasanItem {
   waktu: string;
 }
 
+export interface SambungRtlNyatakanItem {
+  id: number;
+  indikator: string; // Aspek/Indikator dari Hasil Nyatakan & Kesimpulan Uji
+  hasilNyatakan: string; // Deskripsi temuan Before vs After di Tahap Nyatakan & Kesimpulan Uji
+  rencanaTindakLanjut: string; // Aksi tindak lanjut konkret guru
+  mitraKolaborasi: string; // Kombel internal SMA, MGMP Kabupaten, KS, Pengawas Kusnandar, M.Si
+  waktuPelaksanaan: string; // Linimasa pelaksanaan
+  buktiKeberhasilan: string; // Bukti fisik / indikator ketercapaian
+  rekomendasiSupervisi: string; // Rekomendasi keberlanjutan Pengawas Kusnandar, M.Si & KS
+}
+
+export interface SambungKesimpulanAlurSambung {
+  selidikiBaseline: string; // Rangkuman S: Temuan telaah awal & baseline guru
+  amatiObservasi: string; // Rangkuman A: Hasil observasi kelas awal & fokus prioritas
+  maknaiCoaching: string; // Rangkuman M: Kesepakatan dialog coaching supervisor & komitmen guru
+  berdayakanModul: string; // Rangkuman B: Desain modul ajar perbaikan berorientasi deep learning
+  ujiPembuktian: string; // Rangkuman U: Pembuktian lapangan observasi 25 aspek, pra/pasca & suara murid
+  nyatakanDampak: string; // Rangkuman N: Data dampak nyata Before vs After
+  gerakkanKomitmen: string; // Rangkuman G: Rencana tindak lanjut & komitmen pengimbasan
+  catatanPengawas: string; // Catatan resmi Pengawas Pembina Kusnandar, M.Si
+  dukunganKepalaSekolah?: string; // Dukungan fasilitas & kebijakan kepala sekolah
+}
+
 export interface SambungData {
   // S - SELIDIKI
   selidiki: {
@@ -506,10 +529,12 @@ export interface SambungData {
     beforeAfter: SambungBeforeAfterItem[];
     dataDampak: SambungDataDampakItem[];
   };
-  // G - GERAKKAN
+  // G - GERAKKAN (Buatkan Rencana Tindak Lanjut dari Hasil Nyatakan & Kesimpulan)
   gerakkan: {
     tindakLanjut: SambungTindakLanjutItem[];
     pengimbasan: SambungPengimbasanItem[];
+    rtlNyatakan?: SambungRtlNyatakanItem[];
+    kesimpulanAlurSambung?: SambungKesimpulanAlurSambung;
   };
   lastUpdated?: string;
 }

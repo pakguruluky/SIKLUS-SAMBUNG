@@ -3,7 +3,7 @@ import { Supervision } from '../types';
 import { Printer, X, Download, ShieldCheck } from 'lucide-react';
 import { DEFAULT_MATRIKS_BEFORE, DEFAULT_MATRIKS_AFTER } from '../data/sambungSeed';
 import { MAKNAI_COACHING_QUESTIONS, TELAAH_ITEMS, OBSERVASI_ITEMS, PRA_OBSERVASI_QUESTIONS, PASCA_OBSERVASI_QUESTIONS } from '../data/instrumentData';
-import { generateTeacherMaknaiData, generateBerdayakanTelaahPerbaikanData, generateUjiData } from '../data/autoFillData';
+import { generateTeacherMaknaiData, generateBerdayakanTelaahPerbaikanData, generateUjiData, generateGerakkanData } from '../data/autoFillData';
 
 interface SambungPrintModalProps {
   isOpen: boolean;
@@ -1375,83 +1375,213 @@ export const SambungPrintModal: React.FC<SambungPrintModalProps> = ({
             </p>
           </div>
 
-          {/* G — TINDAK LANJUT DAN PENGIMBASAN */}
-          <div>
-            <div className="flex items-center gap-3 mb-3 bg-indigo-900 text-white p-2.5 rounded-lg">
-              <span className="w-7 h-7 rounded-md bg-white text-indigo-900 font-extrabold flex items-center justify-center text-sm">
-                G
-              </span>
-              <div>
-                <h3 className="font-bold text-sm">Tindak Lanjut dan Pengimbasan</h3>
-                <p className="text-[10px] text-indigo-200">GERAKKAN — hasil supervisi tidak berhenti sebagai catatan</p>
-              </div>
-            </div>
+          {/* G — GERAKKAN: RENCANA TINDAK LANJUT DARI HASIL NYATAKAN & PENGIMBASAN */}
+          <div className="page-break-after">
+            {(() => {
+              const defaultGerakkan = generateGerakkanData(supervision);
+              const effectiveRtl = (sambung.gerakkan.rtlNyatakan && sambung.gerakkan.rtlNyatakan.length > 0)
+                ? sambung.gerakkan.rtlNyatakan
+                : defaultGerakkan.rtlNyatakan;
+              const effectiveAlur = sambung.gerakkan.kesimpulanAlurSambung || defaultGerakkan.kesimpulanAlurSambung;
 
-            <h4 className="font-bold text-xs text-slate-800 mb-1">1. Rencana Tindak Lanjut Temuan</h4>
-            <table className="w-full border-collapse border border-slate-300 text-[11px] mb-4">
-              <thead>
-                <tr className="bg-slate-100 text-slate-800 font-bold">
-                  <th className="border border-slate-300 px-2 py-1.5 w-8 text-center">No</th>
-                  <th className="border border-slate-300 px-2 py-1.5 text-left">Temuan supervisi</th>
-                  <th className="border border-slate-300 px-2 py-1.5 text-left">Tindak lanjut</th>
-                  <th className="border border-slate-300 px-2 py-1.5 text-left w-36">Penanggung jawab</th>
-                  <th className="border border-slate-300 px-2 py-1.5 text-left w-24">Waktu</th>
-                  <th className="border border-slate-300 px-2 py-1.5 text-left">Hasil</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sambung.gerakkan.tindakLanjut.map((item, idx) => (
-                  <tr key={item.id || idx}>
-                    <td className="border border-slate-300 px-2 py-1.5 text-center font-semibold">{idx + 1}</td>
-                    <td className="border border-slate-300 px-2 py-1.5 font-medium">{item.temuanSupervisi}</td>
-                    <td className="border border-slate-300 px-2 py-1.5 text-slate-700">{item.tindakLanjut}</td>
-                    <td className="border border-slate-300 px-2 py-1.5 text-slate-700">{item.penanggungJawab}</td>
-                    <td className="border border-slate-300 px-2 py-1.5 text-slate-600">{item.waktu}</td>
-                    <td className="border border-slate-300 px-2 py-1.5 text-slate-800 font-medium">{item.hasil}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+              return (
+                <div>
+                  <div className="flex items-center gap-3 mb-3 bg-cyan-900 text-white p-2.5 rounded-lg">
+                    <span className="w-7 h-7 rounded-md bg-white text-cyan-900 font-extrabold flex items-center justify-center text-sm">
+                      G
+                    </span>
+                    <div>
+                      <h3 className="font-bold text-sm">
+                        GERAKKAN: Rencana Tindak Lanjut dari Hasil Nyatakan &amp; Kesimpulan
+                      </h3>
+                      <p className="text-[10px] text-cyan-200">
+                        Sesuai Instrumen Resmi Pengawas Pembina Kusnandar, M.Si &bull; Menghubungkan Selidiki, Amati, Maknai, Berdayakan, Uji, dan Nyatakan
+                      </p>
+                    </div>
+                  </div>
 
-            <h4 className="font-bold text-xs text-slate-800 mb-1">2. Diseminasi &amp; Pengimbasan Praktik Baik</h4>
-            <table className="w-full border-collapse border border-slate-300 text-[11px] mb-8">
-              <thead>
-                <tr className="bg-slate-100 text-slate-800 font-bold">
-                  <th className="border border-slate-300 px-2 py-1.5 text-left">Praktik baik yang diimbaskan</th>
-                  <th className="border border-slate-300 px-2 py-1.5 text-left">Sasaran</th>
-                  <th className="border border-slate-300 px-2 py-1.5 text-left w-48">Bentuk (MGMP, berbagi, publikasi)</th>
-                  <th className="border border-slate-300 px-2 py-1.5 text-left w-28">Waktu</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sambung.gerakkan.pengimbasan.map((item, idx) => (
-                  <tr key={item.id || idx}>
-                    <td className="border border-slate-300 px-2 py-1.5 font-semibold text-slate-900">{item.praktikBaik}</td>
-                    <td className="border border-slate-300 px-2 py-1.5 text-slate-700">{item.sasaran}</td>
-                    <td className="border border-slate-300 px-2 py-1.5 text-slate-700">{item.bentuk}</td>
-                    <td className="border border-slate-300 px-2 py-1.5 text-slate-600">{item.waktu}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                  {/* 1. MATRIKS KETERHUBUNGAN ALUR SAMBUNG */}
+                  <h4 className="font-bold text-xs text-slate-800 mb-1">
+                    1. Matriks Keterhubungan Alur Supervisi SAMBUNG (Selidiki s.d. Gerakkan)
+                  </h4>
+                  <table className="w-full border-collapse border border-slate-300 text-[10px] mb-4">
+                    <thead>
+                      <tr className="bg-slate-100 text-slate-800 font-bold">
+                        <th className="border border-slate-300 px-2 py-1 text-center w-8">Tahap</th>
+                        <th className="border border-slate-300 px-2 py-1 text-left w-28">Nama Tahap</th>
+                        <th className="border border-slate-300 px-2 py-1 text-left">Fokus Keterhubungan &amp; Bukti Terverifikasi</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td className="border border-slate-300 px-2 py-1 text-center font-bold text-indigo-700 bg-indigo-50/40">S</td>
+                        <td className="border border-slate-300 px-2 py-1 font-bold text-slate-900">Selidiki (Baseline)</td>
+                        <td className="border border-slate-300 px-2 py-1 text-slate-700">{effectiveAlur.selidikiBaseline}</td>
+                      </tr>
+                      <tr>
+                        <td className="border border-slate-300 px-2 py-1 text-center font-bold text-blue-700 bg-blue-50/40">A</td>
+                        <td className="border border-slate-300 px-2 py-1 font-bold text-slate-900">Amati (Fokus Awal)</td>
+                        <td className="border border-slate-300 px-2 py-1 text-slate-700">{effectiveAlur.amatiObservasi}</td>
+                      </tr>
+                      <tr>
+                        <td className="border border-slate-300 px-2 py-1 text-center font-bold text-emerald-700 bg-emerald-50/40">M</td>
+                        <td className="border border-slate-300 px-2 py-1 font-bold text-slate-900">Maknai (Coaching)</td>
+                        <td className="border border-slate-300 px-2 py-1 text-slate-700">{effectiveAlur.maknaiCoaching}</td>
+                      </tr>
+                      <tr>
+                        <td className="border border-slate-300 px-2 py-1 text-center font-bold text-amber-700 bg-amber-50/40">B</td>
+                        <td className="border border-slate-300 px-2 py-1 font-bold text-slate-900">Berdayakan (Modul)</td>
+                        <td className="border border-slate-300 px-2 py-1 text-slate-700">{effectiveAlur.berdayakanModul}</td>
+                      </tr>
+                      <tr>
+                        <td className="border border-slate-300 px-2 py-1 text-center font-bold text-purple-700 bg-purple-50/40">U</td>
+                        <td className="border border-slate-300 px-2 py-1 font-bold text-slate-900">Uji (Lapangan 25 Aspek)</td>
+                        <td className="border border-slate-300 px-2 py-1 text-slate-700">{effectiveAlur.ujiPembuktian}</td>
+                      </tr>
+                      <tr>
+                        <td className="border border-slate-300 px-2 py-1 text-center font-bold text-rose-700 bg-rose-50/40">N</td>
+                        <td className="border border-slate-300 px-2 py-1 font-bold text-slate-900">Nyatakan (Data Dampak)</td>
+                        <td className="border border-slate-300 px-2 py-1 text-slate-700">{effectiveAlur.nyatakanDampak}</td>
+                      </tr>
+                      <tr>
+                        <td className="border border-slate-300 px-2 py-1 text-center font-bold text-cyan-800 bg-cyan-50/60">G</td>
+                        <td className="border border-slate-300 px-2 py-1 font-bold text-slate-900">Gerakkan (RTL Nyatakan)</td>
+                        <td className="border border-slate-300 px-2 py-1 text-slate-900 font-medium bg-cyan-50/20">{effectiveAlur.gerakkanKomitmen}</td>
+                      </tr>
+                    </tbody>
+                  </table>
 
-            {/* PENGESAHAN AKHIR */}
-            <div className="pt-6 border-t border-slate-300 grid grid-cols-2 gap-8 text-center text-xs">
-              <div>
-                <p className="text-slate-600 mb-12">Mengetahui,<br/>Guru Mata Pelajaran,</p>
-                <p className="font-bold underline text-slate-900">{supervision.teacherName}</p>
-                <p className="text-[11px] text-slate-500">NIP. {supervision.teacherNip || '-'}</p>
-              </div>
-              <div>
-                <p className="text-slate-600 mb-12">Bogor, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}<br/>Pengawas Sekolah Pembina SMA,</p>
-                <p className="font-bold underline text-slate-900">Kusnandar, M.Si</p>
-                <p className="text-[11px] text-slate-500">Pengawas Pembina Disdik Prov. Jawa Barat</p>
-              </div>
-            </div>
+                  {/* 2. TABEL RENCANA TINDAK LANJUT BERDASARKAN HASIL NYATAKAN */}
+                  <h4 className="font-bold text-xs text-slate-800 mb-1">
+                    2. Tabel Rencana Tindak Lanjut Berdasarkan Hasil Nyatakan &amp; Kesimpulan (5 Indikator Transformasi)
+                  </h4>
+                  <table className="w-full border-collapse border border-slate-300 text-[10px] mb-4">
+                    <thead>
+                      <tr className="bg-slate-100 text-slate-800 font-bold">
+                        <th className="border border-slate-300 px-1.5 py-1 text-center w-7">No</th>
+                        <th className="border border-slate-300 px-2 py-1 text-left w-36">Fokus Transformasi</th>
+                        <th className="border border-slate-300 px-2 py-1 text-left w-48">Rangkuman Hasil Nyatakan &amp; Uji</th>
+                        <th className="border border-slate-300 px-2 py-1 text-left">Rencana Tindak Lanjut Konkret (Guru)</th>
+                        <th className="border border-slate-300 px-2 py-1 text-left w-32">Mitra &amp; Sasaran</th>
+                        <th className="border border-slate-300 px-2 py-1 text-left w-24">Waktu &amp; Bukti</th>
+                        <th className="border border-slate-300 px-2 py-1 text-left w-40">Rekomendasi Supervisi</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {effectiveRtl.map((item, idx) => (
+                        <tr key={item.id || idx} className="align-top">
+                          <td className="border border-slate-300 px-1.5 py-1 text-center font-semibold">{idx + 1}</td>
+                          <td className="border border-slate-300 px-2 py-1 font-bold text-slate-900 bg-slate-50/40">
+                            {item.indikator}
+                          </td>
+                          <td className="border border-slate-300 px-2 py-1 text-slate-700 bg-cyan-50/15 leading-snug">
+                            {item.hasilNyatakan}
+                          </td>
+                          <td className="border border-slate-300 px-2 py-1 font-medium text-slate-900 whitespace-pre-line leading-snug">
+                            {item.rencanaTindakLanjut}
+                          </td>
+                          <td className="border border-slate-300 px-2 py-1 text-slate-700 leading-snug">
+                            {item.mitraKolaborasi}
+                          </td>
+                          <td className="border border-slate-300 px-2 py-1 text-slate-700 leading-snug">
+                            <span className="font-semibold block">{item.waktuPelaksanaan}</span>
+                            <span className="text-[9px] text-slate-500 italic mt-0.5 block">{item.buktiKeberhasilan}</span>
+                          </td>
+                          <td className="border border-slate-300 px-2 py-1 text-amber-950 bg-amber-50/20 leading-snug">
+                            {item.rekomendasiSupervisi}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
 
-            <div className="mt-8 text-center text-[10px] text-slate-400 print:text-slate-500">
-              Dokumen Portofolio Resmi Strategi SAMBUNG &bull; Sistem Informasi Pengawasan, Pendampingan, dan Evaluasi Guru SMA &bull; Pengawas Kusnandar, M.Si
-            </div>
+                  {/* 3. TINDAK LANJUT TEMUAN SUPERVISI LAPANGAN */}
+                  <h4 className="font-bold text-xs text-slate-800 mb-1">
+                    3. Rencana Tindak Lanjut Temuan Observasi Lapangan
+                  </h4>
+                  <table className="w-full border-collapse border border-slate-300 text-[10px] mb-4">
+                    <thead>
+                      <tr className="bg-slate-100 text-slate-800 font-bold">
+                        <th className="border border-slate-300 px-1.5 py-1 w-7 text-center">No</th>
+                        <th className="border border-slate-300 px-2 py-1 text-left">Temuan Supervisi</th>
+                        <th className="border border-slate-300 px-2 py-1 text-left">Aksi Tindak Lanjut</th>
+                        <th className="border border-slate-300 px-2 py-1 text-left w-36">Penanggung Jawab</th>
+                        <th className="border border-slate-300 px-2 py-1 text-left w-24">Waktu</th>
+                        <th className="border border-slate-300 px-2 py-1 text-left w-44">Target Hasil</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sambung.gerakkan.tindakLanjut.map((item, idx) => (
+                        <tr key={item.id || idx}>
+                          <td className="border border-slate-300 px-1.5 py-1 text-center font-semibold">{idx + 1}</td>
+                          <td className="border border-slate-300 px-2 py-1 font-medium text-slate-900">{item.temuanSupervisi}</td>
+                          <td className="border border-slate-300 px-2 py-1 text-slate-700">{item.tindakLanjut}</td>
+                          <td className="border border-slate-300 px-2 py-1 text-slate-700">{item.penanggungJawab}</td>
+                          <td className="border border-slate-300 px-2 py-1 text-slate-600">{item.waktu}</td>
+                          <td className="border border-slate-300 px-2 py-1 text-slate-800 font-medium">{item.hasil}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+
+                  {/* 4. DISEMINASI & PENGIMBASAN PRAKTIK BAIK */}
+                  <h4 className="font-bold text-xs text-slate-800 mb-1">
+                    4. Diseminasi &amp; Pengimbasan Praktik Baik di Komunitas Belajar
+                  </h4>
+                  <table className="w-full border-collapse border border-slate-300 text-[10px] mb-6">
+                    <thead>
+                      <tr className="bg-slate-100 text-slate-800 font-bold">
+                        <th className="border border-slate-300 px-2 py-1 text-left">Praktik Baik yang Diimbaskan</th>
+                        <th className="border border-slate-300 px-2 py-1 text-left w-52">Sasaran Komunitas</th>
+                        <th className="border border-slate-300 px-2 py-1 text-left w-52">Bentuk Diseminasi</th>
+                        <th className="border border-slate-300 px-2 py-1 text-left w-32">Linimasa Waktu</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sambung.gerakkan.pengimbasan.map((item, idx) => (
+                        <tr key={item.id || idx}>
+                          <td className="border border-slate-300 px-2 py-1 font-semibold text-slate-900">{item.praktikBaik}</td>
+                          <td className="border border-slate-300 px-2 py-1 text-slate-700">{item.sasaran}</td>
+                          <td className="border border-slate-300 px-2 py-1 text-slate-700">{item.bentuk}</td>
+                          <td className="border border-slate-300 px-2 py-1 text-slate-600">{item.waktu}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+
+                  {/* CATATAN PENGESAHAN PENGUATAN SUPERVISOR */}
+                  <div className="bg-slate-50 border border-slate-300 p-2.5 rounded-lg mb-6 text-[10px]">
+                    <strong className="text-slate-900 block mb-0.5">Catatan Resmi Pengawas Pembina Kusnandar, M.Si:</strong>
+                    <p className="text-slate-700 italic leading-relaxed">
+                      "{effectiveAlur.catatanPengawas}"
+                    </p>
+                  </div>
+
+                  {/* PENGESAHAN TRIPARTIT AKHIR */}
+                  <div className="pt-4 border-t border-slate-300 grid grid-cols-3 gap-4 text-center text-xs">
+                    <div>
+                      <p className="text-slate-600 mb-14">Guru Mata Pelajaran,<br/>(Pihak I Komitmen RTL)</p>
+                      <p className="font-bold underline text-slate-900">{supervision.teacherName}</p>
+                      <p className="text-[10px] text-slate-500">NIP. {supervision.teacherNip || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-600 mb-14">Mengetahui,<br/>Kepala Sekolah {supervision.schoolName}</p>
+                      <p className="font-bold underline text-slate-900">Kepala {supervision.schoolName}</p>
+                      <p className="text-[10px] text-slate-500">NIP. 19700101 199503 1 002</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-600 mb-14">Bogor, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}<br/>Pengawas Sekolah Pembina SMA,</p>
+                      <p className="font-bold underline text-slate-900">Kusnandar, M.Si</p>
+                      <p className="text-[10px] text-slate-500">Pengawas Pembina Disdik Prov. Jawa Barat</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 text-center text-[9px] text-slate-400 print:text-slate-500">
+                    Dokumen Portofolio Resmi Strategi SAMBUNG (Tahap G - Gerakkan) &bull; Sistem Informasi Pengawasan, Pendampingan, dan Evaluasi Guru SMA &bull; Pengawas Kusnandar, M.Si
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
         </div>

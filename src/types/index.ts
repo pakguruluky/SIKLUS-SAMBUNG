@@ -111,14 +111,20 @@ export interface Supervision {
     completedAt?: string;
   };
 
-  // C. Observasi Kelas
+  // C. Observasi Kelas (25 Aspek Sesuai PDF Halaman 9-13, Skala 0, 1, 2)
   observasiKelas: {
-    items: Record<string, { status: 'Ya' | 'Tidak'; note: string }>;
-    totalYa: number;
+    items: Record<string, { status?: 'Ya' | 'Tidak'; score?: number; note: string }>;
+    totalYa?: number;
     totalAspek: number;
-    score: number; // (Total "Ya" / Total Aspek) * 100
+    totalSkor?: number;
+    score: number; // percentage (0 - 100)
     predicate: string;
-    feedbackNotes: string;
+    feedbackNotes?: string;
+    feedback?: {
+      kelebihan?: string;
+      peningkatan?: string;
+      rekomendasi?: string;
+    };
     completedAt?: string;
   };
 
@@ -193,12 +199,18 @@ export interface Supervision {
   };
 
   observasiKelasPerbaikan?: {
-    items: Record<string, { status: 'Ya' | 'Tidak'; note: string }>;
-    totalYa: number;
+    items: Record<string, { status?: 'Ya' | 'Tidak'; score?: number; note: string }>;
+    totalYa?: number;
     totalAspek: number;
+    totalSkor?: number;
     score: number;
     predicate: string;
-    feedbackNotes: string;
+    feedbackNotes?: string;
+    feedback?: {
+      kelebihan?: string;
+      peningkatan?: string;
+      rekomendasi?: string;
+    };
     completedAt?: string;
   };
 
@@ -236,6 +248,7 @@ export interface SambungAspekPemetaan {
 
 export interface SambungKegiatanAksi {
   id: number;
+  fokusIndikator?: 'peranGuru' | 'aktivitasMurid' | 'konteksNyata' | 'refleksiMurid' | string;
   kegiatanPembinaan: string;
   indikatorKeberhasilan: string;
   waktu: string;
@@ -249,11 +262,57 @@ export interface SambungCoachingData {
   komitmen: string; // Langkah kecil apa yang akan dicoba? Dukungan apa yang dibutuhkan? Kapan kita tinjau?
 }
 
+// Instrumen Resmi MAKNAI: Coaching dan Refleksi Pasca Observasi (10 Pertanyaan sesuai PDF Pengawas)
+export interface SambungMaknaiPertanyaanList {
+  q1?: string; // Kesan setelah menyajikan pembelajaran (keterlibatan & antusiasme murid)
+  q2?: string; // Kesesuaian proses dengan rencana (memahami, mengaplikasi, merefleksi)
+  q3?: string; // Hal-hal memuaskan (murid aktif, menemukan makna, senang belajar)
+  q4?: string; // Ketercapaian tujuan & bukti penilaian selama proses belajar
+  q5?: string; // Kesulitan murid & tanggapan terhadap perbedaan kemampuan (diferensiasi)
+  q6?: string; // Murid menilai proses dan hasil belajar melalui refleksi & umpan balik guru
+  q7?: string; // Kesulitan Saudara dalam melaksanakan pembelajaran
+  q8?: string; // Alternatif lain mengatasi kesulitan
+  q9?: string; // Identifikasi hal mantap & perlu ditingkatkan (butir observasi bernilai 0 atau 1)
+  q10?: string; // Rencana pertemuan berikutnya untuk memperkuat Pembelajaran Mendalam
+  [key: string]: string | undefined;
+}
+
+export interface SambungMaknaiData {
+  tanggal: string;
+  pertanyaanList?: SambungMaknaiPertanyaanList;
+  kesanUmum?: string;
+  saranMasukan?: string;
+  coaching?: SambungCoachingData;
+}
+
 export interface SambungSiklusBerdayakan {
   siklus: number;
   rancanganDanUjiCoba: string; // Rancangan dan hasil uji coba pada murid
   refleksi: string; // Refleksi (berhasil / belum, mengapa)
   perbaikanBerikutnya: string; // Perbaikan berikutnya
+}
+
+export interface SambungBerdayakanData {
+  rppPerbaikanUrl?: string;
+  rppPerbaikanTitle?: string;
+  tanggalTelaah?: string;
+  namaPenelaah?: string;
+  telaahScores?: Record<number, number | 'NA'>;
+  telaahComments?: Record<number, string>;
+  telaahSummary?: {
+    totalScore: number;
+    maxPossibleScore: number;
+    finalScore: number;
+    predicate: 'Sangat Baik' | 'Baik' | 'Cukup' | 'Perlu Perbaikan';
+    kategoriDeskripsi?: string;
+  };
+  feedback?: {
+    kelebihan: string;
+    perbaikan: string;
+    rekomendasi: string;
+  };
+  catatanRefleksiGuru?: string;
+  siklusList: SambungSiklusBerdayakan[];
 }
 
 export interface SambungObservasiIndikator {
@@ -321,8 +380,22 @@ export interface SambungData {
     catatanPrioritas?: string;
     matriksBefore?: SambungMatriksPerubahan;
   };
-  // A - ARAHKAN
+  // A - AMATI (Memilih fokus perbaikan dari empat indikator di Kesimpulan Selidiki)
   arahkan: {
+    fokusIndikatorTerpilih?: ('peranGuru' | 'aktivitasMurid' | 'konteksNyata' | 'refleksiMurid' | string)[];
+    analisisKesimpulanSelidiki?: {
+      peranGuru?: string;
+      aktivitasMurid?: string;
+      konteksNyata?: string;
+      refleksiMurid?: string;
+    };
+    targetPerbaikan?: {
+      peranGuru?: string;
+      aktivitasMurid?: string;
+      konteksNyata?: string;
+      refleksiMurid?: string;
+    };
+    alasanFokusPerbaikan?: string;
     periode: string;
     fokusPerubahan: string; // satu kalimat: berdasarkan kebutuhan, realistis, terukur, berdampak pada murid
     kegiatan: SambungKegiatanAksi[];
@@ -333,38 +406,115 @@ export interface SambungData {
       tanggalDisepakati: string;
     };
   };
-  // M - MAKNAI
-  maknai: {
+  // M - MAKNAI (Coaching dan Refleksi Pasca Observasi - 10 Pertanyaan)
+  maknai: SambungMaknaiData;
+  // B - BERDAYAKAN (Input RPP Perbaikan, Telaah Kembali Secara Otomatis, Siklus)
+  berdayakan: SambungBerdayakanData;
+export interface SambungUjiData {
+  // 1. Pra Observasi Uji (8 Pertanyaan Sesuai PDF Hal 1)
+  praObservasi?: {
+    tanggal?: string;
+    interviewDurationMinutes?: number;
+    answers: Record<string, string>; // q1 to q8
+    supervisorNotes?: string;
+  };
+
+  // 2. Observasi Pelaksanaan Pembelajaran Uji (25 Aspek Sesuai PDF Hal 2-5)
+  observasiPelaksanaan?: {
+    tanggal?: string;
+    hariTanggal?: string;
+    kelas?: string;
+    scores: Record<string, number>; // '1' to '25', skala 0, 1, 2
+    comments: Record<string, string>; // '1' to '25'
+    totalScore: number; // max 50
+    finalScore: number; // 0 - 100
+    predicate: 'Sangat Baik' | 'Baik' | 'Cukup' | 'Perlu Perbaikan';
+    feedback: {
+      kelebihan: string;
+      perbaikan: string;
+      rekomendasi: string;
+    };
+  };
+
+  // 3. Coaching dan Refleksi Pasca Observasi Uji (10 Pertanyaan Sesuai PDF Hal 6-7)
+  pascaObservasi?: {
+    tanggal?: string;
+    answers: Record<string, string>; // q1 to q10
+    kesanUmum?: string;
+    saranMasukan?: string;
+  };
+
+  // 4. Kesimpulan Uji (4 Indikator Transformasi Pembelajaran Sesuai PDF Hal 7)
+  kesimpulanUji?: {
+    pengalamanBelajarMurid: string; // Guru berorientasi pada pengalaman belajar murid
+    aplikasiPengetahuan: string;    // Pembelajaran menghasilkan murid aktif mengaplikasikan pengetahuan
+    konteksNyata: string;           // Pembelajaran terhubung dengan konteks nyata
+    refleksiMurid: string;          // Pembelajaran membiasakan murid melakukan refleksi
+  };
+
+  // Kompatibilitas U-1, U-2, dan matriks
+  u1_observasi: {
     tanggal: string;
-    coaching: SambungCoachingData;
+    hariTanggal: string;
+    tahapObservasi: 'awal' | 'siklus' | 'akhir';
+    kelas: string;
+    indikatorList: SambungObservasiIndikator[];
+    totalSkor: number; // max 40
+    persentaseCapaian: number; // totalSkor / 40 * 100
+    apaYangDialamiMurid: string;
+    kekuatanDanRekomendasi: string;
   };
-  // B - BERDAYAKAN
-  berdayakan: {
-    siklusList: SambungSiklusBerdayakan[];
+  u2_angketMurid: {
+    kodeMuridKelas: string;
+    tanggal: string;
+    jumlahResponden: number;
+    items: SambungAngketMuridItem[];
+    halPalingBermakna: string;
+    kesulitanMurid: string;
   };
-  // U - UJI
-  uji: {
-    u1_observasi: {
-      tanggal: string;
-      hariTanggal: string;
-      tahapObservasi: 'awal' | 'siklus' | 'akhir';
-      kelas: string;
-      indikatorList: SambungObservasiIndikator[];
-      totalSkor: number; // max 40
-      persentaseCapaian: number; // totalSkor / 40 * 100
-      apaYangDialamiMurid: string;
-      kekuatanDanRekomendasi: string;
+  matriksAfter?: SambungMatriksPerubahan;
+}
+
+export interface SambungData {
+  // S - SELIDIKI
+  selidiki: {
+    tanggal: string;
+    items: SambungAspekPemetaan[];
+    catatanPrioritas?: string;
+    matriksBefore?: SambungMatriksPerubahan;
+  };
+  // A - AMATI (Memilih fokus perbaikan dari empat indikator di Kesimpulan Selidiki)
+  arahkan: {
+    fokusIndikatorTerpilih?: ('peranGuru' | 'aktivitasMurid' | 'konteksNyata' | 'refleksiMurid' | string)[];
+    analisisKesimpulanSelidiki?: {
+      peranGuru?: string;
+      aktivitasMurid?: string;
+      konteksNyata?: string;
+      refleksiMurid?: string;
     };
-    u2_angketMurid: {
-      kodeMuridKelas: string;
-      tanggal: string;
-      jumlahResponden: number;
-      items: SambungAngketMuridItem[];
-      halPalingBermakna: string;
-      kesulitanMurid: string;
+    targetPerbaikan?: {
+      peranGuru?: string;
+      aktivitasMurid?: string;
+      konteksNyata?: string;
+      refleksiMurid?: string;
     };
-    matriksAfter?: SambungMatriksPerubahan;
+    alasanFokusPerbaikan?: string;
+    periode: string;
+    fokusPerubahan: string; // satu kalimat: berdasarkan kebutuhan, realistis, terukur, berdampak pada murid
+    kegiatan: SambungKegiatanAksi[];
+    tandaTangan?: {
+      pengawas: string; // Kusnandar, M.Si
+      kepalaSekolah: string;
+      guru: string;
+      tanggalDisepakati: string;
+    };
   };
+  // M - MAKNAI (Coaching dan Refleksi Pasca Observasi - 10 Pertanyaan)
+  maknai: SambungMaknaiData;
+  // B - BERDAYAKAN (Input RPP Perbaikan, Telaah Kembali Secara Otomatis, Siklus)
+  berdayakan: SambungBerdayakanData;
+  // U - UJI (Pra Observasi, Observasi Pelaksanaan 25 Aspek, Pasca Observasi 10 Pertanyaan, Kesimpulan Uji 4 Indikator)
+  uji: SambungUjiData;
   // N - NYATAKAN
   nyatakan: {
     beforeAfter: SambungBeforeAfterItem[];

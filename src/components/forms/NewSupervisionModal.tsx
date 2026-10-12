@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Supervision, UserProfile, School } from '../../types';
-import { X, CheckCircle, GraduationCap, Building2 } from 'lucide-react';
+import { X, CheckCircle, GraduationCap, Building2, Zap, Sparkles } from 'lucide-react';
 import { saveSupervision } from '../../services/firebase';
+import { applyAutoFillToSupervision } from '../../data/autoFillData';
 
 interface NewSupervisionModalProps {
   isOpen: boolean;
@@ -79,6 +80,7 @@ export const NewSupervisionModal: React.FC<NewSupervisionModalProps> = ({
       : 'Kusnandar, M.Si'
   );
 
+  const [autoFillSelidiki, setAutoFillSelidiki] = useState(true);
   const [saving, setSaving] = useState(false);
   const [errMsg, setErrMsg] = useState('');
 
@@ -107,7 +109,7 @@ export const NewSupervisionModal: React.FC<NewSupervisionModalProps> = ({
         semester,
         schoolYear,
         lessonTitle,
-        status: 'draft',
+        status: autoFillSelidiki ? 'in_progress' : 'draft',
         supervisorId: currentUser.role === 'admin' || currentUser.role === 'kepsek' ? currentUser.uid : 'admin-kusnandar',
         supervisorName,
         supervisorRole: currentUser.role === 'admin' ? 'admin' : currentUser.role === 'kepsek' ? 'kepsek' : 'admin',
@@ -116,7 +118,7 @@ export const NewSupervisionModal: React.FC<NewSupervisionModalProps> = ({
         perangkatAjar: {
           driveLinks: {
             cpTpAtpUrl: '',
-            modulAjarUrl: '',
+            modulAjarUrl: `https://drive.google.com/file/d/drive_${Date.now()}_RPP_${encodeURIComponent(subject)}/view?usp=sharing`,
           },
           telaahScores: {},
           telaahComments: {},
@@ -177,8 +179,13 @@ export const NewSupervisionModal: React.FC<NewSupervisionModalProps> = ({
         },
       };
 
-      const newId = await saveSupervision(newSup);
-      onCreated({ id: newId, ...newSup });
+      const baseSup: Supervision = { id: `sup-${Date.now()}`, ...newSup };
+      const supToSave: Supervision = autoFillSelidiki 
+        ? applyAutoFillToSupervision(baseSup) 
+        : baseSup;
+
+      const newId = await saveSupervision(supToSave);
+      onCreated({ ...supToSave, id: newId });
       onClose();
     } catch (err: any) {
       console.error(err);
@@ -359,6 +366,27 @@ export const NewSupervisionModal: React.FC<NewSupervisionModalProps> = ({
               placeholder="Kusnandar, M.Si"
               className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-indigo-600"
             />
+          </div>
+
+          {/* Checkbox Auto-Fill Selidiki */}
+          <div className="p-3 bg-indigo-50/70 border border-indigo-200 rounded-xl space-y-1">
+            <label className="flex items-start gap-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={autoFillSelidiki}
+                onChange={(e) => setAutoFillSelidiki(e.target.checked)}
+                className="mt-0.5 rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+              />
+              <div className="text-xs">
+                <span className="font-bold text-indigo-950 flex items-center gap-1.5">
+                  <Zap className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Isi Otomatis Instrumen Selidiki Berdasarkan Mapel &amp; Guru</span>
+                </span>
+                <p className="text-[11px] text-indigo-800/80 mt-0.5">
+                  Otomatis mengisi 22 aspek Telaah RPP, Wawancara Pra-Observasi, Observasi Kelas 25 Aspek, dan menghubungkan ke Siklus SAMBUNG.
+                </p>
+              </div>
+            </label>
           </div>
 
           <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">

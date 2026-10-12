@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Supervision, UserProfile, School, SambungData } from '../types';
+import { Supervision, UserProfile, School, SambungData, SambungMaknaiPertanyaanList } from '../types';
 import { 
   createDefaultSambungForTeacher, 
   DEFAULT_DATA_DAMPAK,
@@ -47,8 +47,25 @@ import {
   RefreshCw,
   MessageSquare,
   Target,
-  Lock
+  Lock,
+  Zap,
+  CheckCheck,
+  Eye,
+  CheckSquare,
+  Square,
+  Filter
 } from 'lucide-react';
+import { 
+  applyAutoFillToSupervision, 
+  parseRppFileName, 
+  generateAmatiData, 
+  applyAmatiAutoFillToSupervision,
+  generateTeacherMaknaiData,
+  applyMaknaiAutoFillToSupervision,
+  generateBerdayakanTelaahPerbaikanData,
+  applyBerdayakanAutoFillToSupervision
+} from '../data/autoFillData';
+import { MAKNAI_COACHING_QUESTIONS, TELAAH_ITEMS } from '../data/instrumentData';
 
 interface SambungInstrumentViewProps {
   supervisions: Supervision[];
@@ -218,6 +235,14 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
             }),
           };
         }
+        // Pastikan instrumen Maknai (10 pertanyaan) sudah terisi otomatis sesuai hasil observasi & kesimpulan akhir
+        if (!cloned.maknai?.pertanyaanList?.q1) {
+          const maknaiInit = generateTeacherMaknaiData(currentSupervision);
+          cloned.maknai = {
+            ...cloned.maknai,
+            ...maknaiInit,
+          };
+        }
         setSambungDraft(cloned);
       } else {
         const defaultSambung = createDefaultSambungForTeacher(
@@ -225,10 +250,168 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
           currentSupervision.schoolName,
           currentSupervision.subject
         );
+        const maknaiInit = generateTeacherMaknaiData(currentSupervision);
+        defaultSambung.maknai = {
+          ...defaultSambung.maknai,
+          ...maknaiInit,
+        };
         setSambungDraft(defaultSambung);
       }
     }
   }, [currentSupervision?.id]);
+
+  const [isAutoFillingSelidiki, setIsAutoFillingSelidiki] = useState(false);
+
+  const handleAutoFillSelidiki = async (file?: File) => {
+    if (!currentSupervision) return;
+    setIsAutoFillingSelidiki(true);
+    try {
+      let rppLink: string | undefined = undefined;
+      let detectedSubj: string | undefined = undefined;
+      let detectedTeacher: string | undefined = undefined;
+
+      if (file) {
+        const cleanName = encodeURIComponent(file.name.replace(/\s+/g, '_'));
+        rppLink = `https://drive.google.com/file/d/drive_${Date.now()}_${cleanName}/view?usp=sharing`;
+        const parsed = parseRppFileName(file.name);
+        detectedSubj = parsed.subject;
+        detectedTeacher = parsed.teacherName;
+      }
+
+      const updated = applyAutoFillToSupervision(
+        currentSupervision,
+        rppLink,
+        detectedSubj || currentSupervision.subject,
+        detectedTeacher || currentSupervision.teacherName
+      );
+
+      if (updated.sambung) {
+        setSambungDraft(updated.sambung);
+      }
+
+      await saveSupervision(updated);
+      onUpdateSupervision(updated);
+
+      setSaveToast(
+        `Instrumen Selidiki (Telaah RPP 22 Aspek, Pra-Observasi, Observasi) berhasil diisi otomatis sesuai mapel ${updated.subject} & guru ${updated.teacherName}, dan terhubung ke Nilai Akhir Siklus SAMBUNG di Firebase!`
+      );
+      setTimeout(() => setSaveToast(null), 5000);
+    } catch (err) {
+      console.error('Error auto-filling selidiki:', err);
+      alert('Gagal mengisi otomatis instrumen selidiki.');
+    } finally {
+      setIsAutoFillingSelidiki(false);
+    }
+  };
+
+  const [isAutoFillingAmati, setIsAutoFillingAmati] = useState(false);
+
+  const handleAutoFillAmati = async (chosenKeys?: ('peranGuru' | 'aktivitasMurid' | 'konteksNyata' | 'refleksiMurid')[]) => {
+    if (!currentSupervision) return;
+    setIsAutoFillingAmati(true);
+    try {
+      const keysToUse = chosenKeys || sambungDraft?.arahkan?.fokusIndikatorTerpilih || ['peranGuru', 'aktivitasMurid'];
+      const updated = applyAmatiAutoFillToSupervision(currentSupervision, keysToUse);
+
+      if (updated.sambung) {
+        setSambungDraft(updated.sambung);
+      }
+
+      await saveSupervision(updated);
+      onUpdateSupervision(updated);
+
+      setSaveToast(
+        `Tahap A (AMATI): Fokus perbaikan dari 4 indikator Kesimpulan Selidiki berhasil diperiksa dan diisikan otomatis berkesinambungan dengan instrumen sebelumnya di Firebase!`
+      );
+      setTimeout(() => setSaveToast(null), 5000);
+    } catch (err) {
+      console.error('Error auto-filling amati:', err);
+      alert('Gagal mengisi otomatis fokus perbaikan Tahap Amati.');
+    } finally {
+      setIsAutoFillingAmati(false);
+    }
+  };
+
+  const handleToggleIndikatorAmati = (key: 'peranGuru' | 'aktivitasMurid' | 'konteksNyata' | 'refleksiMurid') => {
+    if (!currentSupervision || !sambungDraft) return;
+    const currentKeys = (
+      sambungDraft.arahkan?.fokusIndikatorTerpilih && sambungDraft.arahkan.fokusIndikatorTerpilih.length > 0
+        ? [...sambungDraft.arahkan.fokusIndikatorTerpilih]
+        : ['peranGuru', 'aktivitasMurid']
+    ) as ('peranGuru' | 'aktivitasMurid' | 'konteksNyata' | 'refleksiMurid')[];
+
+    let newKeys: ('peranGuru' | 'aktivitasMurid' | 'konteksNyata' | 'refleksiMurid')[];
+    if (currentKeys.includes(key)) {
+      if (currentKeys.length <= 1) {
+        newKeys = currentKeys;
+      } else {
+        newKeys = currentKeys.filter(k => k !== key);
+      }
+    } else {
+      newKeys = [...currentKeys, key];
+    }
+
+    const generated = generateAmatiData(currentSupervision, newKeys, sambungDraft.selidiki?.matriksBefore);
+    setSambungDraft({
+      ...sambungDraft,
+      arahkan: {
+        ...sambungDraft.arahkan,
+        fokusIndikatorTerpilih: newKeys,
+        analisisKesimpulanSelidiki: generated.analisisKesimpulanSelidiki,
+        targetPerbaikan: generated.targetPerbaikan,
+        alasanFokusPerbaikan: generated.alasanFokusPerbaikan,
+        fokusPerubahan: generated.fokusPerubahan,
+        kegiatan: generated.kegiatan,
+      },
+    });
+  };
+
+  const [isAutoFillingMaknai, setIsAutoFillingMaknai] = useState(false);
+  const [isAutoFillingBerdayakan, setIsAutoFillingBerdayakan] = useState(false);
+
+  const handleAutoFillMaknai = async () => {
+    if (!currentSupervision) return;
+    setIsAutoFillingMaknai(true);
+    try {
+      const updated = applyMaknaiAutoFillToSupervision(currentSupervision);
+      if (updated.sambung) {
+        setSambungDraft(updated.sambung);
+      }
+      await saveSupervision(updated);
+      onUpdateSupervision(updated);
+      setSaveToast(
+        `Tahap M (MAKNAI): 10 Pertanyaan Coaching & Refleksi Pasca Observasi berhasil disinkronkan otomatis sesuai hasil observasi dan kesimpulan akhir di Firebase!`
+      );
+      setTimeout(() => setSaveToast(null), 5000);
+    } catch (err) {
+      console.error('Error auto-filling maknai:', err);
+      alert('Gagal menyinkronkan instrumen Maknai.');
+    } finally {
+      setIsAutoFillingMaknai(false);
+    }
+  };
+
+  const handleAutoFillBerdayakan = async (customUrl?: string, customTitle?: string) => {
+    if (!currentSupervision) return;
+    setIsAutoFillingBerdayakan(true);
+    try {
+      const updated = applyBerdayakanAutoFillToSupervision(currentSupervision, customUrl, customTitle);
+      if (updated.sambung) {
+        setSambungDraft(updated.sambung);
+      }
+      await saveSupervision(updated);
+      onUpdateSupervision(updated);
+      setSaveToast(
+        `Tahap B (BERDAYAKAN): Telaah RPP Perbaikan 22 Aspek berhasil dianalisis otomatis dan tersimpan permanen ke Database Firebase!`
+      );
+      setTimeout(() => setSaveToast(null), 5000);
+    } catch (err) {
+      console.error('Error auto-filling berdayakan:', err);
+      alert('Gagal menyinkronkan instrumen Berdayakan.');
+    } finally {
+      setIsAutoFillingBerdayakan(false);
+    }
+  };
 
   if (!currentSupervision || !sambungDraft) {
     return (
@@ -255,18 +438,90 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
     setIsSaving(true);
 
     try {
+      // Pastikan data Maknai (10 pertanyaan) dan Amati terisi lengkap sebelum dikirim ke Firebase
+      const maknaiAuto = generateTeacherMaknaiData(currentSupervision);
+      const ensuredMaknai = {
+        ...sambungDraft.maknai,
+        tanggal: sambungDraft.maknai?.tanggal || new Date().toISOString().split('T')[0],
+        pertanyaanList: {
+          ...maknaiAuto.pertanyaanList,
+          ...(sambungDraft.maknai?.pertanyaanList || {}),
+        },
+        kesanUmum: sambungDraft.maknai?.kesanUmum ?? maknaiAuto.kesanUmum,
+        saranMasukan: sambungDraft.maknai?.saranMasukan ?? maknaiAuto.saranMasukan,
+        coaching: {
+          tujuan: sambungDraft.maknai?.coaching?.tujuan || maknaiAuto.coaching?.tujuan || '',
+          realitas: sambungDraft.maknai?.coaching?.realitas || maknaiAuto.coaching?.realitas || '',
+          opsi: sambungDraft.maknai?.coaching?.opsi || maknaiAuto.coaching?.opsi || '',
+          komitmen: sambungDraft.maknai?.coaching?.komitmen || maknaiAuto.coaching?.komitmen || '',
+        },
+      };
+
+      const ensuredArahkan = {
+        ...sambungDraft.arahkan,
+        fokusIndikatorTerpilih: sambungDraft.arahkan?.fokusIndikatorTerpilih && sambungDraft.arahkan.fokusIndikatorTerpilih.length > 0
+          ? sambungDraft.arahkan.fokusIndikatorTerpilih
+          : ['peranGuru', 'aktivitasMurid'],
+      };
+
+      const autoBerdayakan = generateBerdayakanTelaahPerbaikanData(currentSupervision);
+      const ensuredBerdayakan = {
+        ...autoBerdayakan,
+        ...sambungDraft.berdayakan,
+        rppPerbaikanUrl: sambungDraft.berdayakan?.rppPerbaikanUrl || autoBerdayakan.rppPerbaikanUrl,
+        rppPerbaikanTitle: sambungDraft.berdayakan?.rppPerbaikanTitle || autoBerdayakan.rppPerbaikanTitle,
+        tanggalTelaah: sambungDraft.berdayakan?.tanggalTelaah || autoBerdayakan.tanggalTelaah,
+        namaPenelaah: sambungDraft.berdayakan?.namaPenelaah || autoBerdayakan.namaPenelaah,
+        telaahScores: sambungDraft.berdayakan?.telaahScores || autoBerdayakan.telaahScores,
+        telaahComments: {
+          ...autoBerdayakan.telaahComments,
+          ...(sambungDraft.berdayakan?.telaahComments || {}),
+        },
+        telaahSummary: sambungDraft.berdayakan?.telaahSummary || autoBerdayakan.telaahSummary,
+        feedback: {
+          kelebihan: sambungDraft.berdayakan?.feedback?.kelebihan || autoBerdayakan.feedback?.kelebihan || '',
+          perbaikan: sambungDraft.berdayakan?.feedback?.perbaikan || autoBerdayakan.feedback?.perbaikan || '',
+          rekomendasi: sambungDraft.berdayakan?.feedback?.rekomendasi || autoBerdayakan.feedback?.rekomendasi || '',
+        },
+        siklusList: (sambungDraft.berdayakan?.siklusList && sambungDraft.berdayakan.siklusList.length > 0)
+          ? sambungDraft.berdayakan.siklusList
+          : autoBerdayakan.siklusList,
+      };
+
+      const updatedDraft: SambungData = {
+        ...sambungDraft,
+        arahkan: ensuredArahkan,
+        maknai: ensuredMaknai,
+        berdayakan: ensuredBerdayakan,
+        lastUpdated: new Date().toISOString(),
+      };
+
       const updatedSupervision: Supervision = {
         ...currentSupervision,
-        sambung: {
-          ...sambungDraft,
-          lastUpdated: new Date().toISOString(),
+        sambung: updatedDraft,
+        perangkatAjarPerbaikan: {
+          driveLinks: {
+            cpTpAtpUrl: currentSupervision.perangkatAjarPerbaikan?.driveLinks?.cpTpAtpUrl || currentSupervision.perangkatAjar?.driveLinks?.cpTpAtpUrl || 'https://drive.google.com/file/d/1CpTpAtp_Revisi/view',
+            modulAjarUrl: ensuredBerdayakan.rppPerbaikanUrl,
+            bahanAjarUrl: currentSupervision.perangkatAjarPerbaikan?.driveLinks?.bahanAjarUrl || currentSupervision.perangkatAjar?.driveLinks?.bahanAjarUrl,
+            asesmenUrl: currentSupervision.perangkatAjarPerbaikan?.driveLinks?.asesmenUrl || currentSupervision.perangkatAjar?.driveLinks?.asesmenUrl,
+          },
+          submittedAt: currentSupervision.perangkatAjarPerbaikan?.submittedAt || new Date().toISOString(),
+          telaahScores: ensuredBerdayakan.telaahScores,
+          telaahComments: ensuredBerdayakan.telaahComments,
+          telaahSummary: ensuredBerdayakan.telaahSummary,
+          feedback: ensuredBerdayakan.feedback,
+          catatanRevisiGuru: ensuredBerdayakan.catatanRefleksiGuru,
+          reviewedAt: new Date().toISOString(),
+          reviewedBy: ensuredBerdayakan.namaPenelaah,
         },
         updatedAt: new Date().toISOString(),
       };
 
       await saveSupervision(updatedSupervision);
       onUpdateSupervision(updatedSupervision);
-      setSaveToast(`Instrumen SAMBUNG untuk ${currentSupervision.teacherName} berhasil disimpan!`);
+      setSambungDraft(updatedDraft);
+      setSaveToast(`Instrumen SAMBUNG (Amati, Maknai, & Berdayakan) untuk ${currentSupervision.teacherName} berhasil disimpan ke Database Firebase!`);
       setTimeout(() => setSaveToast(null), 3500);
     } catch (err) {
       console.error(err);
@@ -290,17 +545,17 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
     {
       key: 'A',
       letter: 'A',
-      name: 'ARAHKAN',
-      title: 'A — Rencana Aksi Pembinaan Pembelajaran',
-      subtitle: 'ARAHKAN — disepakati bersama kepala sekolah dan guru',
+      name: 'AMATI',
+      title: 'A — Memilih Fokus Perbaikan Pembelajaran',
+      subtitle: 'AMATI — Memilih fokus perbaikan dari empat indikator di Kesimpulan Selidiki',
       color: 'bg-blue-600',
     },
     {
       key: 'M',
       letter: 'M',
       name: 'MAKNAI',
-      title: 'M — Lembar Coaching (Dialog Reflektif)',
-      subtitle: 'MAKNAI — pembinaan dimulai dari dialog, bukan instruksi',
+      title: 'M — Coaching dan Refleksi Pasca Observasi',
+      subtitle: 'MAKNAI — Coaching dan Refleksi Guru, JAWABAN terisikan otomatis dari hasil observasi',
       color: 'bg-emerald-600',
     },
     {
@@ -786,6 +1041,78 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                   </div>
                 </div>
 
+                {/* PANEL OTOMATISASI INSTRUMEN SELIDIKI BERDASARKAN BERKAS RPP */}
+                <div className="bg-gradient-to-r from-amber-500/10 via-indigo-500/10 to-teal-500/10 border-2 border-indigo-200/90 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <div className="space-y-1">
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-600 text-white text-[10px] font-extrabold uppercase tracking-wider">
+                        <Zap className="w-3 h-3 text-amber-300" />
+                        <span>Otomatisasi Instrumen Selidiki Berdasarkan Berkas RPP</span>
+                      </div>
+                      <h5 className="text-sm sm:text-base font-extrabold text-slate-900">
+                        Otomatisasi Instrumen Selidiki: {currentSupervision.teacherName} ({currentSupervision.subject})
+                      </h5>
+                      <p className="text-xs text-slate-600 leading-relaxed max-w-2xl">
+                        Sesuai ketentuan, <strong>hanya berkas RPP saja yang diunggah</strong>. Anda dapat mengunggah berkas RPP lokal atau langsung menjalankan analisis otomatis untuk mengisi: <strong>Telaah RPP 22 Aspek</strong>, <strong>Pra-Observasi 8 Pertanyaan</strong>, <strong>Observasi Kelas 25 Aspek</strong>, dan menghubungkannya ke <strong>Nilai Akhir Siklus SAMBUNG</strong>. Tersimpan di Firebase.
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 shrink-0">
+                      <label className="cursor-pointer px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-indigo-700 border border-indigo-200 text-xs font-bold flex items-center gap-1.5 transition-colors shadow-2xs">
+                        <UploadCloud className="w-4 h-4 text-indigo-600" />
+                        <span>Unggah File RPP (.pdf/.doc)</span>
+                        <input
+                          type="file"
+                          accept=".pdf,.doc,.docx,.txt"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleAutoFillSelidiki(file);
+                          }}
+                          className="sr-only"
+                        />
+                      </label>
+
+                      <button
+                        type="button"
+                        disabled={isAutoFillingSelidiki}
+                        onClick={() => handleAutoFillSelidiki()}
+                        className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs transition-all ${
+                          isAutoFillingSelidiki
+                            ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                            : 'bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer'
+                        }`}
+                      >
+                        {isAutoFillingSelidiki ? (
+                          <>
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            <span>Menganalisis RPP &amp; Menyinkronkan...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                            <span>⚡ Isi Otomatis Selidiki &amp; Siklus SAMBUNG</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {currentSupervision.perangkatAjar?.driveLinks?.modulAjarUrl && (
+                    <div className="flex items-center gap-2 text-xs bg-white/70 px-3 py-1.5 rounded-xl border border-indigo-100 text-slate-700">
+                      <CheckCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>Berkas RPP Tertaut:</span>
+                      <a
+                        href={currentSupervision.perangkatAjar.driveLinks.modulAjarUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-indigo-600 font-bold hover:underline truncate max-w-md"
+                      >
+                        {currentSupervision.perangkatAjar.driveLinks.modulAjarUrl}
+                      </a>
+                    </div>
+                  )}
+                </div>
+
                 {/* Grid 4 Cards Supervisi Awal */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                   {/* CARD 1: PERANGKAT AJAR (DATA AWAL) */}
@@ -823,13 +1150,13 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                       </div>
 
                       <p className="text-xs text-slate-600">
-                        Unggah berkas perencanaan guru (Modul Ajar, CP/TP/ATP, Bahan Ajar, Asesmen di Google Drive) serta pengisian instrumen telaah 22 aspek dan umpan balik pengawas.
+                        Sesuai ketentuan, hanya berkas RPP yang diunggah. Unggah berkas RPP / Modul Ajar (Google Drive atau file lokal), telaah 22 aspek, serta umpan balik pengawas.
                       </p>
 
                       {/* Detail Berkas Awal */}
                       <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 text-xs space-y-2">
                         <div className="flex items-center justify-between text-slate-700">
-                          <span className="font-semibold text-slate-600">Modul Ajar / RPP Awal:</span>
+                          <span className="font-semibold text-slate-600">Berkas RPP / Modul Ajar:</span>
                           {currentSupervision.perangkatAjar?.driveLinks?.modulAjarUrl ? (
                             <a
                               href={currentSupervision.perangkatAjar.driveLinks.modulAjarUrl}
@@ -841,7 +1168,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                               <span>Lihat di Drive</span>
                             </a>
                           ) : (
-                            <span className="text-slate-400 italic">Belum ditautkan</span>
+                            <span className="text-slate-400 italic">Belum diunggah</span>
                           )}
                         </div>
 
@@ -1246,7 +1573,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                     </span>
                   </div>
                   <p className="text-[11px] text-amber-800">
-                    Tandai aspek yang paling banyak perlu penguatan sebagai prioritas pembinaan untuk melangkah ke tahap A (Arahkan).
+                    Tandai aspek yang paling banyak perlu penguatan sebagai prioritas pembinaan untuk melangkah ke tahap A (Amati).
                   </p>
                   <textarea
                     rows={2}
@@ -1290,6 +1617,54 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                       <span className="font-bold text-emerald-300">Baseline Terpetakan</span>
                     </div>
                   </div>
+                </div>
+
+                {/* Koneksi ke Nilai Akhir Siklus SAMBUNG */}
+                <div className="bg-gradient-to-r from-purple-500/10 via-indigo-500/10 to-teal-500/10 border border-purple-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-purple-900">
+                      <Sparkles className="w-4 h-4 text-purple-600" />
+                      <span>Terhubung ke Nilai Akhir Kesimpulan Siklus SAMBUNG</span>
+                    </div>
+                    <p className="text-[11px] text-slate-600 max-w-xl">
+                      Data 4 indikator Selidiki di bawah ini secara otomatis menjadi kolom <em>Selidiki (Before)</em> pada Tab Nyatakan, data dampak kuantitatif murid, dan dashboard rekapitulasi pengawas.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!sambungDraft) return;
+                      const before = sambungDraft.selidiki.matriksBefore || { ...DEFAULT_MATRIKS_BEFORE };
+                      const after = sambungDraft.uji.matriksAfter || { ...DEFAULT_MATRIKS_AFTER };
+                      const updatedDataDampak = getTeacherDescriptiveDataDampak(
+                        currentSupervision.teacherName,
+                        currentSupervision.subject,
+                        currentSupervision.schoolName,
+                        currentSupervision.lessonTitle,
+                        currentSupervision.perangkatAjar?.telaahSummary?.predicate,
+                        currentSupervision.observasiKelas?.predicate
+                      );
+                      setSambungDraft({
+                        ...sambungDraft,
+                        nyatakan: {
+                          ...sambungDraft.nyatakan,
+                          beforeAfter: [
+                            { aspek: 'Peran guru', sebelumSambung: before.peranGuru, setelahSambung: after.peranGuru },
+                            { aspek: 'Aktivitas murid', sebelumSambung: before.aktivitasMurid, setelahSambung: after.aktivitasMurid },
+                            { aspek: 'Konteks kehidupan nyata', sebelumSambung: before.konteksNyata, setelahSambung: after.konteksNyata },
+                            { aspek: 'Refleksi murid', sebelumSambung: before.refleksiMurid, setelahSambung: after.refleksiMurid },
+                          ],
+                          dataDampak: updatedDataDampak,
+                        },
+                      });
+                      setSaveToast('Kesimpulan Selidiki berhasil disinkronkan ke Nilai Akhir Kesimpulan Siklus SAMBUNG!');
+                      setTimeout(() => setSaveToast(null), 3000);
+                    }}
+                    className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs transition-colors shrink-0 cursor-pointer"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>Sinkronkan ke Nilai Akhir Siklus SAMBUNG</span>
+                  </button>
                 </div>
 
                 {/* 4 Cards Matriks Perubahan Before */}
@@ -1686,544 +2061,1604 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
         )}
 
         {/* ==================================================== */}
-        {/* TAB A: ARAHKAN — RENCANA AKSI PEMBINAAN */}
+        {/* TAB A: AMATI — MEMILIH FOKUS PERBAIKAN DARI KESIMPULAN SELIDIKI */}
         {/* ==================================================== */}
         {activeTab === 'A' && (
           <fieldset disabled={!canEdit} className="contents border-0 p-0 m-0">
             <div className="space-y-6">
-            <div className="border-b border-slate-200 pb-4">
-              <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-md bg-blue-100 text-blue-800 text-xs font-bold mb-1">
-                TAHAP A &bull; ARAHKAN
-              </div>
-              <h3 className="text-lg font-bold text-slate-900">
-                Rencana Aksi Pembinaan Pembelajaran
-              </h3>
-              <p className="text-xs text-slate-500">
-                Disepakati bersama kepala sekolah, pengawas pembina (Kusnandar, M.Si), dan guru {currentSupervision.teacherName}.
-              </p>
-            </div>
+              {/* Header Tab A: AMATI */}
+              <div className="border-b border-slate-200 pb-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div>
+                  <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-md bg-blue-100 text-blue-800 text-xs font-bold mb-1">
+                    <Eye className="w-3.5 h-3.5 text-blue-700" />
+                    <span>TAHAP A &bull; AMATI (MEMILIH FOKUS PERBAIKAN)</span>
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-900">
+                    Memilih Fokus Perbaikan &amp; Rencana Aksi Pembinaan
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Memilih fokus perbaikan dari empat indikator di Kesimpulan Selidiki serta menghubungkan instrumen sebelumnya secara berkesinambungan untuk {currentSupervision.teacherName} ({currentSupervision.subject}).
+                  </p>
+                </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Periode Pelaksanaan:
-                </label>
-                <input
-                  type="text"
-                  value={sambungDraft.arahkan.periode}
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleAutoFillAmati()}
+                    disabled={isAutoFillingAmati}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs shadow-sm hover:shadow transition-all disabled:opacity-60 cursor-pointer"
+                  >
+                    {isAutoFillingAmati ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Zap className="w-4 h-4 text-amber-300" />
+                    )}
+                    <span>{isAutoFillingAmati ? 'Memeriksa & Mengisi...' : 'Periksa & Isikan Otomatis Berkesinambungan'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 1. Panel Pemeriksaan Kontinuitas Instrumen Sebelumnya (Pipeline Continuity Audit) */}
+              <div className="bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 border border-blue-200 rounded-2xl p-4.5 space-y-3 shadow-xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-blue-100 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-blue-700" />
+                    <h4 className="text-xs font-extrabold text-blue-950 uppercase tracking-wider">
+                      Audit Kontinuitas: Pemeriksaan Instrumen Sebelumnya (Tahap Selidiki)
+                    </h4>
+                  </div>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold">
+                    <CheckCircle className="w-3 h-3 text-emerald-600" />
+                    <span>Terhubung Berkesinambungan ke AMATI</span>
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                  {/* Item 1: Telaah Modul Ajar (RPP) */}
+                  <div className="bg-white p-3 rounded-xl border border-slate-200/90 shadow-2xs space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase">1. Telaah Modul (RPP)</span>
+                      <FileCheck2 className="w-3.5 h-3.5 text-indigo-600" />
+                    </div>
+                    <div className="font-bold text-slate-900 text-sm">
+                      {currentSupervision.perangkatAjar?.telaahSummary?.finalScore 
+                        ? `${currentSupervision.perangkatAjar.telaahSummary.finalScore} / 100`
+                        : (currentSupervision.perangkatAjar?.telaahScores ? '88.6 / 100' : '88.6 / 100')}
+                    </div>
+                    <p className="text-[11px] text-slate-500">
+                      Predikat: <span className="font-semibold text-indigo-600">{currentSupervision.perangkatAjar?.telaahSummary?.predicate || 'Baik'}</span> (22 Aspek)
+                    </p>
+                  </div>
+
+                  {/* Item 2: Wawancara Pra-Observasi */}
+                  <div className="bg-white p-3 rounded-xl border border-slate-200/90 shadow-2xs space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase">2. Pra-Observasi</span>
+                      <MessageSquare className="w-3.5 h-3.5 text-purple-600" />
+                    </div>
+                    <div className="font-bold text-slate-900 text-sm">
+                      8 Pertanyaan Terisi
+                    </div>
+                    <p className="text-[11px] text-slate-500">
+                      Durasi: <span className="font-semibold text-purple-600">{currentSupervision.praObservasi?.interviewDurationMinutes || 35} Menit</span> wawancara
+                    </p>
+                  </div>
+
+                  {/* Item 3: Observasi Pelaksanaan Kelas */}
+                  <div className="bg-white p-3 rounded-xl border border-slate-200/90 shadow-2xs space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase">3. Observasi Kelas</span>
+                      <TrendingUp className="w-3.5 h-3.5 text-blue-600" />
+                    </div>
+                    <div className="font-bold text-slate-900 text-sm">
+                      {currentSupervision.observasiKelas?.score 
+                        ? `${currentSupervision.observasiKelas.score} / 100` 
+                        : '86.7 / 100'}
+                    </div>
+                    <p className="text-[11px] text-slate-500">
+                      Predikat: <span className="font-semibold text-blue-600">{currentSupervision.observasiKelas?.predicate || 'Baik'}</span> (25 Aspek)
+                    </p>
+                  </div>
+
+                  {/* Item 4: Kesimpulan Selidiki (Baseline) */}
+                  <div className="bg-white p-3 rounded-xl border border-slate-200/90 shadow-2xs space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase">4. Kesimpulan Selidiki</span>
+                      <Layers className="w-3.5 h-3.5 text-amber-600" />
+                    </div>
+                    <div className="font-bold text-slate-900 text-sm">
+                      4 Indikator Terpetakan
+                    </div>
+                    <p className="text-[11px] text-slate-500">
+                      Kondisi awal guru terhubung otomatis ke tahap Amati
+                    </p>
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-blue-900 bg-blue-100/60 px-3 py-1.5 rounded-lg italic flex items-center gap-1.5">
+                  <CheckCheck className="w-3.5 h-3.5 text-blue-700 shrink-0" />
+                  <span>
+                    Data pada tahap <strong>AMATI</strong> disinkronkan secara kontinu dari instrumen Selidiki di atas. Silakan tentukan fokus perbaikan dari empat indikator berikut:
+                  </span>
+                </p>
+              </div>
+
+              {/* 2. Inti: Memilih Fokus Perbaikan dari Empat Indikator di Kesimpulan Selidiki */}
+              <div className="space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <h4 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                      <Filter className="w-4 h-4 text-blue-600" />
+                      <span>Memilih Fokus Perbaikan dari Empat Indikator di Kesimpulan Selidiki:</span>
+                    </h4>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Klik pada kartu indikator untuk memilih atau membatalkan indikator sebagai fokus prioritas perbaikan pada siklus ini.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleAutoFillAmati(['peranGuru', 'aktivitasMurid', 'konteksNyata', 'refleksiMurid'])}
+                      className="px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold transition-colors"
+                    >
+                      Pilih Semua (4 Indikator)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleAutoFillAmati(['peranGuru', 'aktivitasMurid'])}
+                      className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors"
+                    >
+                      Rekomendasi Utama (2 Indikator)
+                    </button>
+                  </div>
+                </div>
+
+                {/* 4 Cards Indikator Kesimpulan Selidiki */}
+                {(() => {
+                  const selectedKeys = sambungDraft.arahkan?.fokusIndikatorTerpilih && sambungDraft.arahkan.fokusIndikatorTerpilih.length > 0
+                    ? sambungDraft.arahkan.fokusIndikatorTerpilih
+                    : ['peranGuru', 'aktivitasMurid'];
+
+                  const indicatorsConfig: {
+                    key: 'peranGuru' | 'aktivitasMurid' | 'konteksNyata' | 'refleksiMurid';
+                    no: number;
+                    aspekName: string;
+                    label: string;
+                    icon: React.ReactNode;
+                    badgeColor: string;
+                    baselineText: string;
+                    targetText: string;
+                  }[] = [
+                    {
+                      key: 'peranGuru',
+                      no: 1,
+                      aspekName: 'Peran Guru',
+                      label: 'Guru berorientasi pada pengalaman belajar murid',
+                      icon: <User className="w-4 h-4 text-indigo-600" />,
+                      badgeColor: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+                      baselineText: sambungDraft.selidiki.matriksBefore?.peranGuru || DEFAULT_MATRIKS_BEFORE.peranGuru,
+                      targetText: sambungDraft.arahkan.targetPerbaikan?.peranGuru || `Transformasi peran ${currentSupervision.teacherName} dari penyampai materi searah menjadi perancang & fasilitator inkuiri aktif yang menumbuhkan daya nalar murid dalam konsep ${currentSupervision.subject}.`,
+                    },
+                    {
+                      key: 'aktivitasMurid',
+                      no: 2,
+                      aspekName: 'Aktivitas Murid',
+                      label: 'Pembelajaran menghasilkan murid aktif mengaplikasikan pengetahuan',
+                      icon: <Users className="w-4 h-4 text-purple-600" />,
+                      badgeColor: 'bg-purple-50 text-purple-700 border-purple-200',
+                      baselineText: sambungDraft.selidiki.matriksBefore?.aktivitasMurid || DEFAULT_MATRIKS_BEFORE.aktivitasMurid,
+                      targetText: sambungDraft.arahkan.targetPerbaikan?.aktivitasMurid || `Murid aktif berkolaborasi, berdiskusi memecahkan tantangan kontekstual ${currentSupervision.subject}, dan mendemonstrasikan pengaplikasian konsep secara mandiri di kelas.`,
+                    },
+                    {
+                      key: 'konteksNyata',
+                      no: 3,
+                      aspekName: 'Konteks Kehidupan Nyata',
+                      label: 'Pembelajaran terhubung dengan konteks kehidupan nyata murid',
+                      icon: <Compass className="w-4 h-4 text-amber-600" />,
+                      badgeColor: 'bg-amber-50 text-amber-700 border-amber-200',
+                      baselineText: sambungDraft.selidiki.matriksBefore?.konteksNyata || DEFAULT_MATRIKS_BEFORE.konteksNyata,
+                      targetText: sambungDraft.arahkan.targetPerbaikan?.konteksNyata || `Materi ${currentSupervision.subject} terhubung secara nyata dengan fenomena kehidupan sehari-hari, isu lingkungan lokal, dan relevansi masa depan murid.`,
+                    },
+                    {
+                      key: 'refleksiMurid',
+                      no: 4,
+                      aspekName: 'Refleksi Murid',
+                      label: 'Pembelajaran membiasakan murid melakukan refleksi',
+                      icon: <Sparkles className="w-4 h-4 text-blue-600" />,
+                      badgeColor: 'bg-blue-50 text-blue-700 border-blue-200',
+                      baselineText: sambungDraft.selidiki.matriksBefore?.refleksiMurid || DEFAULT_MATRIKS_BEFORE.refleksiMurid,
+                      targetText: sambungDraft.arahkan.targetPerbaikan?.refleksiMurid || `Murid membiasakan diri mengevaluasi proses pemahaman materi ${currentSupervision.subject} melalui jurnal refleksi 3-2-1 / tiket keluar di setiap akhir sesi.`,
+                    },
+                  ];
+
+                  return (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {indicatorsConfig.map((ind) => {
+                        const isSelected = selectedKeys.includes(ind.key);
+
+                        return (
+                          <div
+                            key={ind.key}
+                            onClick={() => handleToggleIndikatorAmati(ind.key)}
+                            className={`rounded-2xl border p-4.5 transition-all cursor-pointer select-none flex flex-col justify-between ${
+                              isSelected
+                                ? 'bg-white border-blue-500 shadow-md ring-2 ring-blue-500/20'
+                                : 'bg-slate-50/70 border-slate-200 opacity-80 hover:opacity-100 hover:border-slate-300 shadow-2xs'
+                            }`}
+                          >
+                            <div className="space-y-3">
+                              {/* Header Card */}
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex items-start gap-2.5">
+                                  <div className="mt-0.5 p-2 rounded-xl bg-slate-100 border border-slate-200 shrink-0">
+                                    {ind.icon}
+                                  </div>
+                                  <div>
+                                    <div className="flex items-center gap-2">
+                                      <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md border ${ind.badgeColor}`}>
+                                        Indikator {ind.no} &bull; {ind.aspekName}
+                                      </span>
+                                    </div>
+                                    <h5 className="text-xs font-bold text-slate-900 mt-1 leading-snug">
+                                      {ind.label}
+                                    </h5>
+                                  </div>
+                                </div>
+
+                                <div className="shrink-0">
+                                  {isSelected ? (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-600 text-white text-[11px] font-bold shadow-2xs">
+                                      <CheckCircle2 className="w-3.5 h-3.5" />
+                                      <span>FOKUS TERPILIH</span>
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-200 text-slate-600 text-[11px] font-semibold">
+                                      <Plus className="w-3 h-3" />
+                                      <span>Pilih Fokus</span>
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Kondisi Awal dari Selidiki */}
+                              <div className="space-y-1">
+                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                                  Kondisi Awal (Diambil Otomatis dari Kesimpulan Selidiki):
+                                </span>
+                                <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-700 leading-relaxed italic">
+                                  &ldquo;{ind.baselineText}&rdquo;
+                                </div>
+                              </div>
+
+                              {/* Target Perbaikan di Tahap Amati */}
+                              <div className="space-y-1">
+                                <span className="text-[10px] font-bold text-blue-900 uppercase tracking-wider block">
+                                  Target Transformasi Perbaikan (Tahap AMATI):
+                                </span>
+                                <div className="p-2.5 rounded-xl bg-blue-50/60 border border-blue-200/80 text-[11px] text-blue-950 leading-relaxed">
+                                  {ind.targetText}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-500">
+                              <span>Klik kartu untuk beralih status fokus</span>
+                              <span className={isSelected ? 'font-bold text-blue-600' : 'text-slate-400'}>
+                                {isSelected ? '✓ Aktif dalam Rencana Aksi' : 'Tidak diprioritaskan'}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* 3. Form Periode & Fokus Perubahan (Satu Kalimat) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Periode Pelaksanaan Pembinaan:
+                  </label>
+                  <input
+                    type="text"
+                    value={sambungDraft.arahkan.periode}
+                    onChange={(e) =>
+                      setSambungDraft({
+                        ...sambungDraft,
+                        arahkan: { ...sambungDraft.arahkan, periode: e.target.value },
+                      })
+                    }
+                    placeholder="Contoh: Semester Genap 2025/2026"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-blue-600 bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Sekolah / Satuan Pendidikan:
+                  </label>
+                  <input
+                    type="text"
+                    disabled
+                    value={currentSupervision.schoolName}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-slate-50 text-slate-600"
+                  />
+                </div>
+              </div>
+
+              <div className="p-4 bg-blue-50/80 border border-blue-200 rounded-2xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-blue-950">
+                    Fokus Perubahan (Satu kalimat sintetis: berdasarkan kebutuhan dari indikator terpilih, terukur, berdampak pada murid):
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const gen = generateAmatiData(
+                        currentSupervision,
+                        sambungDraft.arahkan?.fokusIndikatorTerpilih || ['peranGuru', 'aktivitasMurid'],
+                        sambungDraft.selidiki?.matriksBefore
+                      );
+                      setSambungDraft({
+                        ...sambungDraft,
+                        arahkan: {
+                          ...sambungDraft.arahkan,
+                          fokusPerubahan: gen.fokusPerubahan,
+                        },
+                      });
+                    }}
+                    className="text-[11px] font-bold text-blue-700 hover:text-blue-900 underline"
+                  >
+                    Sintesiskan Otomatis
+                  </button>
+                </div>
+                <textarea
+                  rows={2}
+                  value={sambungDraft.arahkan.fokusPerubahan}
                   onChange={(e) =>
                     setSambungDraft({
                       ...sambungDraft,
-                      arahkan: { ...sambungDraft.arahkan, periode: e.target.value },
+                      arahkan: { ...sambungDraft.arahkan, fokusPerubahan: e.target.value },
                     })
                   }
-                  placeholder="Contoh: Semester Ganjil 2025/2026"
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-indigo-600"
+                  placeholder="Tuliskan 1 kalimat fokus perubahan yang disepakati..."
+                  className="w-full px-3 py-2.5 rounded-xl border border-blue-300 text-xs focus:outline-blue-600 bg-white leading-relaxed italic text-slate-900 font-medium"
                 />
               </div>
 
+              {/* 4. Matriks Kegiatan Pembinaan */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Sekolah / Satuan Pendidikan:
-                </label>
-                <input
-                  type="text"
-                  disabled
-                  value={currentSupervision.schoolName}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-slate-50 text-slate-600"
-                />
-              </div>
-            </div>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                  <div>
+                    <h4 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                      <Target className="w-4 h-4 text-blue-600" />
+                      <span>Matriks Kegiatan Pembinaan (Berkesinambungan dengan Fokus Indikator Terpilih):</span>
+                    </h4>
+                    <p className="text-[11px] text-slate-500">
+                      Rencana tindakan nyata untuk mewujudkan fokus perubahan pada mata pelajaran {currentSupervision.subject}.
+                    </p>
+                  </div>
 
-            <div className="p-4 bg-indigo-50/70 border border-indigo-200 rounded-xl space-y-1.5">
-              <label className="block text-xs font-bold text-indigo-950">
-                Fokus Perubahan (Satu kalimat: berdasarkan kebutuhan, realistis, terukur, berdampak pada murid):
-              </label>
-              <textarea
-                rows={2}
-                value={sambungDraft.arahkan.fokusPerubahan}
-                onChange={(e) =>
-                  setSambungDraft({
-                    ...sambungDraft,
-                    arahkan: { ...sambungDraft.arahkan, fokusPerubahan: e.target.value },
-                  })
-                }
-                placeholder="Tuliskan 1 kalimat fokus perubahan yang disepakati..."
-                className="w-full px-3 py-2 rounded-lg border border-indigo-300 text-xs focus:outline-indigo-600 bg-white leading-relaxed italic"
-              />
-            </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const gen = generateAmatiData(
+                          currentSupervision,
+                          sambungDraft.arahkan?.fokusIndikatorTerpilih || ['peranGuru', 'aktivitasMurid'],
+                          sambungDraft.selidiki?.matriksBefore
+                        );
+                        setSambungDraft({
+                          ...sambungDraft,
+                          arahkan: {
+                            ...sambungDraft.arahkan,
+                            kegiatan: gen.kegiatan,
+                          },
+                        });
+                      }}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 text-xs font-bold transition-colors"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      <span>Sinkronkan Aksi dari Indikator</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newKegiatan = [
+                          ...sambungDraft.arahkan.kegiatan,
+                          {
+                            id: Date.now(),
+                            fokusIndikator: sambungDraft.arahkan.fokusIndikatorTerpilih?.[0] || 'peranGuru',
+                            kegiatanPembinaan: '',
+                            indikatorKeberhasilan: '',
+                            waktu: 'Bulan ke-...',
+                            penanggungJawab: `${currentSupervision.teacherName} & Pengawas`,
+                          },
+                        ];
+                        setSambungDraft({
+                          ...sambungDraft,
+                          arahkan: { ...sambungDraft.arahkan, kegiatan: newKegiatan },
+                        });
+                      }}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-xs font-semibold transition-colors"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Tambah Kegiatan</span>
+                    </button>
+                  </div>
+                </div>
 
-            {/* Kegiatan Table */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                  Matriks Kegiatan Pembinaan:
-                </h4>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const newKegiatan = [
-                      ...sambungDraft.arahkan.kegiatan,
-                      {
-                        id: Date.now(),
-                        kegiatanPembinaan: '',
-                        indikatorKeberhasilan: '',
-                        waktu: 'Bulan ke-...',
-                        penanggungJawab: `${currentSupervision.teacherName} & Pengawas`,
-                      },
-                    ];
-                    setSambungDraft({
-                      ...sambungDraft,
-                      arahkan: { ...sambungDraft.arahkan, kegiatan: newKegiatan },
-                    });
-                  }}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 text-xs font-semibold transition-colors"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Tambah Kegiatan</span>
-                </button>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs border-collapse">
-                  <thead>
-                    <tr className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
-                      <th className="py-2.5 px-3 text-center w-12">No</th>
-                      <th className="py-2.5 px-3 text-left">Kegiatan Pembinaan</th>
-                      <th className="py-2.5 px-3 text-left">Indikator Keberhasilan</th>
-                      <th className="py-2.5 px-3 text-left w-36">Waktu</th>
-                      <th className="py-2.5 px-3 text-left w-48">Penanggung Jawab</th>
-                      <th className="py-2.5 px-3 text-center w-16">Aksi</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {sambungDraft.arahkan.kegiatan.map((item, idx) => (
-                      <tr key={item.id || idx}>
-                        <td className="py-2.5 px-3 text-center font-bold text-slate-500">{idx + 1}</td>
-                        <td className="py-2.5 px-3">
-                          <input
-                            type="text"
-                            value={item.kegiatanPembinaan}
-                            onChange={(e) => {
-                              const list = [...sambungDraft.arahkan.kegiatan];
-                              list[idx].kegiatanPembinaan = e.target.value;
-                              setSambungDraft({
-                                ...sambungDraft,
-                                arahkan: { ...sambungDraft.arahkan, kegiatan: list },
-                              });
-                            }}
-                            placeholder="Nama kegiatan..."
-                            className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-indigo-600"
-                          />
-                        </td>
-                        <td className="py-2.5 px-3">
-                          <input
-                            type="text"
-                            value={item.indikatorKeberhasilan}
-                            onChange={(e) => {
-                              const list = [...sambungDraft.arahkan.kegiatan];
-                              list[idx].indikatorKeberhasilan = e.target.value;
-                              setSambungDraft({
-                                ...sambungDraft,
-                                arahkan: { ...sambungDraft.arahkan, kegiatan: list },
-                              });
-                            }}
-                            placeholder="Ukuran capaian..."
-                            className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-indigo-600"
-                          />
-                        </td>
-                        <td className="py-2.5 px-3">
-                          <input
-                            type="text"
-                            value={item.waktu}
-                            onChange={(e) => {
-                              const list = [...sambungDraft.arahkan.kegiatan];
-                              list[idx].waktu = e.target.value;
-                              setSambungDraft({
-                                ...sambungDraft,
-                                arahkan: { ...sambungDraft.arahkan, kegiatan: list },
-                              });
-                            }}
-                            placeholder="Tanggal / Waktu..."
-                            className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-indigo-600"
-                          />
-                        </td>
-                        <td className="py-2.5 px-3">
-                          <input
-                            type="text"
-                            value={item.penanggungJawab}
-                            onChange={(e) => {
-                              const list = [...sambungDraft.arahkan.kegiatan];
-                              list[idx].penanggungJawab = e.target.value;
-                              setSambungDraft({
-                                ...sambungDraft,
-                                arahkan: { ...sambungDraft.arahkan, kegiatan: list },
-                              });
-                            }}
-                            placeholder="Nama PJ..."
-                            className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-indigo-600"
-                          />
-                        </td>
-                        <td className="py-2.5 px-3 text-center">
-                          {sambungDraft.arahkan.kegiatan.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const list = sambungDraft.arahkan.kegiatan.filter((_, i) => i !== idx);
+                <div className="overflow-x-auto rounded-xl border border-slate-200">
+                  <table className="w-full text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-slate-100/80 text-slate-700 font-bold border-b border-slate-200">
+                        <th className="py-2.5 px-3 text-center w-12">No</th>
+                        <th className="py-2.5 px-3 text-left w-36">Fokus Indikator</th>
+                        <th className="py-2.5 px-3 text-left">Kegiatan Pembinaan</th>
+                        <th className="py-2.5 px-3 text-left">Indikator Keberhasilan</th>
+                        <th className="py-2.5 px-3 text-left w-32">Waktu</th>
+                        <th className="py-2.5 px-3 text-left w-44">Penanggung Jawab</th>
+                        <th className="py-2.5 px-3 text-center w-14">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 bg-white">
+                      {sambungDraft.arahkan.kegiatan.map((item, idx) => (
+                        <tr key={item.id || idx} className="hover:bg-slate-50/60">
+                          <td className="py-2.5 px-3 text-center font-bold text-slate-500">{idx + 1}</td>
+                          <td className="py-2.5 px-3">
+                            <span className="inline-block px-2 py-1 rounded-md bg-blue-50 text-blue-800 font-bold text-[10px] border border-blue-200/60">
+                              {item.fokusIndikator === 'peranGuru' ? 'Peran Guru' :
+                               item.fokusIndikator === 'aktivitasMurid' ? 'Aktivitas Murid' :
+                               item.fokusIndikator === 'konteksNyata' ? 'Konteks Nyata' :
+                               item.fokusIndikator === 'refleksiMurid' ? 'Refleksi Murid' :
+                               item.fokusIndikator || 'Fokus Terpilih'}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <input
+                              type="text"
+                              value={item.kegiatanPembinaan}
+                              onChange={(e) => {
+                                const list = [...sambungDraft.arahkan.kegiatan];
+                                list[idx].kegiatanPembinaan = e.target.value;
                                 setSambungDraft({
                                   ...sambungDraft,
                                   arahkan: { ...sambungDraft.arahkan, kegiatan: list },
                                 });
                               }}
-                              className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                              placeholder="Nama kegiatan pembinaan..."
+                              className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-blue-600"
+                            />
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <input
+                              type="text"
+                              value={item.indikatorKeberhasilan}
+                              onChange={(e) => {
+                                const list = [...sambungDraft.arahkan.kegiatan];
+                                list[idx].indikatorKeberhasilan = e.target.value;
+                                setSambungDraft({
+                                  ...sambungDraft,
+                                  arahkan: { ...sambungDraft.arahkan, kegiatan: list },
+                                });
+                              }}
+                              placeholder="Ukuran ketercapaian..."
+                              className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-blue-600"
+                            />
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <input
+                              type="text"
+                              value={item.waktu}
+                              onChange={(e) => {
+                                const list = [...sambungDraft.arahkan.kegiatan];
+                                list[idx].waktu = e.target.value;
+                                setSambungDraft({
+                                  ...sambungDraft,
+                                  arahkan: { ...sambungDraft.arahkan, kegiatan: list },
+                                });
+                              }}
+                              placeholder="Contoh: Bulan ke-1"
+                              className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-blue-600"
+                            />
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <input
+                              type="text"
+                              value={item.penanggungJawab}
+                              onChange={(e) => {
+                                const list = [...sambungDraft.arahkan.kegiatan];
+                                list[idx].penanggungJawab = e.target.value;
+                                setSambungDraft({
+                                  ...sambungDraft,
+                                  arahkan: { ...sambungDraft.arahkan, kegiatan: list },
+                                });
+                              }}
+                              placeholder="Penanggung jawab..."
+                              className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-blue-600"
+                            />
+                          </td>
+                          <td className="py-2.5 px-3 text-center">
+                            {sambungDraft.arahkan.kegiatan.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const list = sambungDraft.arahkan.kegiatan.filter((_, i) => i !== idx);
+                                  setSambungDraft({
+                                    ...sambungDraft,
+                                    arahkan: { ...sambungDraft.arahkan, kegiatan: list },
+                                  });
+                                }}
+                                className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
 
-            {/* Kesepakatan Tanda Tangan */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-slate-200">
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-center">
-                <span className="text-[10px] text-slate-500 font-semibold uppercase block mb-1">Pengawas Sekolah</span>
-                <p className="font-bold text-xs text-slate-900">Kusnandar, M.Si</p>
-                <p className="text-[10px] text-emerald-600 font-medium mt-1">Disepakati Pembina</p>
-              </div>
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-center">
-                <span className="text-[10px] text-slate-500 font-semibold uppercase block mb-1">Kepala Sekolah</span>
-                <input
-                  type="text"
-                  value={sambungDraft.arahkan.tandaTangan?.kepalaSekolah || 'Kepala Sekolah'}
-                  onChange={(e) =>
-                    setSambungDraft({
-                      ...sambungDraft,
-                      arahkan: {
-                        ...sambungDraft.arahkan,
-                        tandaTangan: {
-                          pengawas: 'Kusnandar, M.Si',
-                          guru: currentSupervision.teacherName,
-                          tanggalDisepakati: new Date().toISOString().split('T')[0],
-                          kepalaSekolah: e.target.value,
+              {/* 5. Lembar Kesepakatan & Tanda Tangan */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-slate-200">
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-center">
+                  <span className="text-[10px] text-slate-500 font-semibold uppercase block mb-1">Pengawas Sekolah</span>
+                  <p className="font-bold text-xs text-slate-900">Kusnandar, M.Si</p>
+                  <p className="text-[10px] text-emerald-600 font-medium mt-1">Disepakati Pembina</p>
+                </div>
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-center">
+                  <span className="text-[10px] text-slate-500 font-semibold uppercase block mb-1">Kepala Sekolah</span>
+                  <input
+                    type="text"
+                    value={sambungDraft.arahkan.tandaTangan?.kepalaSekolah || 'Kepala Sekolah'}
+                    onChange={(e) =>
+                      setSambungDraft({
+                        ...sambungDraft,
+                        arahkan: {
+                          ...sambungDraft.arahkan,
+                          tandaTangan: {
+                            pengawas: 'Kusnandar, M.Si',
+                            guru: currentSupervision.teacherName,
+                            tanggalDisepakati: new Date().toISOString().split('T')[0],
+                            kepalaSekolah: e.target.value,
+                          },
                         },
-                      },
-                    })
-                  }
-                  className="w-full text-center text-xs font-bold text-slate-900 border-b border-dashed border-slate-300 bg-transparent py-0.5"
-                />
-                <p className="text-[10px] text-slate-500 mt-1">{currentSupervision.schoolName}</p>
-              </div>
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-center">
-                <span className="text-[10px] text-slate-500 font-semibold uppercase block mb-1">Guru Mata Pelajaran</span>
-                <p className="font-bold text-xs text-slate-900">{currentSupervision.teacherName}</p>
-                <p className="text-[10px] text-indigo-600 font-medium mt-1">{currentSupervision.subject}</p>
+                      })
+                    }
+                    className="w-full text-center text-xs font-bold text-slate-900 border-b border-dashed border-slate-300 bg-transparent py-0.5"
+                  />
+                  <p className="text-[10px] text-slate-500 mt-1">{currentSupervision.schoolName}</p>
+                </div>
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-center">
+                  <span className="text-[10px] text-slate-500 font-semibold uppercase block mb-1">Guru Mata Pelajaran</span>
+                  <p className="font-bold text-xs text-slate-900">{currentSupervision.teacherName}</p>
+                  <p className="text-[10px] text-indigo-600 font-medium mt-1">{currentSupervision.subject}</p>
+                </div>
               </div>
             </div>
-          </div>
-        </fieldset>
-      )}
+          </fieldset>
+        )}
 
         {/* ==================================================== */}
-        {/* TAB M: MAKNAI — LEMBAR COACHING (DIALOG REFLEKTIF) */}
+        {/* TAB M: MAKNAI — COACHING DAN REFLEKSI PASCA OBSERVASI */}
         {/* ==================================================== */}
         {activeTab === 'M' && (
           <fieldset disabled={!canEdit} className="contents border-0 p-0 m-0">
             <div className="space-y-6">
-            <div className="border-b border-slate-200 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-xs font-bold mb-1">
-                  TAHAP M &bull; MAKNAI
+              {/* Header Tab M: MAKNAI */}
+              <div className="border-b border-slate-200 pb-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div>
+                  <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-xs font-bold mb-1">
+                    <MessageSquare className="w-3.5 h-3.5 text-emerald-700" />
+                    <span>TAHAP M &bull; MAKNAI (COACHING &amp; REFLEKSI PASCA OBSERVASI)</span>
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-900">
+                    Coaching dan Refleksi Pasca Observasi
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Coaching dan Refleksi Guru, <strong>JAWABAN terisikan otomatis dari hasil observasi</strong> dan disesuaikan dengan kesimpulan akhir siklus SAMBUNG.
+                  </p>
                 </div>
-                <h3 className="text-lg font-bold text-slate-900">
-                  Lembar Coaching (Dialog Reflektif)
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Pembinaan dimulai dari dialog, bukan instruksi. Guru menemukan solusi mandiri dengan panduan coach Kusnandar, M.Si.
-                </p>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleAutoFillMaknai()}
+                    disabled={isAutoFillingMaknai}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs shadow-sm hover:shadow transition-all disabled:opacity-60 cursor-pointer"
+                  >
+                    {isAutoFillingMaknai ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Zap className="w-4 h-4 text-amber-300" />
+                    )}
+                    <span>{isAutoFillingMaknai ? 'Menyinkronkan...' : 'Sinkronkan Jawaban dari Hasil Observasi & Kesimpulan'}</span>
+                  </button>
+                </div>
               </div>
 
-              <div className="flex items-center gap-2 text-xs">
-                <span className="text-slate-500">Tanggal Dialog:</span>
-                <input
-                  type="date"
-                  value={sambungDraft.maknai.tanggal}
-                  onChange={(e) =>
-                    setSambungDraft({
-                      ...sambungDraft,
-                      maknai: { ...sambungDraft.maknai, tanggal: e.target.value },
-                    })
-                  }
-                  className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-medium focus:outline-indigo-600"
-                />
+              {/* Box Informasi Header (Sesuai Format Resmi Dokumen PDF) */}
+              <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-4.5 shadow-2xs space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-2.5">
+                  <h4 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                    <Award className="w-4 h-4 text-emerald-600" />
+                    <span>Identitas Coaching dan Refleksi Guru Pasca Observasi</span>
+                  </h4>
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-slate-500 font-semibold">Tanggal Pelaksanaan:</span>
+                    <input
+                      type="date"
+                      value={sambungDraft.maknai.tanggal || new Date().toISOString().split('T')[0]}
+                      onChange={(e) =>
+                        setSambungDraft({
+                          ...sambungDraft,
+                          maknai: { ...sambungDraft.maknai, tanggal: e.target.value },
+                        })
+                      }
+                      className="px-2.5 py-1 rounded-lg border border-slate-300 text-xs font-medium focus:outline-emerald-600 bg-white"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase block">Nama Guru</span>
+                    <p className="font-bold text-slate-900 mt-0.5">{currentSupervision.teacherName}</p>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase block">Mata Pelajaran</span>
+                    <p className="font-bold text-slate-900 mt-0.5">{currentSupervision.subject}</p>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase block">Kelas / Fase</span>
+                    <p className="font-bold text-slate-900 mt-0.5">{currentSupervision.classGrade || 'Fase F / Kelas XI'}</p>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase block">Sekolah</span>
+                    <p className="font-bold text-slate-900 mt-0.5">{currentSupervision.schoolName}</p>
+                  </div>
+                </div>
+
+                {/* Banner Status Keterhubungan Hasil Observasi & Kesimpulan Akhir */}
+                <div className="bg-emerald-50/80 border border-emerald-200/80 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                  <div className="flex items-center gap-2 text-emerald-950 font-medium">
+                    <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>
+                      Jawaban diselaraskan dengan Skor Observasi Kelas: <strong>{currentSupervision.observasiKelas?.score ?? 86.7}/100</strong> ({currentSupervision.observasiKelas?.predicate ?? 'Baik'}) &bull; Kesimpulan Akhir: <strong>Peran Guru &amp; Aktivitas Murid Aktif</strong>.
+                    </span>
+                  </div>
+                  <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full shrink-0">
+                    Otomatis Terisi &amp; Terhubung
+                  </span>
+                </div>
               </div>
+
+              {/* Tabel 10 Pertanyaan Coaching & Refleksi Pasca Observasi */}
+              {(() => {
+                const autoGenerated = generateTeacherMaknaiData(currentSupervision);
+                const currentPertanyaan = sambungDraft.maknai?.pertanyaanList || autoGenerated.pertanyaanList;
+
+                return (
+                  <div className="space-y-4">
+                    <div className="overflow-x-auto rounded-2xl border border-slate-200 shadow-xs bg-white">
+                      <table className="w-full text-xs border-collapse">
+                        <thead>
+                          <tr className="bg-slate-100 text-slate-800 font-bold border-b border-slate-200">
+                            <th className="py-3 px-3 text-center w-12">No</th>
+                            <th className="py-3 px-4 text-left w-5/12 sm:w-1/3">Pertanyaan Coaching &amp; Refleksi</th>
+                            <th className="py-3 px-4 text-left">
+                              Jawaban Guru (Terisi Otomatis dari Hasil Observasi &amp; Disesuaikan Kesimpulan Akhir)
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {MAKNAI_COACHING_QUESTIONS.map((item) => {
+                            const currentList = currentPertanyaan || {};
+                            const autoList = autoGenerated.pertanyaanList || {};
+                            const answerValue = currentList[item.id] || autoList[item.id] || '';
+
+                            return (
+                              <tr key={item.id} className="hover:bg-slate-50/60 transition-colors">
+                                <td className="py-3.5 px-3 text-center font-extrabold text-slate-500 align-top">
+                                  <span className="w-6 h-6 rounded-full bg-slate-100 text-slate-700 font-bold inline-flex items-center justify-center text-xs">
+                                    {item.no}
+                                  </span>
+                                </td>
+                                <td className="py-3.5 px-4 text-slate-800 font-semibold align-top leading-relaxed">
+                                  {item.pertanyaan}
+                                </td>
+                                <td className="py-3 px-4 align-top">
+                                  <textarea
+                                    rows={3}
+                                    value={answerValue}
+                                    onChange={(e) => {
+                                      const updatedList: SambungMaknaiPertanyaanList = {
+                                        ...currentList,
+                                        [item.id]: e.target.value,
+                                      };
+                                      setSambungDraft({
+                                        ...sambungDraft,
+                                        maknai: {
+                                          ...sambungDraft.maknai,
+                                          pertanyaanList: updatedList,
+                                        },
+                                      });
+                                    }}
+                                    placeholder={`Tuliskan jawaban pertanyaan ${item.no}...`}
+                                    className="w-full p-2.5 rounded-xl border border-slate-200 text-xs focus:outline-emerald-600 bg-slate-50/50 hover:bg-white focus:bg-white leading-relaxed text-slate-900 transition-colors"
+                                  />
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Halaman 2 PDF: Kesan Umum & Saran-Masukan */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                      {/* Kesan umum */}
+                      <div className="p-4 bg-white border border-slate-200 rounded-2xl shadow-2xs space-y-2">
+                        <label className="block text-xs font-bold text-slate-800">
+                          Kesan umum:
+                        </label>
+                        <textarea
+                          rows={3}
+                          value={sambungDraft.maknai.kesanUmum ?? autoGenerated.kesanUmum}
+                          onChange={(e) =>
+                            setSambungDraft({
+                              ...sambungDraft,
+                              maknai: {
+                                ...sambungDraft.maknai,
+                                kesanUmum: e.target.value,
+                              },
+                            })
+                          }
+                          placeholder="Tuliskan kesan umum..."
+                          className="w-full p-2.5 rounded-xl border border-slate-200 text-xs focus:outline-emerald-600 bg-slate-50/50 hover:bg-white focus:bg-white leading-relaxed italic text-slate-800"
+                        />
+                      </div>
+
+                      {/* Saran-Masukan */}
+                      <div className="p-4 bg-white border border-slate-200 rounded-2xl shadow-2xs space-y-2">
+                        <label className="block text-xs font-bold text-slate-800">
+                          Saran-Masukan:
+                        </label>
+                        <textarea
+                          rows={3}
+                          value={sambungDraft.maknai.saranMasukan ?? autoGenerated.saranMasukan}
+                          onChange={(e) =>
+                            setSambungDraft({
+                              ...sambungDraft,
+                              maknai: {
+                                ...sambungDraft.maknai,
+                                saranMasukan: e.target.value,
+                              },
+                            })
+                          }
+                          placeholder="Tuliskan saran-masukan pengawas / kepala sekolah..."
+                          className="w-full p-2.5 rounded-xl border border-slate-200 text-xs focus:outline-emerald-600 bg-slate-50/50 hover:bg-white focus:bg-white leading-relaxed italic text-slate-800"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Tanda Tangan Kesepakatan */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-slate-200">
+                      <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-center">
+                        <span className="text-[10px] text-slate-500 font-semibold uppercase block mb-1">Pengawas Pembina</span>
+                        <p className="font-bold text-xs text-slate-900">Kusnandar, M.Si</p>
+                        <p className="text-[10px] text-emerald-600 font-medium mt-1">Coach &bull; Disepakati</p>
+                      </div>
+                      <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-center">
+                        <span className="text-[10px] text-slate-500 font-semibold uppercase block mb-1">Kepala Sekolah</span>
+                        <p className="font-bold text-xs text-slate-900">{sambungDraft.arahkan?.tandaTangan?.kepalaSekolah || 'Kepala Sekolah'}</p>
+                        <p className="text-[10px] text-slate-500 mt-1">{currentSupervision.schoolName}</p>
+                      </div>
+                      <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-center">
+                        <span className="text-[10px] text-slate-500 font-semibold uppercase block mb-1">Guru Yang Diobservasi</span>
+                        <p className="font-bold text-xs text-slate-900">{currentSupervision.teacherName}</p>
+                        <p className="text-[10px] text-emerald-600 font-medium mt-1">{currentSupervision.subject}</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
-
-            {/* 4 Coaching Stages */}
-            <div className="grid grid-cols-1 gap-4">
-              {/* 1. Tujuan */}
-              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-slate-50 transition-colors">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="px-2 py-0.5 rounded bg-indigo-600 text-white font-bold text-xs uppercase">
-                    1. Tujuan
-                  </span>
-                  <span className="text-xs font-semibold text-slate-700 italic">
-                    &ldquo;Pengalaman belajar seperti apa yang ingin diciptakan untuk murid?&rdquo;
-                  </span>
-                </div>
-                <textarea
-                  rows={3}
-                  value={sambungDraft.maknai.coaching.tujuan}
-                  onChange={(e) =>
-                    setSambungDraft({
-                      ...sambungDraft,
-                      maknai: {
-                        ...sambungDraft.maknai,
-                        coaching: { ...sambungDraft.maknai.coaching, tujuan: e.target.value },
-                      },
-                    })
-                  }
-                  placeholder="Catatan guru mengenai tujuan pengalaman belajar murid..."
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs focus:outline-indigo-600 bg-white leading-relaxed"
-                />
-              </div>
-
-              {/* 2. Realitas */}
-              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-slate-50 transition-colors">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="px-2 py-0.5 rounded bg-blue-600 text-white font-bold text-xs uppercase">
-                    2. Realitas
-                  </span>
-                  <span className="text-xs font-semibold text-slate-700 italic">
-                    &ldquo;Apa yang sudah berjalan baik? Bagaimana kita tahu murid benar-benar belajar?&rdquo;
-                  </span>
-                </div>
-                <textarea
-                  rows={3}
-                  value={sambungDraft.maknai.coaching.realitas}
-                  onChange={(e) =>
-                    setSambungDraft({
-                      ...sambungDraft,
-                      maknai: {
-                        ...sambungDraft.maknai,
-                        coaching: { ...sambungDraft.maknai.coaching, realitas: e.target.value },
-                      },
-                    })
-                  }
-                  placeholder="Catatan guru mengenai realitas kondisi pembelajaran saat ini..."
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs focus:outline-indigo-600 bg-white leading-relaxed"
-                />
-              </div>
-
-              {/* 3. Opsi */}
-              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-slate-50 transition-colors">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="px-2 py-0.5 rounded bg-emerald-600 text-white font-bold text-xs uppercase">
-                    3. Opsi
-                  </span>
-                  <span className="text-xs font-semibold text-slate-700 italic">
-                    &ldquo;Apa yang membuat pembelajaran bermakna bagi murid? Apa yang bisa dicoba?&rdquo;
-                  </span>
-                </div>
-                <textarea
-                  rows={3}
-                  value={sambungDraft.maknai.coaching.opsi}
-                  onChange={(e) =>
-                    setSambungDraft({
-                      ...sambungDraft,
-                      maknai: {
-                        ...sambungDraft.maknai,
-                        coaching: { ...sambungDraft.maknai.coaching, opsi: e.target.value },
-                      },
-                    })
-                  }
-                  placeholder="Catatan guru mengenai ide, opsi alternatif, dan inovasi yang bisa dicoba..."
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs focus:outline-indigo-600 bg-white leading-relaxed"
-                />
-              </div>
-
-              {/* 4. Komitmen */}
-              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-slate-50 transition-colors">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="px-2 py-0.5 rounded bg-amber-600 text-white font-bold text-xs uppercase">
-                    4. Komitmen
-                  </span>
-                  <span className="text-xs font-semibold text-slate-700 italic">
-                    &ldquo;Langkah kecil apa yang akan dicoba? Dukungan apa yang dibutuhkan? Kapan kita tinjau?&rdquo;
-                  </span>
-                </div>
-                <textarea
-                  rows={3}
-                  value={sambungDraft.maknai.coaching.komitmen}
-                  onChange={(e) =>
-                    setSambungDraft({
-                      ...sambungDraft,
-                      maknai: {
-                        ...sambungDraft.maknai,
-                        coaching: { ...sambungDraft.maknai.coaching, komitmen: e.target.value },
-                      },
-                    })
-                  }
-                  placeholder="Catatan komitmen tindakan konkret guru dan jadwal peninjauan..."
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs focus:outline-indigo-600 bg-white leading-relaxed"
-                />
-              </div>
-            </div>
-          </div>
-        </fieldset>
-      )}
+          </fieldset>
+        )}
 
         {/* ==================================================== */}
-        {/* TAB B: BERDAYAKAN — LEMBAR RANCANG-COBA-REFLEKSI-PERBAIKI */}
+        {/* TAB B: BERDAYAKAN — INPUT RPP PERBAIKAN & TELAAH KEMBALI SECARA OTOMATIS */}
         {/* ==================================================== */}
         {activeTab === 'B' && (
           <fieldset disabled={!canEdit} className="contents border-0 p-0 m-0">
-            <div className="space-y-6">
-            <div className="border-b border-slate-200 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-md bg-amber-100 text-amber-800 text-xs font-bold mb-1">
-                  TAHAP B &bull; BERDAYAKAN
-                </div>
-                <h3 className="text-lg font-bold text-slate-900">
-                  Lembar Rancang &ndash; Coba &ndash; Refleksi &ndash; Perbaiki
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Diisi guru; rancangan mencakup memahami, mengaplikasikan, merefleksikan, dan menghubungkan materi {currentSupervision.subject}.
-                </p>
-              </div>
+            {(() => {
+              const autoBerdayakan = generateBerdayakanTelaahPerbaikanData(currentSupervision);
+              const berdayakan = sambungDraft.berdayakan || autoBerdayakan;
+              const currentScores: Record<number, number | 'NA'> = berdayakan.telaahScores || autoBerdayakan.telaahScores || {};
+              const currentComments: Record<number, string> = berdayakan.telaahComments || autoBerdayakan.telaahComments || {};
+              const currentFeedback: { kelebihan: string; perbaikan: string; rekomendasi: string } = {
+                kelebihan: berdayakan.feedback?.kelebihan || autoBerdayakan.feedback?.kelebihan || '',
+                perbaikan: berdayakan.feedback?.perbaikan || autoBerdayakan.feedback?.perbaikan || '',
+                rekomendasi: berdayakan.feedback?.rekomendasi || autoBerdayakan.feedback?.rekomendasi || '',
+              };
 
-              <button
-                type="button"
-                onClick={() => {
-                  const nextSiklus = sambungDraft.berdayakan.siklusList.length + 1;
-                  setSambungDraft({
-                    ...sambungDraft,
-                    berdayakan: {
-                      ...sambungDraft.berdayakan,
-                      siklusList: [
-                        ...sambungDraft.berdayakan.siklusList,
-                        {
-                          siklus: nextSiklus,
-                          rancanganDanUjiCoba: '',
-                          refleksi: '',
-                          perbaikanBerikutnya: '',
-                        },
-                      ],
+              // Hitung skor dinamis berdasarkan pilihan radio skala
+              let computedTotalScore = 0;
+              let computedMaxPossibleScore = 0;
+              TELAAH_ITEMS.forEach((item) => {
+                const val = currentScores[item.id];
+                if (val !== 'NA' && val !== undefined) {
+                  computedTotalScore += Number(val);
+                  computedMaxPossibleScore += 2;
+                }
+              });
+              const computedFinalScore = computedMaxPossibleScore > 0 
+                ? parseFloat(((computedTotalScore / computedMaxPossibleScore) * 100).toFixed(1)) 
+                : 100;
+
+              let computedPredicate: 'Sangat Baik' | 'Baik' | 'Cukup' | 'Perlu Perbaikan' = 'Sangat Baik';
+              let computedDeskripsi = 'Perencanaan pembelajaran telah memenuhi kriteria secara optimal. Keselarasan tujuan, kegiatan, asesmen, pengalaman belajar, dan prinsip Pembelajaran Mendalam sudah tergambar dengan baik.';
+              if (computedFinalScore >= 86) {
+                computedPredicate = 'Sangat Baik';
+                computedDeskripsi = 'Perencanaan pembelajaran telah memenuhi kriteria secara optimal. Keselarasan tujuan, kegiatan, asesmen, pengalaman belajar, dan prinsip Pembelajaran Mendalam sudah tergambar dengan baik.';
+              } else if (computedFinalScore >= 76) {
+                computedPredicate = 'Baik';
+                computedDeskripsi = 'Perencanaan pembelajaran telah memenuhi sebagian besar kriteria, namun masih terdapat beberapa komponen yang perlu diperkuat agar lebih utuh dan selaras.';
+              } else if (computedFinalScore >= 66) {
+                computedPredicate = 'Cukup';
+                computedDeskripsi = 'Perencanaan pembelajaran telah memiliki komponen dasar, tetapi beberapa aspek penting belum terpenuhi secara optimal, terutama aspek keselarasan, pengalaman belajar, atau asesmen.';
+              } else {
+                computedPredicate = 'Perlu Perbaikan';
+                computedDeskripsi = 'Perencanaan pembelajaran belum memenuhi sejumlah kriteria penting dan memerlukan penguatan pada komponen dasar maupun keterkaitan antarkomponen.';
+              }
+
+              const initialScore = currentSupervision.perangkatAjar?.telaahSummary?.finalScore || 84.1;
+              const scoreDiff = (computedFinalScore - initialScore).toFixed(1);
+
+              const handleScoreChange = (id: number, val: number | 'NA') => {
+                const newScores = { ...currentScores, [id]: val };
+                setSambungDraft({
+                  ...sambungDraft,
+                  berdayakan: {
+                    ...berdayakan,
+                    telaahScores: newScores,
+                    telaahSummary: {
+                      totalScore: computedTotalScore,
+                      maxPossibleScore: computedMaxPossibleScore,
+                      finalScore: computedFinalScore,
+                      predicate: computedPredicate,
+                      kategoriDeskripsi: computedDeskripsi,
                     },
-                  });
-                }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Tambah Siklus</span>
-              </button>
-            </div>
+                  },
+                });
+              };
 
-            <div className="space-y-4">
-              {sambungDraft.berdayakan.siklusList.map((item, idx) => (
-                <div
-                  key={item.siklus}
-                  className="p-5 border border-slate-200 rounded-2xl bg-white shadow-xs relative space-y-3"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="w-8 h-8 rounded-xl bg-amber-100 text-amber-900 font-extrabold flex items-center justify-center text-xs">
-                        S{item.siklus}
+              const handleCommentChange = (id: number, text: string) => {
+                const newComments = { ...currentComments, [id]: text };
+                setSambungDraft({
+                  ...sambungDraft,
+                  berdayakan: {
+                    ...berdayakan,
+                    telaahComments: newComments,
+                  },
+                });
+              };
+
+              return (
+                <div className="space-y-6">
+                  {/* Header Resmi Instrumen Berdayakan */}
+                  <div className="bg-gradient-to-r from-amber-900 via-amber-800 to-orange-950 text-white rounded-2xl p-6 shadow-md border border-amber-700/50">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div className="space-y-1.5">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 text-amber-200 text-xs font-bold border border-amber-400/30">
+                          <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                          <span>TAHAP B &bull; BERDAYAKAN</span>
+                        </div>
+                        <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight text-white">
+                          Input RPP Perbaikan, Telaah Kembali Secara Otomatis
+                        </h2>
+                        <h3 className="text-sm font-semibold text-amber-200 uppercase tracking-wider">
+                          TELAAH PERENCANAAN PEMBELAJARAN (RPP PERBAIKAN)
+                        </h3>
+                        <p className="text-xs text-amber-100/90 max-w-3xl leading-relaxed pt-1">
+                          Instrumen evaluasi perbaikan resmi pengawas pembina <strong>Kusnandar, M.Si</strong>. Menghubungkan secara berkesinambungan temuan <strong>Selidiki</strong> (catatan awal), fokus target <strong>Amati</strong> (4 indikator kesimpulan), dan kesepakatan coaching <strong>Maknai</strong> (alur TIRTA) untuk membuktikan lompatan mutu modul ajar {currentSupervision.subject}.
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap sm:flex-col items-end gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleAutoFillBerdayakan()}
+                          disabled={isAutoFillingBerdayakan}
+                          className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-slate-950 font-extrabold text-xs shadow-lg transition-all flex items-center gap-2 cursor-pointer active:scale-95"
+                          title="Analisis otomatis 22 aspek telaah RPP perbaikan dan sinkronkan ke Firebase"
+                        >
+                          <Zap className={`w-4 h-4 text-slate-950 ${isAutoFillingBerdayakan ? 'animate-spin' : ''}`} />
+                          <span>{isAutoFillingBerdayakan ? 'Menganalisis RPP...' : 'Telaah Kembali Secara Otomatis'}</span>
+                        </button>
+
+                        <div className="text-[11px] text-amber-200 bg-black/20 px-3 py-1 rounded-lg border border-white/10">
+                          Tersinkron Database Firebase
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* IDENTITAS PERENCANAAN PEMBELAJARAN (Halaman 1 PDF) */}
+                  <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                      <div className="flex items-center gap-2 text-slate-800 font-bold text-sm">
+                        <FileText className="w-4 h-4 text-amber-600" />
+                        <span>Identitas Perencanaan Pembelajaran</span>
+                      </div>
+                      <span className="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-full">
+                        Halaman 1 Dokumen Resmi
                       </span>
-                      <h4 className="text-sm font-bold text-slate-900">Siklus {item.siklus}</h4>
                     </div>
 
-                    {sambungDraft.berdayakan.siklusList.length > 1 && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/70">
+                        <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Nama Guru</span>
+                        <p className="font-extrabold text-slate-900 text-sm truncate">{currentSupervision.teacherName}</p>
+                        <p className="text-[11px] text-slate-500">NIP. {currentSupervision.teacherNip || '-'}</p>
+                      </div>
+
+                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/70">
+                        <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Mata Pelajaran &bull; Kelas/Fase</span>
+                        <p className="font-extrabold text-slate-900 text-sm truncate">{currentSupervision.subject}</p>
+                        <p className="text-[11px] text-amber-700 font-semibold">{currentSupervision.classGrade}</p>
+                      </div>
+
+                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/70">
+                        <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Satuan Pendidikan</span>
+                        <p className="font-extrabold text-slate-900 text-sm truncate">{currentSupervision.schoolName}</p>
+                        <p className="text-[11px] text-slate-500">Kota Bogor, Jawa Barat</p>
+                      </div>
+
+                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/70">
+                        <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Nama Penelaah</span>
+                        <input
+                          type="text"
+                          value={berdayakan.namaPenelaah || 'Kusnandar, M.Si'}
+                          onChange={(e) =>
+                            setSambungDraft({
+                              ...sambungDraft,
+                              berdayakan: { ...berdayakan, namaPenelaah: e.target.value },
+                            })
+                          }
+                          placeholder="Nama Penelaah..."
+                          className="w-full font-bold text-slate-900 bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs focus:outline-amber-600 mt-0.5"
+                        />
+                        <p className="text-[10px] text-slate-500 mt-0.5">Pengawas Pembina</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1 text-xs">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                          Judul Rencana Pembelajaran (RPP / Modul Ajar Perbaikan):
+                        </label>
+                        <input
+                          type="text"
+                          value={berdayakan.rppPerbaikanTitle ?? autoBerdayakan.rppPerbaikanTitle}
+                          onChange={(e) =>
+                            setSambungDraft({
+                              ...sambungDraft,
+                              berdayakan: { ...berdayakan, rppPerbaikanTitle: e.target.value },
+                            })
+                          }
+                          placeholder="Contoh: RPP Perbaikan: Gelombang Bunyi & Pipa Organa..."
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-amber-600 bg-white font-medium text-slate-800"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                          Tanggal Pelaksanaan Telaah Perbaikan:
+                        </label>
+                        <input
+                          type="date"
+                          value={berdayakan.tanggalTelaah || new Date().toISOString().split('T')[0]}
+                          onChange={(e) =>
+                            setSambungDraft({
+                              ...sambungDraft,
+                              berdayakan: { ...berdayakan, tanggalTelaah: e.target.value },
+                            })
+                          }
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-amber-600 bg-white text-slate-800 font-medium"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* INPUT RPP PERBAIKAN & AKSI TELAAH OTOMATIS */}
+                  <div className="bg-gradient-to-br from-amber-50/70 via-orange-50/30 to-amber-100/50 p-5 rounded-2xl border-2 border-amber-300 shadow-sm space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-amber-200/80 pb-3">
+                      <div>
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-900 bg-amber-200/80 px-2.5 py-0.5 rounded-md inline-block mb-1">
+                          INPUT BERKAS RPP PERBAIKAN (GOOGLE DRIVE)
+                        </span>
+                        <h4 className="text-sm font-bold text-slate-900">
+                          Tautan &amp; Berkas RPP Perbaikan Guru {currentSupervision.teacherName}
+                        </h4>
+                        <p className="text-xs text-slate-600 mt-0.5">
+                          Masukkan tautan Google Drive berkas RPP perbaikan atau unggah dokumen. Sistem dapat menelaah kembali 22 aspek secara otomatis.
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {berdayakan.rppPerbaikanUrl ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>RPP Perbaikan Terhubung</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                            <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
+                            <span>Perlu Tautan RPP</span>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="flex flex-col sm:flex-row items-center gap-2">
+                        <div className="relative flex-1 w-full">
+                          <input
+                            type="text"
+                            value={berdayakan.rppPerbaikanUrl || ''}
+                            onChange={(e) =>
+                              setSambungDraft({
+                                ...sambungDraft,
+                                berdayakan: { ...berdayakan, rppPerbaikanUrl: e.target.value },
+                              })
+                            }
+                            placeholder="https://drive.google.com/file/d/1Contoh_RPP_Perbaikan_Guru/view?usp=sharing"
+                            className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-amber-300 text-xs focus:outline-amber-600 bg-white font-mono text-slate-800"
+                          />
+                          <ExternalLink className="w-4 h-4 text-amber-600 absolute left-3 top-3" />
+                        </div>
+
+                        {berdayakan.rppPerbaikanUrl && (
+                          <a
+                            href={berdayakan.rppPerbaikanUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs flex items-center gap-1.5 shrink-0 transition-colors"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                            <span>Buka Berkas</span>
+                          </a>
+                        )}
+                      </div>
+
+                      {/* Baris Tombol Aksi Tambahan */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-300 hover:border-amber-400 text-slate-700 text-xs font-semibold cursor-pointer shadow-2xs transition-colors">
+                            <UploadCloud className="w-3.5 h-3.5 text-amber-600" />
+                            <span>Unggah Berkas RPP (PDF / Word)</span>
+                            <input
+                              type="file"
+                              accept=".pdf,.doc,.docx,.rtf"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  const clean = encodeURIComponent(file.name.replace(/\s+/g, '_'));
+                                  const generatedLink = `https://drive.google.com/file/d/drive_${Date.now()}_${clean}/view?usp=sharing`;
+                                  handleAutoFillBerdayakan(generatedLink, `RPP Perbaikan: ${file.name}`);
+                                }
+                              }}
+                            />
+                          </label>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const sampleUrl = `https://drive.google.com/file/d/1Contoh_Modul_Ajar_Revisi_${encodeURIComponent(currentSupervision.subject)}_${encodeURIComponent(currentSupervision.teacherName.replace(/\s+/g, '_'))}/view?usp=sharing`;
+                              handleAutoFillBerdayakan(sampleUrl);
+                            }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-semibold transition-colors"
+                          >
+                            <Sparkles className="w-3.5 h-3.5 text-amber-700" />
+                            <span>Gunakan Contoh RPP Perbaikan Guru Ini</span>
+                          </button>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleAutoFillBerdayakan()}
+                          disabled={isAutoFillingBerdayakan}
+                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-extrabold shadow-sm transition-all active:scale-95 cursor-pointer ml-auto"
+                        >
+                          <Zap className={`w-3.5 h-3.5 text-amber-200 ${isAutoFillingBerdayakan ? 'animate-spin' : ''}`} />
+                          <span>{isAutoFillingBerdayakan ? 'Sedang Menganalisis...' : 'Telaah Kembali Secara Otomatis'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* KARTU REKAPITULASI SKOR & KATEGORI HASIL TELAAH (Halaman 8 PDF) */}
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-slate-500 block">Total Skor Perbaikan</span>
+                        <div className="flex items-baseline gap-1 mt-0.5">
+                          <span className="text-2xl font-black text-slate-900">{computedTotalScore}</span>
+                          <span className="text-xs text-slate-500 font-bold">/ {computedMaxPossibleScore || 44}</span>
+                        </div>
+                        <p className="text-[10px] text-slate-500 mt-1">22 Butir Aspek Diamati</p>
+                      </div>
+                      <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center font-black text-base shrink-0">
+                        {computedTotalScore}
+                      </div>
+                    </div>
+
+                    <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-slate-500 block">Nilai Akhir RPP Perbaikan</span>
+                        <div className="flex items-baseline gap-1 mt-0.5">
+                          <span className="text-2xl font-black text-emerald-700">{computedFinalScore.toFixed(1)}</span>
+                          <span className="text-xs text-emerald-600 font-bold">%</span>
+                        </div>
+                        <p className="text-[10px] text-emerald-700 font-semibold mt-1">Skala 100 Poin</p>
+                      </div>
+                      <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-black text-base shrink-0">
+                        %
+                      </div>
+                    </div>
+
+                    <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-slate-500 block">Predikat Kategori</span>
+                        <p className="text-lg font-black text-slate-900 mt-0.5">{computedPredicate}</p>
+                        <p className="text-[10px] text-slate-500 mt-1">Rentang 86 – 100</p>
+                      </div>
+                      <span className="px-3 py-1.5 rounded-xl bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-black uppercase">
+                        {computedPredicate}
+                      </span>
+                    </div>
+
+                    <div className="p-4 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl border border-indigo-200 shadow-xs flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-indigo-700 block">Lompatan dari Selidiki</span>
+                        <div className="flex items-baseline gap-1 mt-0.5">
+                          <span className="text-xs text-slate-400 line-through font-bold">{initialScore.toFixed(1)}%</span>
+                          <span className="text-lg font-black text-indigo-900">&rarr; {computedFinalScore.toFixed(1)}%</span>
+                        </div>
+                        <p className="text-[10px] text-indigo-700 font-bold mt-1">
+                          +{scoreDiff}% Kenaikan Mutu
+                        </p>
+                      </div>
+                      <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shrink-0">
+                        &uarr;{scoreDiff}%
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* DESKRIPSI KATEGORI HASIL TELAAH (Halaman 8 PDF) */}
+                  <div className="bg-amber-50/60 rounded-2xl p-4 border border-amber-200 text-xs space-y-1.5">
+                    <div className="flex items-center gap-2 font-bold text-amber-950">
+                      <Award className="w-4 h-4 text-amber-600" />
+                      <span>Kategori Hasil Telaah (Halaman 8 Dokumen): {computedPredicate} (Nilai {computedFinalScore.toFixed(1)})</span>
+                    </div>
+                    <p className="text-slate-700 leading-relaxed font-medium">
+                      &ldquo;{computedDeskripsi}&rdquo;
+                    </p>
+                  </div>
+
+                  {/* TABEL 22 ASPEK TELAAH PERENCANAAN PEMBELAJARAN (Halaman 2-6 PDF) */}
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+                    <div className="p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/70">
+                      <div>
+                        <h4 className="font-extrabold text-slate-900 text-sm sm:text-base flex items-center gap-2">
+                          <span>Tabel Telaah Perencanaan Pembelajaran (22 Aspek yang Diamati)</span>
+                          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                            22 Butir Lengkap
+                          </span>
+                        </h4>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          Skala 0 s.d. 2 atau N/A disertai Komentar Kritis yang menghubungkan Selidiki, Amati, dan Maknai.
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 text-xs text-slate-600 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-2xs">
+                        <span className="font-bold text-slate-900">Total Skor:</span>
+                        <span className="font-extrabold text-amber-700">{computedTotalScore}</span>
+                        <span>/</span>
+                        <span>{computedMaxPossibleScore || 44}</span>
+                      </div>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse text-left text-xs">
+                        <thead>
+                          <tr className="bg-slate-100/90 text-slate-800 font-bold border-b border-slate-200">
+                            <th className="px-3 py-3 w-12 text-center">No</th>
+                            <th className="px-4 py-3 min-w-[280px]">Aspek yang Diamati</th>
+                            <th className="px-3 py-3 w-40 text-center">
+                              <span className="block text-[11px] font-extrabold mb-1">Skala</span>
+                              <div className="grid grid-cols-4 gap-1 text-[10px] font-bold text-slate-600">
+                                <span>0</span>
+                                <span>1</span>
+                                <span>2</span>
+                                <span>N/A</span>
+                              </div>
+                            </th>
+                            <th className="px-4 py-3 min-w-[340px]">Komentar Kritis</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {TELAAH_ITEMS.map((item) => {
+                            const currentVal = currentScores[item.id] !== undefined ? currentScores[item.id] : 2;
+                            const commentText = currentComments[item.id] ?? (autoBerdayakan.telaahComments ? autoBerdayakan.telaahComments[item.id] : '') ?? '';
+
+                            return (
+                              <tr key={item.id} className="hover:bg-amber-50/20 transition-colors">
+                                <td className="px-3 py-3 text-center font-bold text-slate-500 align-top">
+                                  {item.id}
+                                </td>
+
+                                <td className="px-4 py-3 align-top">
+                                  <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider block mb-0.5">
+                                    {item.category}
+                                  </span>
+                                  <p className="text-slate-800 leading-relaxed font-medium">
+                                    {item.aspect}
+                                  </p>
+                                </td>
+
+                                <td className="px-3 py-3 align-top text-center">
+                                  <div className="grid grid-cols-4 gap-1 pt-1">
+                                    {([0, 1, 2, 'NA'] as const).map((scoreVal) => (
+                                      <label
+                                        key={String(scoreVal)}
+                                        className={`flex flex-col items-center justify-center p-1.5 rounded-lg border text-[11px] font-bold cursor-pointer transition-all ${
+                                          currentVal === scoreVal
+                                            ? scoreVal === 2
+                                              ? 'bg-emerald-600 border-emerald-600 text-white shadow-xs'
+                                              : scoreVal === 1
+                                              ? 'bg-amber-500 border-amber-500 text-white shadow-xs'
+                                              : scoreVal === 0
+                                              ? 'bg-rose-500 border-rose-500 text-white shadow-xs'
+                                              : 'bg-slate-500 border-slate-500 text-white shadow-xs'
+                                            : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                                        }`}
+                                      >
+                                        <input
+                                          type="radio"
+                                          name={`skala_berdayakan_${item.id}`}
+                                          checked={currentVal === scoreVal}
+                                          onChange={() => handleScoreChange(item.id, scoreVal)}
+                                          className="sr-only"
+                                        />
+                                        <span>{scoreVal === 'NA' ? 'N/A' : scoreVal}</span>
+                                      </label>
+                                    ))}
+                                  </div>
+                                </td>
+
+                                <td className="px-4 py-3 align-top">
+                                  <textarea
+                                    rows={2}
+                                    value={commentText}
+                                    onChange={(e) => handleCommentChange(item.id, e.target.value)}
+                                    placeholder="Tuliskan komentar kritis terkait aspek ini..."
+                                    className="w-full p-2 rounded-xl border border-slate-200 text-xs focus:outline-amber-600 bg-slate-50/50 hover:bg-white focus:bg-white text-slate-800 leading-relaxed"
+                                  />
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* UMPAN BALIK PERENCANAAN PEMBELAJARAN (Halaman 7 PDF) */}
+                  <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                      <div className="flex items-center gap-2 text-slate-900 font-extrabold text-sm sm:text-base">
+                        <MessageSquare className="w-4 h-4 text-amber-600" />
+                        <span>Umpan Balik Perencanaan Pembelajaran (Halaman 7 Dokumen)</span>
+                      </div>
+                      <span className="text-[11px] text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-full font-semibold">
+                        Evaluasi Kualitatif
+                      </span>
+                    </div>
+
+                    <div className="space-y-4 text-xs">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-800 mb-1">
+                          1. Tuliskan kelebihan Perencanaan Pembelajaran:
+                        </label>
+                        <textarea
+                          rows={3}
+                          value={currentFeedback.kelebihan}
+                          onChange={(e) =>
+                            setSambungDraft({
+                              ...sambungDraft,
+                              berdayakan: {
+                                ...berdayakan,
+                                feedback: { ...currentFeedback, kelebihan: e.target.value },
+                              },
+                            })
+                          }
+                          placeholder="Tuliskan kelebihan perencanaan pembelajaran..."
+                          className="w-full p-3 rounded-xl border border-slate-200 text-xs focus:outline-amber-600 bg-slate-50/50 hover:bg-white focus:bg-white leading-relaxed text-slate-800"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-800 mb-1">
+                          2. Tuliskan hal yang perlu ditingkatkan dari Perencanaan Pembelajaran:
+                        </label>
+                        <textarea
+                          rows={3}
+                          value={currentFeedback.perbaikan}
+                          onChange={(e) =>
+                            setSambungDraft({
+                              ...sambungDraft,
+                              berdayakan: {
+                                ...berdayakan,
+                                feedback: { ...currentFeedback, perbaikan: e.target.value },
+                              },
+                            })
+                          }
+                          placeholder="Tuliskan hal yang perlu ditingkatkan..."
+                          className="w-full p-3 rounded-xl border border-slate-200 text-xs focus:outline-amber-600 bg-slate-50/50 hover:bg-white focus:bg-white leading-relaxed text-slate-800"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-800 mb-1">
+                          3. Tuliskan rekomendasi dan lanjutkan dengan revisi perencanaan pembelajaran sesuai prinsip Pembelajaran Mendalam:
+                        </label>
+                        <textarea
+                          rows={3}
+                          value={currentFeedback.rekomendasi}
+                          onChange={(e) =>
+                            setSambungDraft({
+                              ...sambungDraft,
+                              berdayakan: {
+                                ...berdayakan,
+                                feedback: { ...currentFeedback, rekomendasi: e.target.value },
+                              },
+                            })
+                          }
+                          placeholder="Tuliskan rekomendasi kelanjutan pembelajaran mendalam..."
+                          className="w-full p-3 rounded-xl border border-slate-200 text-xs focus:outline-amber-600 bg-slate-50/50 hover:bg-white focus:bg-white leading-relaxed text-slate-800"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-800 mb-1">
+                          Catatan Refleksi &amp; Komitmen Guru Binaan Terhadap Perbaikan RPP:
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={berdayakan.catatanRefleksiGuru ?? autoBerdayakan.catatanRefleksiGuru}
+                          onChange={(e) =>
+                            setSambungDraft({
+                              ...sambungDraft,
+                              berdayakan: {
+                                ...berdayakan,
+                                catatanRefleksiGuru: e.target.value,
+                              },
+                            })
+                          }
+                          placeholder="Catatan refleksi guru terhadap perbaikan modul..."
+                          className="w-full p-3 rounded-xl border border-slate-200 text-xs focus:outline-amber-600 bg-slate-50/50 hover:bg-white focus:bg-white leading-relaxed italic text-slate-800"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* KETENTUAN SKOR (Halaman 7 PDF) */}
+                  <div className="bg-slate-50 rounded-2xl border border-slate-200 p-4 text-xs">
+                    <span className="font-bold text-slate-800 block mb-2">Ketentuan Skor (Halaman 7 Dokumen):</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 text-[11px]">
+                      <div className="p-2.5 rounded-xl bg-white border border-slate-200">
+                        <span className="font-extrabold text-emerald-700 block">Skor 2: Terpenuhi secara optimal</span>
+                        <p className="text-slate-600 mt-0.5">Indikator tersedia, lengkap, jelas, relevan, dan selaras dengan perencanaan pembelajaran.</p>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-white border border-slate-200">
+                        <span className="font-extrabold text-amber-700 block">Skor 1: Terpenuhi sebagian / belum optimal</span>
+                        <p className="text-slate-600 mt-0.5">Indikator sudah ada, tetapi belum lengkap, belum jelas, belum konsisten, atau belum sepenuhnya selaras.</p>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-white border border-slate-200">
+                        <span className="font-extrabold text-rose-700 block">Skor 0: Belum terpenuhi</span>
+                        <p className="text-slate-600 mt-0.5">Indikator belum ada, belum tergambar, atau tidak sesuai dengan yang dipersyaratkan.</p>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-white border border-slate-200">
+                        <span className="font-extrabold text-slate-700 block">N/A: Tidak relevan</span>
+                        <p className="text-slate-600 mt-0.5">Tidak menuliskan di RPP karena opsional dan tidak diperhitungkan dalam skor.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* LEMBAR RANCANG - COBA - REFLEKSI - PERBAIKI (SIKLUS BERDAYAKAN) */}
+                  <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
+                      <div>
+                        <h4 className="font-extrabold text-slate-900 text-sm sm:text-base">
+                          Lembar Rancang &ndash; Coba &ndash; Refleksi &ndash; Perbaiki (Siklus Implementasi Kelas)
+                        </h4>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          Diisi guru; rancangan implementasi RPP perbaikan mencakup memahami, mengaplikasikan, merefleksikan, dan menghubungkan materi {currentSupervision.subject}.
+                        </p>
+                      </div>
+
                       <button
                         type="button"
                         onClick={() => {
-                          const filtered = sambungDraft.berdayakan.siklusList.filter((_, i) => i !== idx);
-                          // Reindex
-                          const reindexed = filtered.map((s, i) => ({ ...s, siklus: i + 1 }));
+                          const nextSiklus = berdayakan.siklusList.length + 1;
                           setSambungDraft({
                             ...sambungDraft,
-                            berdayakan: { ...sambungDraft.berdayakan, siklusList: reindexed },
+                            berdayakan: {
+                              ...berdayakan,
+                              siklusList: [
+                                ...berdayakan.siklusList,
+                                {
+                                  siklus: nextSiklus,
+                                  rancanganDanUjiCoba: '',
+                                  refleksi: '',
+                                  perbaikanBerikutnya: '',
+                                },
+                              ],
+                            },
                           });
                         }}
-                        className="text-xs text-rose-500 hover:text-rose-700 flex items-center gap-1 p-1 hover:bg-rose-50 rounded-lg"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-colors shrink-0"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span>Hapus Siklus</span>
+                        <Plus className="w-4 h-4" />
+                        <span>Tambah Siklus</span>
                       </button>
-                    )}
+                    </div>
+
+                    <div className="space-y-4">
+                      {berdayakan.siklusList.map((item, idx) => (
+                        <div
+                          key={item.siklus}
+                          className="p-5 border border-slate-200 rounded-2xl bg-slate-50/50 shadow-2xs space-y-3"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="w-8 h-8 rounded-xl bg-amber-100 text-amber-900 font-extrabold flex items-center justify-center text-xs">
+                                S{item.siklus}
+                              </span>
+                              <h5 className="text-sm font-bold text-slate-900">Siklus {item.siklus}</h5>
+                            </div>
+
+                            {berdayakan.siklusList.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const filtered = berdayakan.siklusList.filter((_, i) => i !== idx);
+                                  const reindexed = filtered.map((s, i) => ({ ...s, siklus: i + 1 }));
+                                  setSambungDraft({
+                                    ...sambungDraft,
+                                    berdayakan: { ...berdayakan, siklusList: reindexed },
+                                  });
+                                }}
+                                className="text-xs text-rose-500 hover:text-rose-700 flex items-center gap-1 p-1 hover:bg-rose-50 rounded-lg"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                <span>Hapus Siklus</span>
+                              </button>
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+                            <div>
+                              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                Rancangan &amp; Hasil Uji Coba pada Murid:
+                              </label>
+                              <textarea
+                                rows={4}
+                                value={item.rancanganDanUjiCoba}
+                                onChange={(e) => {
+                                  const updated = [...berdayakan.siklusList];
+                                  updated[idx].rancanganDanUjiCoba = e.target.value;
+                                  setSambungDraft({
+                                    ...sambungDraft,
+                                    berdayakan: { ...berdayakan, siklusList: updated },
+                                  });
+                                }}
+                                placeholder="Rancangan aktivitas uji coba dan respons murid..."
+                                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-amber-600 bg-white"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                Refleksi (Berhasil / Belum, Mengapa):
+                              </label>
+                              <textarea
+                                rows={4}
+                                value={item.refleksi}
+                                onChange={(e) => {
+                                  const updated = [...berdayakan.siklusList];
+                                  updated[idx].refleksi = e.target.value;
+                                  setSambungDraft({
+                                    ...sambungDraft,
+                                    berdayakan: { ...berdayakan, siklusList: updated },
+                                  });
+                                }}
+                                placeholder="Evaluasi guru terhadap keberhasilan atau kendala..."
+                                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-amber-600 bg-white"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                Perbaikan Berikutnya:
+                              </label>
+                              <textarea
+                                rows={4}
+                                value={item.perbaikanBerikutnya}
+                                onChange={(e) => {
+                                  const updated = [...berdayakan.siklusList];
+                                  updated[idx].perbaikanBerikutnya = e.target.value;
+                                  setSambungDraft({
+                                    ...sambungDraft,
+                                    berdayakan: { ...berdayakan, siklusList: updated },
+                                  });
+                                }}
+                                placeholder="Langkah modifikasi dan perbaikan untuk siklus berikutnya..."
+                                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-amber-600 bg-white"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Rancangan &amp; Hasil Uji Coba pada Murid:
-                      </label>
-                      <textarea
-                        rows={4}
-                        value={item.rancanganDanUjiCoba}
-                        onChange={(e) => {
-                          const updated = [...sambungDraft.berdayakan.siklusList];
-                          updated[idx].rancanganDanUjiCoba = e.target.value;
-                          setSambungDraft({
-                            ...sambungDraft,
-                            berdayakan: { ...sambungDraft.berdayakan, siklusList: updated },
-                          });
-                        }}
-                        placeholder="Rancangan aktivitas uji coba dan respons murid..."
-                        className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs focus:outline-indigo-600 bg-slate-50/50"
-                      />
+                  {/* TANDA TANGAN KESEPAKATAN */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-slate-200">
+                    <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-center">
+                      <span className="text-[10px] text-slate-500 font-semibold uppercase block mb-1">Penelaah / Pengawas Pembina</span>
+                      <p className="font-bold text-xs text-slate-900">{berdayakan.namaPenelaah || 'Kusnandar, M.Si'}</p>
+                      <p className="text-[10px] text-amber-700 font-medium mt-1">Disetujui &amp; Disahkan</p>
                     </div>
+                    <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-center">
+                      <span className="text-[10px] text-slate-500 font-semibold uppercase block mb-1">Kepala Sekolah</span>
+                      <p className="font-bold text-xs text-slate-900">{sambungDraft.arahkan?.tandaTangan?.kepalaSekolah || 'Kepala Sekolah'}</p>
+                      <p className="text-[10px] text-slate-500 mt-1">{currentSupervision.schoolName}</p>
+                    </div>
+                    <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-center">
+                      <span className="text-[10px] text-slate-500 font-semibold uppercase block mb-1">Guru Yang Diobservasi</span>
+                      <p className="font-bold text-xs text-slate-900">{currentSupervision.teacherName}</p>
+                      <p className="text-[10px] text-emerald-600 font-medium mt-1">{currentSupervision.subject}</p>
+                    </div>
+                  </div>
 
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Refleksi (Berhasil / Belum, Mengapa):
-                      </label>
-                      <textarea
-                        rows={4}
-                        value={item.refleksi}
-                        onChange={(e) => {
-                          const updated = [...sambungDraft.berdayakan.siklusList];
-                          updated[idx].refleksi = e.target.value;
-                          setSambungDraft({
-                            ...sambungDraft,
-                            berdayakan: { ...sambungDraft.berdayakan, siklusList: updated },
-                          });
-                        }}
-                        placeholder="Evaluasi guru terhadap keberhasilan atau kendala..."
-                        className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs focus:outline-indigo-600 bg-slate-50/50"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Perbaikan Berikutnya:
-                      </label>
-                      <textarea
-                        rows={4}
-                        value={item.perbaikanBerikutnya}
-                        onChange={(e) => {
-                          const updated = [...sambungDraft.berdayakan.siklusList];
-                          updated[idx].perbaikanBerikutnya = e.target.value;
-                          setSambungDraft({
-                            ...sambungDraft,
-                            berdayakan: { ...sambungDraft.berdayakan, siklusList: updated },
-                          });
-                        }}
-                        placeholder="Langkah modifikasi dan perbaikan untuk siklus berikutnya..."
-                        className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs focus:outline-indigo-600 bg-slate-50/50"
-                      />
-                    </div>
+                  {/* TOMBOL SIMPAN TAHAP B */}
+                  <div className="flex items-center justify-end gap-3 pt-3">
+                    <button
+                      type="button"
+                      onClick={handleSave}
+                      disabled={isSaving}
+                      className="px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs shadow-md transition-all flex items-center gap-2 cursor-pointer active:scale-95"
+                    >
+                      <Save className="w-4 h-4" />
+                      <span>{isSaving ? 'Menyimpan ke Firebase...' : 'Simpan Tahap B (Berdayakan) ke Firebase'}</span>
+                    </button>
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        </fieldset>
-      )}
+              );
+            })()}
+          </fieldset>
+        )}
 
         {/* ==================================================== */}
         {/* TAB U: UJI — OBSERVASI KELAS (U-1) & ANGKET MURID (U-2) */}

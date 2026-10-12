@@ -34,6 +34,7 @@ import {
   loadLocalSchools 
 } from './localStorageService';
 import { SAMPLE_SUPERVISIONS } from '../data/seedData';
+import { generateTeacherMaknaiData, generateAmatiData, generateBerdayakanTelaahPerbaikanData } from '../data/autoFillData';
 
 // User-provided Firebase Configuration fallback
 const activeFirebaseConfig = {
@@ -280,7 +281,74 @@ function normalizeSupervisionData(sup: Supervision): Supervision {
     schoolName = 'SMAS IT Ummul Quro';
   }
 
-  return { ...sup, teacherName, schoolName, subject, lessonTitle };
+  const normalized: Supervision = { ...sup, teacherName, schoolName, subject, lessonTitle };
+
+  if (normalized.sambung) {
+    let maknai = normalized.sambung.maknai;
+    if (!maknai?.pertanyaanList?.q1) {
+      const autoMaknai = generateTeacherMaknaiData(normalized);
+      maknai = {
+        ...maknai,
+        ...autoMaknai,
+        pertanyaanList: {
+          ...autoMaknai.pertanyaanList,
+          ...(maknai?.pertanyaanList || {}),
+        },
+        kesanUmum: maknai?.kesanUmum ?? autoMaknai.kesanUmum,
+        saranMasukan: maknai?.saranMasukan ?? autoMaknai.saranMasukan,
+      };
+    }
+
+    let arahkan = normalized.sambung.arahkan;
+    if (!arahkan?.fokusIndikatorTerpilih || arahkan.fokusIndikatorTerpilih.length === 0) {
+      const autoAmati = generateAmatiData(normalized, ['peranGuru', 'aktivitasMurid'], normalized.sambung.selidiki?.matriksBefore);
+      arahkan = {
+        ...arahkan,
+        ...autoAmati,
+        fokusIndikatorTerpilih: autoAmati.fokusIndikatorTerpilih,
+      };
+    }
+
+    let berdayakan = normalized.sambung.berdayakan;
+    if (!berdayakan?.telaahScores || !berdayakan?.rppPerbaikanUrl) {
+      const autoBerdayakan = generateBerdayakanTelaahPerbaikanData(normalized);
+      berdayakan = {
+        ...berdayakan,
+        ...autoBerdayakan,
+        siklusList: (berdayakan?.siklusList && berdayakan.siklusList.length > 0)
+          ? berdayakan.siklusList
+          : autoBerdayakan.siklusList,
+      };
+    }
+
+    normalized.sambung = {
+      ...normalized.sambung,
+      maknai,
+      arahkan,
+      berdayakan,
+    };
+
+    if (!normalized.perangkatAjarPerbaikan && berdayakan?.telaahScores) {
+      normalized.perangkatAjarPerbaikan = {
+        driveLinks: {
+          cpTpAtpUrl: normalized.perangkatAjar?.driveLinks?.cpTpAtpUrl || 'https://drive.google.com/file/d/1CpTpAtp_Revisi/view',
+          modulAjarUrl: berdayakan.rppPerbaikanUrl,
+          bahanAjarUrl: normalized.perangkatAjar?.driveLinks?.bahanAjarUrl,
+          asesmenUrl: normalized.perangkatAjar?.driveLinks?.asesmenUrl,
+        },
+        submittedAt: new Date().toISOString(),
+        telaahScores: berdayakan.telaahScores,
+        telaahComments: berdayakan.telaahComments,
+        telaahSummary: berdayakan.telaahSummary,
+        feedback: berdayakan.feedback,
+        catatanRevisiGuru: berdayakan.catatanRefleksiGuru,
+        reviewedAt: new Date().toISOString(),
+        reviewedBy: berdayakan.namaPenelaah,
+      };
+    }
+  }
+
+  return normalized;
 }
 
 // Authenticate via username/email & password

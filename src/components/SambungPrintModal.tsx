@@ -2,6 +2,8 @@ import React from 'react';
 import { Supervision } from '../types';
 import { Printer, X, Download, ShieldCheck } from 'lucide-react';
 import { DEFAULT_MATRIKS_BEFORE, DEFAULT_MATRIKS_AFTER } from '../data/sambungSeed';
+import { MAKNAI_COACHING_QUESTIONS, TELAAH_ITEMS } from '../data/instrumentData';
+import { generateTeacherMaknaiData, generateBerdayakanTelaahPerbaikanData } from '../data/autoFillData';
 
 interface SambungPrintModalProps {
   isOpen: boolean;
@@ -107,9 +109,9 @@ export const SambungPrintModal: React.FC<SambungPrintModalProps> = ({
                     <td className="border border-slate-300 px-3 py-1.5">Peta kebutuhan pembelajaran</td>
                   </tr>
                   <tr>
-                    <td className="border border-slate-300 px-3 py-1.5 font-bold">ARAHKAN</td>
-                    <td className="border border-slate-300 px-3 py-1.5">A — Rencana Aksi Pembinaan</td>
-                    <td className="border border-slate-300 px-3 py-1.5">Fokus perubahan yang disepakati</td>
+                    <td className="border border-slate-300 px-3 py-1.5 font-bold">AMATI</td>
+                    <td className="border border-slate-300 px-3 py-1.5">A — Memilih Fokus Perbaikan &amp; Rencana Aksi</td>
+                    <td className="border border-slate-300 px-3 py-1.5">Memilih fokus perbaikan dari 4 indikator Kesimpulan Selidiki</td>
                   </tr>
                   <tr>
                     <td className="border border-slate-300 px-3 py-1.5 font-bold">MAKNAI</td>
@@ -265,21 +267,81 @@ export const SambungPrintModal: React.FC<SambungPrintModalProps> = ({
             </div>
           </div>
 
-          {/* A — RENCANA AKSI PEMBINAAN PEMBELAJARAN */}
+          {/* A — AMATI: MEMILIH FOKUS PERBAIKAN DARI KESIMPULAN SELIDIKI */}
           <div className="page-break-after">
             <div className="flex items-center gap-3 mb-3 bg-indigo-900 text-white p-2.5 rounded-lg">
               <span className="w-7 h-7 rounded-md bg-white text-indigo-900 font-extrabold flex items-center justify-center text-sm">
                 A
               </span>
               <div>
-                <h3 className="font-bold text-sm">Rencana Aksi Pembinaan Pembelajaran</h3>
-                <p className="text-[10px] text-indigo-200">ARAHKAN — disepakati bersama kepala sekolah dan guru</p>
+                <h3 className="font-bold text-sm">A — Memilih Fokus Perbaikan &amp; Rencana Aksi Pembinaan</h3>
+                <p className="text-[10px] text-indigo-200">AMATI — Memilih fokus perbaikan dari empat indikator di Kesimpulan Selidiki</p>
               </div>
             </div>
 
-            <div className="text-xs mb-3 space-y-0.5">
-              <p><strong>Sekolah :</strong> {supervision.schoolName}</p>
-              <p><strong>Periode :</strong> {sambung.arahkan.periode}</p>
+            <div className="text-xs mb-3 space-y-1">
+              <div className="flex justify-between">
+                <p><strong>Sekolah :</strong> {supervision.schoolName}</p>
+                <p><strong>Periode :</strong> {sambung.arahkan.periode}</p>
+              </div>
+
+              {/* Tabel 4 Indikator Kesimpulan Selidiki */}
+              <div className="mt-2 mb-3">
+                <p className="text-[11px] font-bold text-slate-800 mb-1">
+                  Pilihan Fokus Perbaikan dari 4 Indikator Kesimpulan Selidiki:
+                </p>
+                <table className="w-full border-collapse border border-slate-300 text-[10px]">
+                  <thead>
+                    <tr className="bg-slate-100 text-slate-800 font-bold">
+                      <th className="border border-slate-300 px-2 py-1 text-center w-8">No</th>
+                      <th className="border border-slate-300 px-2 py-1 text-left w-36">Indikator</th>
+                      <th className="border border-slate-300 px-2 py-1 text-left">Kondisi Awal (Kesimpulan Selidiki)</th>
+                      <th className="border border-slate-300 px-2 py-1 text-center w-28">Status Fokus</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      {
+                        no: 1,
+                        key: 'peranGuru',
+                        name: 'Peran Guru',
+                        baseline: sambung.selidiki.matriksBefore?.peranGuru || 'Berfokus pada penyampaian materi klasikal/ceramah.',
+                      },
+                      {
+                        no: 2,
+                        key: 'aktivitasMurid',
+                        name: 'Aktivitas Murid',
+                        baseline: sambung.selidiki.matriksBefore?.aktivitasMurid || 'Lebih banyak menerima pasif dan mencatat.',
+                      },
+                      {
+                        no: 3,
+                        key: 'konteksNyata',
+                        name: 'Konteks Nyata',
+                        baseline: sambung.selidiki.matriksBefore?.konteksNyata || 'Belum konsisten dikaitkan dengan konteks nyata.',
+                      },
+                      {
+                        no: 4,
+                        key: 'refleksiMurid',
+                        name: 'Refleksi Murid',
+                        baseline: sambung.selidiki.matriksBefore?.refleksiMurid || 'Belum rutin menjadi bagian pembelajaran harian.',
+                      },
+                    ].map(item => {
+                      const isChosen = (sambung.arahkan.fokusIndikatorTerpilih || ['peranGuru', 'aktivitasMurid']).includes(item.key as any);
+                      return (
+                        <tr key={item.key} className={isChosen ? 'bg-blue-50/50' : ''}>
+                          <td className="border border-slate-300 px-2 py-1 text-center font-bold">{item.no}</td>
+                          <td className="border border-slate-300 px-2 py-1 font-semibold">{item.name}</td>
+                          <td className="border border-slate-300 px-2 py-1 italic">{item.baseline}</td>
+                          <td className="border border-slate-300 px-2 py-1 text-center font-bold text-blue-800">
+                            {isChosen ? '✓ Fokus Terpilih' : '—'}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
               <p className="mt-1">
                 <strong>Fokus perubahan</strong> (satu kalimat: berdasarkan kebutuhan, realistis, terukur, berdampak pada murid):
               </p>
@@ -331,87 +393,383 @@ export const SambungPrintModal: React.FC<SambungPrintModalProps> = ({
             </div>
           </div>
 
-          {/* M — LEMBAR COACHING (DIALOG REFLEKTIF) */}
-          <div className="page-break-after">
-            <div className="flex items-center gap-3 mb-3 bg-indigo-900 text-white p-2.5 rounded-lg">
-              <span className="w-7 h-7 rounded-md bg-white text-indigo-900 font-extrabold flex items-center justify-center text-sm">
-                M
-              </span>
-              <div>
-                <h3 className="font-bold text-sm">Lembar Coaching (Dialog Reflektif)</h3>
-                <p className="text-[10px] text-indigo-200">MAKNAI — pembinaan dimulai dari dialog, bukan instruksi</p>
+          {/* M — LEMBAR REFLEKSI & COACHING PASCA OBSERVASI (MAKNAI) */}
+          {(() => {
+            const autoMaknai = generateTeacherMaknaiData(supervision);
+            const currentPertanyaan = sambung.maknai?.pertanyaanList || autoMaknai.pertanyaanList;
+            const currentKesanUmum = sambung.maknai?.kesanUmum ?? autoMaknai.kesanUmum;
+            const currentSaranMasukan = sambung.maknai?.saranMasukan ?? autoMaknai.saranMasukan;
+
+            return (
+              <div className="page-break-after">
+                <div className="flex items-center gap-3 mb-3 bg-indigo-900 text-white p-2.5 rounded-lg">
+                  <span className="w-7 h-7 rounded-md bg-white text-indigo-900 font-extrabold flex items-center justify-center text-sm">
+                    M
+                  </span>
+                  <div>
+                    <h3 className="font-bold text-sm">M — Lembar Refleksi &amp; Coaching Pasca Observasi (MAKNAI)</h3>
+                    <p className="text-[10px] text-indigo-200">
+                      Sesuai Dokumen Resmi Pengawas Pembina Kusnandar, M.Si — 10 Pertanyaan Refleksi Pasca Observasi &amp; Dialog Coaching
+                    </p>
+                  </div>
+                </div>
+
+                <div className="text-xs mb-3 flex flex-wrap justify-between gap-2 border-b border-slate-200 pb-2">
+                  <p><strong>Nama Guru :</strong> {supervision.teacherName} (NIP. {supervision.teacherNip || '-'})</p>
+                  <p><strong>Mata Pelajaran :</strong> {supervision.subject}</p>
+                  <p><strong>Sekolah :</strong> {supervision.schoolName}</p>
+                  <p><strong>Tanggal :</strong> {sambung.maknai.tanggal || new Date().toISOString().split('T')[0]}</p>
+                </div>
+
+                {/* 10 Pertanyaan Coaching & Refleksi */}
+                <div className="mb-4">
+                  <p className="text-[11px] font-bold text-slate-800 mb-1.5 uppercase tracking-wide">
+                    10 Pertanyaan Refleksi Pasca Observasi (Jawaban Guru Disesuaikan dengan Hasil Observasi &amp; Kesimpulan Akhir):
+                  </p>
+                  <table className="w-full border-collapse border border-slate-300 text-[10px]">
+                    <thead>
+                      <tr className="bg-slate-100 text-slate-800 font-bold">
+                        <th className="border border-slate-300 px-2 py-1.5 text-center w-8">No</th>
+                        <th className="border border-slate-300 px-2 py-1.5 text-left w-5/12">Pertanyaan Coaching &amp; Refleksi</th>
+                        <th className="border border-slate-300 px-2 py-1.5 text-left">Jawaban / Refleksi Guru</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {MAKNAI_COACHING_QUESTIONS.map((item) => {
+                        const currentList = currentPertanyaan || {};
+                        const autoList = autoMaknai.pertanyaanList || {};
+                        const answerText = currentList[item.id] || autoList[item.id] || '-';
+                        return (
+                          <tr key={item.id} className="hover:bg-slate-50">
+                            <td className="border border-slate-300 px-2 py-1.5 text-center font-bold text-slate-600 align-top">
+                              {item.no}
+                            </td>
+                            <td className="border border-slate-300 px-2 py-1.5 font-semibold text-slate-900 align-top leading-snug">
+                              {item.pertanyaan}
+                            </td>
+                            <td className="border border-slate-300 px-2 py-1.5 text-slate-800 align-top leading-relaxed whitespace-pre-wrap">
+                              {answerText}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Kesan Umum & Saran Masukan */}
+                <div className="grid grid-cols-2 gap-3 mb-4 text-[10px]">
+                  <div className="border border-slate-300 rounded p-2.5 bg-slate-50/50">
+                    <p className="font-bold text-slate-900 mb-1">Kesan Umum:</p>
+                    <p className="italic text-slate-700 leading-relaxed">{currentKesanUmum || '-'}</p>
+                  </div>
+                  <div className="border border-slate-300 rounded p-2.5 bg-slate-50/50">
+                    <p className="font-bold text-slate-900 mb-1">Saran &amp; Masukan Pengawas / Kepala Sekolah:</p>
+                    <p className="italic text-slate-700 leading-relaxed">{currentSaranMasukan || '-'}</p>
+                  </div>
+                </div>
+
+                {/* Lembar Coaching TIRTA */}
+                <div className="mb-4">
+                  <p className="text-[11px] font-bold text-slate-800 mb-1.5 uppercase tracking-wide">
+                    Dialog Reflektif Alur TIRTA (Tujuan, Realitas, Opsi, Komitmen):
+                  </p>
+                  <table className="w-full border-collapse border border-slate-300 text-[10px]">
+                    <thead>
+                      <tr className="bg-slate-100 text-slate-800 font-bold">
+                        <th className="border border-slate-300 px-2 py-1 w-20 text-left">Tahap</th>
+                        <th className="border border-slate-300 px-2 py-1 w-48 text-left">Pertanyaan Pemantik</th>
+                        <th className="border border-slate-300 px-2 py-1 text-left">Catatan Guru</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td className="border border-slate-300 px-2 py-1.5 font-bold text-indigo-950 bg-slate-50">Tujuan</td>
+                        <td className="border border-slate-300 px-2 py-1.5 text-slate-700 italic">Pengalaman belajar seperti apa yang ingin diciptakan untuk murid?</td>
+                        <td className="border border-slate-300 px-2 py-1.5 text-slate-800">{sambung.maknai.coaching?.tujuan || autoMaknai.coaching?.tujuan || '-'}</td>
+                      </tr>
+                      <tr>
+                        <td className="border border-slate-300 px-2 py-1.5 font-bold text-indigo-950 bg-slate-50">Realitas</td>
+                        <td className="border border-slate-300 px-2 py-1.5 text-slate-700 italic">Apa yang sudah berjalan baik? Bagaimana kita tahu murid benar-benar belajar?</td>
+                        <td className="border border-slate-300 px-2 py-1.5 text-slate-800">{sambung.maknai.coaching?.realitas || autoMaknai.coaching?.realitas || '-'}</td>
+                      </tr>
+                      <tr>
+                        <td className="border border-slate-300 px-2 py-1.5 font-bold text-indigo-950 bg-slate-50">Opsi</td>
+                        <td className="border border-slate-300 px-2 py-1.5 text-slate-700 italic">Apa yang membuat pembelajaran bermakna bagi murid? Apa yang bisa dicoba?</td>
+                        <td className="border border-slate-300 px-2 py-1.5 text-slate-800">{sambung.maknai.coaching?.opsi || autoMaknai.coaching?.opsi || '-'}</td>
+                      </tr>
+                      <tr>
+                        <td className="border border-slate-300 px-2 py-1.5 font-bold text-indigo-950 bg-slate-50">Komitmen</td>
+                        <td className="border border-slate-300 px-2 py-1.5 text-slate-700 italic">Langkah kecil apa yang akan dicoba? Dukungan apa yang dibutuhkan? Kapan kita tinjau?</td>
+                        <td className="border border-slate-300 px-2 py-1.5 text-slate-800">{sambung.maknai.coaching?.komitmen || autoMaknai.coaching?.komitmen || '-'}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Tanda Tangan */}
+                <div className="grid grid-cols-3 text-center text-xs pt-3 border-t border-slate-200">
+                  <div>
+                    <p className="font-semibold text-slate-700 mb-12">Pengawas Pembina,</p>
+                    <p className="font-bold underline text-slate-900">Kusnandar, M.Si</p>
+                    <p className="text-[10px] text-slate-500">NIP. 19680315 199412 1 002</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-slate-700 mb-12">Kepala Sekolah,</p>
+                    <p className="font-bold underline text-slate-900">{sambung.arahkan?.tandaTangan?.kepalaSekolah || 'Kepala Sekolah'}</p>
+                    <p className="text-[10px] text-slate-500">{supervision.schoolName}</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-slate-700 mb-12">Guru Mata Pelajaran,</p>
+                    <p className="font-bold underline text-slate-900">{supervision.teacherName}</p>
+                    <p className="text-[10px] text-slate-500">NIP. {supervision.teacherNip || '-'}</p>
+                  </div>
+                </div>
               </div>
-            </div>
+            );
+          })()}
 
-            <div className="text-xs mb-3 space-y-0.5">
-              <p><strong>Nama Guru / Mata pelajaran :</strong> {supervision.teacherName} / {supervision.subject}</p>
-              <p><strong>Tanggal :</strong> {sambung.maknai.tanggal}</p>
-            </div>
+          {/* B — TELAAH PERENCANAAN PEMBELAJARAN (BERDAYAKAN) */}
+          {(() => {
+            const autoBer = generateBerdayakanTelaahPerbaikanData(supervision);
+            const ber = sambung.berdayakan || autoBer;
+            const scores: Record<number, number | 'NA'> = ber.telaahScores || autoBer.telaahScores || {};
+            const comments: Record<number, string> = ber.telaahComments || autoBer.telaahComments || {};
+            const feedback = {
+              kelebihan: ber.feedback?.kelebihan || autoBer.feedback?.kelebihan || '',
+              perbaikan: ber.feedback?.perbaikan || autoBer.feedback?.perbaikan || '',
+              rekomendasi: ber.feedback?.rekomendasi || autoBer.feedback?.rekomendasi || '',
+            };
 
-            <table className="w-full border-collapse border border-slate-300 text-[11px] mb-8">
-              <thead>
-                <tr className="bg-slate-100 text-slate-800 font-bold">
-                  <th className="border border-slate-300 px-2 py-1.5 w-24 text-left">Tahap</th>
-                  <th className="border border-slate-300 px-2 py-1.5 w-60 text-left">Pertanyaan pemantik</th>
-                  <th className="border border-slate-300 px-2 py-1.5 text-left">Catatan guru</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td className="border border-slate-300 px-2 py-2 font-bold text-indigo-950 bg-slate-50/50">Tujuan</td>
-                  <td className="border border-slate-300 px-2 py-2 text-slate-700 italic">Pengalaman belajar seperti apa yang ingin diciptakan untuk murid?</td>
-                  <td className="border border-slate-300 px-2 py-2 text-slate-800">{sambung.maknai.coaching.tujuan || '-'}</td>
-                </tr>
-                <tr>
-                  <td className="border border-slate-300 px-2 py-2 font-bold text-indigo-950 bg-slate-50/50">Realitas</td>
-                  <td className="border border-slate-300 px-2 py-2 text-slate-700 italic">Apa yang sudah berjalan baik? Bagaimana kita tahu murid benar-benar belajar?</td>
-                  <td className="border border-slate-300 px-2 py-2 text-slate-800">{sambung.maknai.coaching.realitas || '-'}</td>
-                </tr>
-                <tr>
-                  <td className="border border-slate-300 px-2 py-2 font-bold text-indigo-950 bg-slate-50/50">Opsi</td>
-                  <td className="border border-slate-300 px-2 py-2 text-slate-700 italic">Apa yang membuat pembelajaran bermakna bagi murid? Apa yang bisa dicoba?</td>
-                  <td className="border border-slate-300 px-2 py-2 text-slate-800">{sambung.maknai.coaching.opsi || '-'}</td>
-                </tr>
-                <tr>
-                  <td className="border border-slate-300 px-2 py-2 font-bold text-indigo-950 bg-slate-50/50">Komitmen</td>
-                  <td className="border border-slate-300 px-2 py-2 text-slate-700 italic">Langkah kecil apa yang akan dicoba? Dukungan apa yang dibutuhkan? Kapan kita tinjau?</td>
-                  <td className="border border-slate-300 px-2 py-2 text-slate-800">{sambung.maknai.coaching.komitmen || '-'}</td>
-                </tr>
-              </tbody>
-            </table>
+            let totalSkor = 0;
+            let maxSkor = 0;
+            TELAAH_ITEMS.forEach((item) => {
+              const val = scores[item.id];
+              if (val !== 'NA' && val !== undefined) {
+                totalSkor += Number(val);
+                maxSkor += 2;
+              }
+            });
+            const finalScore = maxSkor > 0 ? parseFloat(((totalSkor / maxSkor) * 100).toFixed(1)) : 100;
+            let predikat = 'Sangat Baik';
+            let deskripsi = 'Perencanaan pembelajaran telah memenuhi kriteria secara optimal. Keselarasan tujuan, kegiatan, asesmen, pengalaman belajar, dan prinsip Pembelajaran Mendalam sudah tergambar dengan baik.';
+            if (finalScore >= 86) {
+              predikat = 'Sangat Baik';
+              deskripsi = 'Perencanaan pembelajaran telah memenuhi kriteria secara optimal. Keselarasan tujuan, kegiatan, asesmen, pengalaman belajar, dan prinsip Pembelajaran Mendalam sudah tergambar dengan baik.';
+            } else if (finalScore >= 76) {
+              predikat = 'Baik';
+              deskripsi = 'Perencanaan pembelajaran telah memenuhi sebagian besar kriteria, namun masih terdapat beberapa komponen yang perlu diperkuat agar lebih utuh dan selaras.';
+            } else if (finalScore >= 66) {
+              predikat = 'Cukup';
+              deskripsi = 'Perencanaan pembelajaran telah memiliki komponen dasar, tetapi beberapa aspek penting belum terpenuhi secara optimal, terutama aspek keselarasan, pengalaman belajar, atau asesmen.';
+            } else {
+              predikat = 'Perlu Perbaikan';
+              deskripsi = 'Perencanaan pembelajaran belum memenuhi sejumlah kriteria penting dan memerlukan penguatan pada komponen dasar maupun keterkaitan antarkomponen.';
+            }
 
-            {/* B — LEMBAR RANCANG-COBA-REFLEKSI-PERBAIKI */}
-            <div className="flex items-center gap-3 mb-3 bg-indigo-900 text-white p-2.5 rounded-lg mt-8">
-              <span className="w-7 h-7 rounded-md bg-white text-indigo-900 font-extrabold flex items-center justify-center text-sm">
-                B
-              </span>
-              <div>
-                <h3 className="font-bold text-sm">Lembar Rancang &ndash; Coba &ndash; Refleksi &ndash; Perbaiki</h3>
-                <p className="text-[10px] text-indigo-200">BERDAYAKAN — diisi guru; rancangan mencakup memahami, mengaplikasikan, merefleksikan, menghubungkan</p>
+            return (
+              <div className="page-break-after">
+                <div className="flex items-center gap-3 mb-3 bg-amber-900 text-white p-2.5 rounded-lg mt-8">
+                  <span className="w-7 h-7 rounded-md bg-white text-amber-900 font-extrabold flex items-center justify-center text-sm">
+                    B
+                  </span>
+                  <div>
+                    <h3 className="font-bold text-sm">TELAAH PERENCANAAN PEMBELAJARAN (RPP PERBAIKAN)</h3>
+                    <p className="text-[10px] text-amber-200">
+                      BERDAYAKAN — Input RPP Perbaikan, telaah kembali secara otomatis (22 Aspek Telaah Perencanaan Pembelajaran)
+                    </p>
+                  </div>
+                </div>
+
+                {/* IDENTITAS (Halaman 1 PDF) */}
+                <div className="border border-slate-300 p-3 rounded-lg text-[11px] mb-3 bg-slate-50 space-y-1">
+                  <p className="font-bold text-slate-800 uppercase text-[10px] tracking-wider mb-1">Identitas Perencanaan Pembelajaran</p>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
+                    <p><strong>Nama Guru :</strong> {supervision.teacherName}</p>
+                    <p><strong>Mata Pelajaran :</strong> {supervision.subject}</p>
+                    <p><strong>Kelas / Fase :</strong> {supervision.classGrade}</p>
+                    <p><strong>Sekolah :</strong> {supervision.schoolName}</p>
+                    <p className="col-span-2"><strong>Judul Rencana Pembelajaran :</strong> {ber.rppPerbaikanTitle || autoBer.rppPerbaikanTitle}</p>
+                    <p><strong>Tanggal Telaah :</strong> {ber.tanggalTelaah || new Date().toISOString().split('T')[0]}</p>
+                    <p><strong>Nama Penelaah :</strong> {ber.namaPenelaah || 'Kusnandar, M.Si'}</p>
+                    {ber.rppPerbaikanUrl && (
+                      <p className="col-span-2 text-indigo-700 truncate">
+                        <strong>Tautan Berkas RPP (Drive) :</strong> {ber.rppPerbaikanUrl}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* TABEL 22 ASPEK (Halaman 2-6 PDF) */}
+                <table className="w-full border-collapse border border-slate-300 text-[10px] mb-3">
+                  <thead>
+                    <tr className="bg-slate-100 text-slate-800 font-bold text-center">
+                      <th className="border border-slate-300 px-1 py-1.5 w-6" rowSpan={2}>No</th>
+                      <th className="border border-slate-300 px-2 py-1.5 text-left" rowSpan={2}>Aspek yang diamati</th>
+                      <th className="border border-slate-300 px-1 py-1" colSpan={4}>Skala</th>
+                      <th className="border border-slate-300 px-2 py-1.5 text-left w-56" rowSpan={2}>Komentar Kritis</th>
+                    </tr>
+                    <tr className="bg-slate-100 text-slate-800 font-bold text-center">
+                      <th className="border border-slate-300 px-1 py-0.5 w-5">0</th>
+                      <th className="border border-slate-300 px-1 py-0.5 w-5">1</th>
+                      <th className="border border-slate-300 px-1 py-0.5 w-5">2</th>
+                      <th className="border border-slate-300 px-1 py-0.5 w-7">N/A</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {TELAAH_ITEMS.map((item) => {
+                      const val = scores[item.id] !== undefined ? scores[item.id] : 2;
+                      const cmt = comments[item.id] || (autoBer.telaahComments ? autoBer.telaahComments[item.id] : '') || '-';
+                      return (
+                        <tr key={item.id}>
+                          <td className="border border-slate-300 px-1 py-1 text-center font-bold">{item.id}</td>
+                          <td className="border border-slate-300 px-2 py-1 text-slate-800">
+                            <span className="font-bold block text-[9px] text-amber-800 uppercase">{item.category}</span>
+                            {item.aspect}
+                          </td>
+                          <td className="border border-slate-300 px-1 py-1 text-center font-bold text-slate-700">
+                            {val === 0 ? '✓' : ''}
+                          </td>
+                          <td className="border border-slate-300 px-1 py-1 text-center font-bold text-slate-700">
+                            {val === 1 ? '✓' : ''}
+                          </td>
+                          <td className="border border-slate-300 px-1 py-1 text-center font-bold text-emerald-700 bg-emerald-50/40">
+                            {val === 2 ? '✓' : ''}
+                          </td>
+                          <td className="border border-slate-300 px-1 py-1 text-center font-bold text-slate-700">
+                            {val === 'NA' ? '✓' : ''}
+                          </td>
+                          <td className="border border-slate-300 px-2 py-1 text-slate-800 text-[9.5px] leading-tight">
+                            {cmt}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    <tr className="bg-slate-100 font-bold">
+                      <td colSpan={2} className="border border-slate-300 px-2 py-1.5 text-right uppercase">
+                        Total Skor:
+                      </td>
+                      <td colSpan={4} className="border border-slate-300 px-2 py-1.5 text-center font-extrabold text-amber-800">
+                        {totalSkor} / {maxSkor}
+                      </td>
+                      <td className="border border-slate-300 px-2 py-1.5 text-slate-700 text-[10px]">
+                        Skor Maksimal: {maxSkor} Poin
+                      </td>
+                    </tr>
+                    <tr className="bg-amber-50 font-bold">
+                      <td colSpan={2} className="border border-slate-300 px-2 py-1.5 text-right uppercase text-amber-900">
+                        Nilai Akhir dan Predikat:
+                      </td>
+                      <td colSpan={4} className="border border-slate-300 px-2 py-1.5 text-center font-extrabold text-emerald-800 text-xs">
+                        {finalScore.toFixed(1)}%
+                      </td>
+                      <td className="border border-slate-300 px-2 py-1.5 text-emerald-800 font-extrabold uppercase">
+                        {predikat}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                {/* DESKRIPSI KATEGORI (Halaman 8 PDF) */}
+                <div className="border border-slate-300 p-2.5 rounded-lg text-[10px] mb-3 bg-white">
+                  <p><strong>Deskripsi Hasil Telaah :</strong> &ldquo;{deskripsi}&rdquo;</p>
+                </div>
+
+                {/* UMPAN BALIK PERENCANAAN PEMBELAJARAN (Halaman 7 PDF) */}
+                <div className="border border-slate-300 p-3 rounded-lg text-[10px] mb-3 bg-slate-50 space-y-2">
+                  <p className="font-bold text-slate-900 uppercase tracking-wider text-[10px]">
+                    Umpan Balik Perencanaan Pembelajaran
+                  </p>
+                  <div>
+                    <p className="font-semibold text-slate-800">1. Tuliskan kelebihan Perencanaan Pembelajaran:</p>
+                    <p className="text-slate-700 italic pl-3 pt-0.5">{feedback.kelebihan}</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-slate-800">2. Tuliskan hal yang perlu ditingkatkan dari Perencanaan Pembelajaran:</p>
+                    <p className="text-slate-700 italic pl-3 pt-0.5">{feedback.perbaikan}</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-slate-800">3. Tuliskan rekomendasi dan lanjutkan dengan revisi perencanaan pembelajaran sesuai prinsip Pembelajaran Mendalam:</p>
+                    <p className="text-slate-700 italic pl-3 pt-0.5">{feedback.rekomendasi}</p>
+                  </div>
+                </div>
+
+                {/* KETENTUAN SKOR (Halaman 7 PDF) */}
+                <table className="w-full border-collapse border border-slate-300 text-[9px] mb-3">
+                  <thead>
+                    <tr className="bg-slate-100 font-bold text-slate-800">
+                      <th className="border border-slate-300 px-2 py-1 w-10 text-center">Skor</th>
+                      <th className="border border-slate-300 px-2 py-1 w-44">Keterangan</th>
+                      <th className="border border-slate-300 px-2 py-1">Kriteria Umum</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td className="border border-slate-300 px-2 py-1 text-center font-bold">2</td>
+                      <td className="border border-slate-300 px-2 py-1 font-semibold">Terpenuhi secara optimal</td>
+                      <td className="border border-slate-300 px-2 py-1">Indikator tersedia, lengkap, jelas, relevan, dan selaras dengan perencanaan pembelajaran.</td>
+                    </tr>
+                    <tr>
+                      <td className="border border-slate-300 px-2 py-1 text-center font-bold">1</td>
+                      <td className="border border-slate-300 px-2 py-1 font-semibold">Terpenuhi sebagian / belum optimal</td>
+                      <td className="border border-slate-300 px-2 py-1">Indikator sudah ada, tetapi belum lengkap, belum jelas, belum konsisten, atau belum sepenuhnya selaras.</td>
+                    </tr>
+                    <tr>
+                      <td className="border border-slate-300 px-2 py-1 text-center font-bold">0</td>
+                      <td className="border border-slate-300 px-2 py-1 font-semibold">Belum terpenuhi</td>
+                      <td className="border border-slate-300 px-2 py-1">Indikator belum ada, belum tergambar, atau tidak sesuai dengan yang dipersyaratkan.</td>
+                    </tr>
+                    <tr>
+                      <td className="border border-slate-300 px-2 py-1 text-center font-bold">N/A</td>
+                      <td className="border border-slate-300 px-2 py-1 font-semibold">Tidak relevan</td>
+                      <td className="border border-slate-300 px-2 py-1">Tidak menuliskan di RPP karena opsional dan tidak diperhitungkan dalam skor.</td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                {/* SIKLUS BERDAYAKAN (LEMBAR RANCANG-COBA-REFLEKSI-PERBAIKI) */}
+                <div className="mb-4">
+                  <p className="font-bold text-slate-900 uppercase text-[10px] tracking-wider mb-1.5">
+                    Lembar Rancang &ndash; Coba &ndash; Refleksi &ndash; Perbaiki (Siklus Implementasi Kelas)
+                  </p>
+                  <table className="w-full border-collapse border border-slate-300 text-[10px]">
+                    <thead>
+                      <tr className="bg-slate-100 text-slate-800 font-bold">
+                        <th className="border border-slate-300 px-2 py-1.5 w-16 text-center">Siklus</th>
+                        <th className="border border-slate-300 px-2 py-1.5 text-left">Rancangan dan hasil uji coba pada murid</th>
+                        <th className="border border-slate-300 px-2 py-1.5 text-left">Refleksi (berhasil / belum, mengapa)</th>
+                        <th className="border border-slate-300 px-2 py-1.5 text-left">Perbaikan berikutnya</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {ber.siklusList.map((item) => (
+                        <tr key={item.siklus}>
+                          <td className="border border-slate-300 px-2 py-2 text-center font-bold">Siklus {item.siklus}</td>
+                          <td className="border border-slate-300 px-2 py-2 text-slate-800">{item.rancanganDanUjiCoba || '-'}</td>
+                          <td className="border border-slate-300 px-2 py-2 text-slate-700">{item.refleksi || '-'}</td>
+                          <td className="border border-slate-300 px-2 py-2 text-slate-800 font-medium">{item.perbaikanBerikutnya || '-'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Tanda Tangan Penelaah & Guru */}
+                <div className="grid grid-cols-2 gap-8 text-[11px] pt-4 border-t border-slate-200">
+                  <div className="text-center">
+                    <p className="text-slate-500 mb-12">Guru Yang Ditelaah,</p>
+                    <p className="font-bold underline">{supervision.teacherName}</p>
+                    <p className="text-[10px] text-slate-500">NIP. {supervision.teacherNip || '-'}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-slate-500 mb-12">Penelaah / Pengawas Pembina,</p>
+                    <p className="font-bold underline">{ber.namaPenelaah || 'Kusnandar, M.Si'}</p>
+                    <p className="text-[10px] text-slate-500">NIP. 196805121994121001</p>
+                  </div>
+                </div>
               </div>
-            </div>
-
-            <table className="w-full border-collapse border border-slate-300 text-[11px]">
-              <thead>
-                <tr className="bg-slate-100 text-slate-800 font-bold">
-                  <th className="border border-slate-300 px-2 py-1.5 w-16 text-center">Siklus</th>
-                  <th className="border border-slate-300 px-2 py-1.5 text-left">Rancangan dan hasil uji coba pada murid</th>
-                  <th className="border border-slate-300 px-2 py-1.5 text-left">Refleksi (berhasil / belum, mengapa)</th>
-                  <th className="border border-slate-300 px-2 py-1.5 text-left">Perbaikan berikutnya</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sambung.berdayakan.siklusList.map((item) => (
-                  <tr key={item.siklus}>
-                    <td className="border border-slate-300 px-2 py-2 text-center font-bold">Siklus {item.siklus}</td>
-                    <td className="border border-slate-300 px-2 py-2 text-slate-800">{item.rancanganDanUjiCoba || '-'}</td>
-                    <td className="border border-slate-300 px-2 py-2 text-slate-700">{item.refleksi || '-'}</td>
-                    <td className="border border-slate-300 px-2 py-2 text-slate-800 font-medium">{item.perbaikanBerikutnya || '-'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+            );
+          })()}
 
           {/* U-1 — OBSERVASI KELAS SAMBUNG */}
           <div className="page-break-after">

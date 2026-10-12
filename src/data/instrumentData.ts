@@ -118,152 +118,190 @@ export const TELAAH_ITEMS: TelaahItem[] = [
 ];
 
 export const OBSERVASI_ITEMS: ObservasiItemDef[] = [
-  // 1. Kegiatan Pendahuluan (3 items)
+  // 1. PROFIL LULUSAN (2 butir)
   {
-    id: 'pendahuluan_1',
-    category: '1. Kegiatan Pendahuluan',
-    aspect: 'Menyiapkan peserta didik secara psikis dan fisik untuk mengikuti proses pembelajaran (berdoa, presensi, kesepakatan kelas, ice breaking/apersepsi).',
+    id: '1',
+    category: 'PROFIL LULUSAN',
+    aspect: 'Pelaksanaan pembelajaran menunjukkan tujuan pembelajaran yang mencakup sikap, pengetahuan, dan keterampilan, serta terlihat dalam aktivitas yang membangun karakter dan kompetensi murid.',
   },
   {
-    id: 'pendahuluan_2',
-    category: '1. Kegiatan Pendahuluan',
-    aspect: 'Memberi motivasi belajar peserta didik secara kontekstual sesuai manfaat materi dalam kehidupan nyata.',
-  },
-  {
-    id: 'pendahuluan_3',
-    category: '1. Kegiatan Pendahuluan',
-    aspect: 'Menyampaikan tujuan pembelajaran, cakupan materi, langkah kegiatan, dan teknik penilaian yang akan dilakukan.',
+    id: '2',
+    category: 'PROFIL LULUSAN',
+    aspect: 'Pelaksanaan pembelajaran menunjukkan adanya kegiatan penilaian yang digunakan untuk melihat ketercapaian profil lulusan serta selaras dengan tujuan pembelajaran.',
   },
 
-  // 2. Kegiatan Inti - Penguasaan & Pengelolaan (4 items)
+  // 2. PRINSIP PEMBELAJARAN (3 butir)
   {
-    id: 'inti_penguasaan_1',
-    category: '2. Kegiatan Inti - Penguasaan & Pengelolaan',
-    aspect: 'Menunjukkan penguasaan materi pembelajaran secara mendalam, akurat, dan runtut sesuai disiplin ilmu.',
+    id: '3',
+    category: 'PRINSIP PEMBELAJARAN',
+    aspect: 'Pelaksanaan pembelajaran menunjukkan alur kegiatan yang jelas, terstruktur, dan mampu menjaga fokus serta keterlibatan murid sepanjang pembelajaran.',
   },
   {
-    id: 'inti_penguasaan_2',
-    category: '2. Kegiatan Inti - Penguasaan & Pengelolaan',
-    aspect: 'Mengaitkan materi pembelajaran dengan pengetahuan lain yang relevan, sains, teknologi, dan kehidupan nyata murid.',
+    id: '4',
+    category: 'PRINSIP PEMBELAJARAN',
+    aspect: 'Pelaksanaan pembelajaran menunjukkan keterkaitan materi dan aktivitas dengan kehidupan nyata atau pengalaman murid.',
   },
   {
-    id: 'inti_penguasaan_3',
-    category: '2. Kegiatan Inti - Penguasaan & Pengelolaan',
-    aspect: 'Melaksanakan pembelajaran sesuai dengan alokasi waktu yang direncanakan dan alur sintaks model yang dipilih.',
-  },
-  {
-    id: 'inti_penguasaan_4',
-    category: '2. Kegiatan Inti - Penguasaan & Pengelolaan',
-    aspect: 'Mengelola kelas secara kondusif, dinamis, aman, inklusif, dan membangun suasana saling memuliakan.',
+    id: '5',
+    category: 'PRINSIP PEMBELAJARAN',
+    aspect: 'Pelaksanaan pembelajaran menunjukkan aktivitas yang menarik, menantang, dan mampu memotivasi serta menggembirakan murid.',
   },
 
-  // 3. Pelibatan Peserta (3 items)
+  // 3. PENGALAMAN BELAJAR (3 butir)
   {
-    id: 'pelibatan_1',
-    category: '3. Pelibatan Peserta Didik',
-    aspect: 'Menumbuhkan partisipasi aktif dan antusiasme peserta didik melalui kegiatan eksplorasi, tanya jawab, atau diskusi.',
+    id: '6',
+    category: 'PENGALAMAN BELAJAR',
+    aspect: 'Pelaksanaan pembelajaran menunjukkan keterlibatan aktif murid dalam memahami materi melalui kegiatan mengamati, bertanya, berdiskusi, atau menggali informasi dari berbagai sumber.',
   },
   {
-    id: 'pelibatan_2',
-    category: '3. Pelibatan Peserta Didik',
-    aspect: 'Merespons pertanyaan, gagasan, atau kesulitan peserta didik secara positif, konstruktif, dan merata.',
+    id: '7',
+    category: 'PENGALAMAN BELAJAR',
+    aspect: 'Pelaksanaan pembelajaran menunjukkan kegiatan yang mendorong murid menerapkan pengetahuan dalam situasi nyata atau kontekstual.',
   },
   {
-    id: 'pelibatan_3',
-    category: '3. Pelibatan Peserta Didik',
-    aspect: 'Memfasilitasi kerja sama antarmurid dalam kelompok secara berkeadilan tanpa diskriminasi.',
-  },
-
-  // 4. Integrasi Saintifik (5M), HOTS, 4C, Dimensi Pengetahuan (4 items)
-  {
-    id: 'integrasi_1',
-    category: '4. Integrasi HOTS, 4C & Pendekatan Mendalam',
-    aspect: 'Memfasilitasi keterampilan abad 21 (4C: Berpikir Kritis, Kreatif, Kolaborasi, Komunikasi) dalam aktivitas belajar.',
-  },
-  {
-    id: 'integrasi_2',
-    category: '4. Integrasi HOTS, 4C & Pendekatan Mendalam',
-    aspect: 'Mendorong peserta didik memecahkan masalah kontekstual berbasis Higher Order Thinking Skills (HOTS).',
-  },
-  {
-    id: 'integrasi_3',
-    category: '4. Integrasi HOTS, 4C & Pendekatan Mendalam',
-    aspect: 'Mengintegrasikan tahapan mengamati, menanya, mencoba/menalar, dan mengomunikasikan (Saintifik / 5M).',
-  },
-  {
-    id: 'integrasi_4',
-    category: '4. Integrasi HOTS, 4C & Pendekatan Mendalam',
-    aspect: 'Menyentuh dimensi pengetahuan faktual, konseptual, prosedural, hingga metakognitif.',
+    id: '8',
+    category: 'PENGALAMAN BELAJAR',
+    aspect: 'Pelaksanaan pembelajaran menunjukkan adanya kegiatan refleksi, di mana murid menilai proses dan hasil belajar serta merencanakan perbaikan.',
   },
 
-  // 5. Pemanfaatan Media/Sumber Belajar (3 items)
+  // 4. KERANGKA PEMBELAJARAN (4 butir)
   {
-    id: 'media_1',
-    category: '5. Pemanfaatan Media & Sumber Belajar',
-    aspect: 'Menunjukkan keterampilan pemanfaatan media/alat bantu visual, audio, atau multimedia digital secara efektif.',
+    id: '9',
+    category: 'KERANGKA PEMBELAJARAN',
+    aspect: 'Pelaksanaan pembelajaran menunjukkan penggunaan strategi/metode pembelajaran yang jelas dan sesuai dengan tujuan.',
   },
   {
-    id: 'media_2',
-    category: '5. Pemanfaatan Media & Sumber Belajar',
-    aspect: 'Memanfaatkan sumber belajar beragam (buku teks, internet, lingkungan sekitar, artefak nyata).',
+    id: '10',
+    category: 'KERANGKA PEMBELAJARAN',
+    aspect: 'Pelaksanaan pembelajaran menunjukkan adanya interaksi dan kerja sama antara guru dengan murid maupun antar murid.',
   },
   {
-    id: 'media_3',
-    category: '5. Pemanfaatan Media & Sumber Belajar',
-    aspect: 'Melibatkan peserta didik secara langsung dalam eksplorasi penggunaan media dan bahan ajar.',
-  },
-
-  // 6. Pelaksanaan Penilaian (3 items)
-  {
-    id: 'penilaian_1',
-    category: '6. Pelaksanaan Penilaian Proses & Hasil',
-    aspect: 'Melakukan pemantauan dan asesmen formatif selama proses pembelajaran berlangsung untuk memantau kemajuan.',
+    id: '11',
+    category: 'KERANGKA PEMBELAJARAN',
+    aspect: 'Pelaksanaan pembelajaran menunjukkan suasana kelas yang aman, nyaman, tertib, dan mendukung proses belajar.',
   },
   {
-    id: 'penilaian_2',
-    category: '6. Pelaksanaan Penilaian Proses & Hasil',
-    aspect: 'Memberikan umpan balik (feedback) langsung yang spesifik, memotivasi, dan konstruktif kepada murid.',
-  },
-  {
-    id: 'penilaian_3',
-    category: '6. Pelaksanaan Penilaian Proses & Hasil',
-    aspect: 'Melakukan penilaian akhir/sumatif atau refleksi ketercapaian tujuan pembelajaran menggunakan instrumen yang tepat.',
+    id: '12',
+    category: 'KERANGKA PEMBELAJARAN',
+    aspect: 'Pelaksanaan pembelajaran menunjukkan penggunaan media atau teknologi/digital yang relevan untuk mendukung pembelajaran.',
   },
 
-  // 7. Penggunaan Bahasa (2 items)
+  // 5. BUDAYA BELAJAR MURID (3 butir)
   {
-    id: 'bahasa_1',
-    category: '7. Penggunaan Bahasa & Komunikasi',
-    aspect: 'Menggunakan bahasa Indonesia yang baik, benar, santun, lugas, dan mudah dipahami oleh murid.',
+    id: '13',
+    category: 'BUDAYA BELAJAR MURID',
+    aspect: 'Pelaksanaan pembelajaran menunjukkan sikap saling menghargai, menghormati, dan memuliakan antar murid dalam interaksi belajar.',
   },
   {
-    id: 'bahasa_2',
-    category: '7. Penggunaan Bahasa & Komunikasi',
-    aspect: 'Menyampaikan intonasi suara, artikulasi, dan gerak tubuh (bahasa nonverbal) yang mendukung rasa nyaman dan hormat.',
+    id: '14',
+    category: 'BUDAYA BELAJAR MURID',
+    aspect: 'Pelaksanaan pembelajaran menunjukkan murid memahami tujuan pembelajaran dan mengaitkan materi dengan pengalaman sebelumnya.',
+  },
+  {
+    id: '15',
+    category: 'BUDAYA BELAJAR MURID',
+    aspect: 'Pelaksanaan pembelajaran menunjukkan murid memiliki kesempatan memilih cara belajar, percaya diri, dan melakukan refleksi diri.',
   },
 
-  // 8. Kegiatan Penutup (2 items)
+  // 6. CAPAIAN BELAJAR MURID (2 butir)
   {
-    id: 'penutup_1',
-    category: '8. Kegiatan Penutup',
-    aspect: 'Memfasilitasi peserta didik membuat rangkuman/kesimpulan dan melakukan refleksi mendalam terhadap kegiatan hari ini.',
+    id: '16',
+    category: 'CAPAIAN BELAJAR MURID',
+    aspect: 'Pelaksanaan pembelajaran menunjukkan adanya ketercapaian tujuan pembelajaran sesuai dengan kemampuan dan perkembangan murid.',
   },
   {
-    id: 'penutup_2',
-    category: '8. Kegiatan Penutup',
-    aspect: 'Menyampaikan tindak lanjut (remedial/pengayaan/tugas) dan informasi agenda pembelajaran pertemuan berikutnya, ditutup salam/doa.',
+    id: '17',
+    category: 'CAPAIAN BELAJAR MURID',
+    aspect: 'Pelaksanaan pembelajaran menunjukkan murid belajar secara mandiri melalui aktivitas yang relevan dengan kehidupan sehari-hari.',
+  },
+
+  // 7. MENGAJAR SECARA EFEKTIF (3 butir)
+  {
+    id: '18',
+    category: 'MENGAJAR SECARA EFEKTIF',
+    aspect: 'Pelaksanaan pembelajaran menunjukkan guru menghargai perbedaan kemampuan, latar belakang, dan kebutuhan belajar murid.',
+  },
+  {
+    id: '19',
+    category: 'MENGAJAR SECARA EFEKTIF',
+    aspect: 'Pelaksanaan pembelajaran menunjukkan pengelolaan kelas yang efektif, pembelajaran yang kontekstual, dan keterpaduan antar kegiatan.',
+  },
+  {
+    id: '20',
+    category: 'MENGAJAR SECARA EFEKTIF',
+    aspect: 'Pelaksanaan pembelajaran menunjukkan adanya kegiatan refleksi di akhir pembelajaran yang mengacu pada hasil belajar murid.',
+  },
+
+  // 8. ASESMEN OTENTIK DAN BERKEADILAN (3 butir)
+  {
+    id: '21',
+    category: 'ASESMEN OTENTIK DAN BERKEADILAN',
+    aspect: 'Pelaksanaan pembelajaran menunjukkan guru melakukan penilaian selama proses belajar (formatif) dan memberikan umpan balik kepada murid.',
+  },
+  {
+    id: '22',
+    category: 'ASESMEN OTENTIK DAN BERKEADILAN',
+    aspect: 'Pelaksanaan pembelajaran menunjukkan adanya penilaian akhir untuk mengetahui ketercapaian tujuan pembelajaran.',
+  },
+  {
+    id: '23',
+    category: 'ASESMEN OTENTIK DAN BERKEADILAN',
+    aspect: 'Pelaksanaan pembelajaran menunjukkan guru menggunakan hasil penilaian untuk memperbaiki pembelajaran atau memberikan tindak lanjut.',
+  },
+
+  // 9. KEPEMIMPINAN PEMBELAJARAN (2 butir)
+  {
+    id: '24',
+    category: 'KEPEMIMPINAN PEMBELAJARAN',
+    aspect: 'Pelaksanaan pembelajaran menunjukkan arah pembelajaran yang sejalan dengan visi sekolah dan berpusat pada murid.',
+  },
+  {
+    id: '25',
+    category: 'KEPEMIMPINAN PEMBELAJARAN',
+    aspect: 'Pelaksanaan pembelajaran menunjukkan adanya upaya perbaikan pembelajaran secara berkelanjutan melalui refleksi.',
   },
 ];
 
 export const PRA_OBSERVASI_QUESTIONS = [
-  { id: 'q1', label: '1. KD / Capaian Pembelajaran (CP) dan Indikator / Tujuan Pembelajaran (TP) apa yang akan disajikan?' },
-  { id: 'q2', label: '2. Metode pembelajaran apa yang Bapak/Ibu pilih untuk menyajikan materi ini, dan apa alasannya?' },
-  { id: 'q3', label: '3. Alat, bahan, dan sumber belajar apa saja yang disiapkan, dan apa alasannya?' },
-  { id: 'q4', label: '4. Bagaimana tahapan atau langkah-langkah pembelajaran yang direncanakan dari awal hingga akhir?' },
-  { id: 'q5', label: '5. Persiapan tertulis apa saja yang telah Bapak/Ibu buat (Modul Ajar/RPP, LKPD, Instrumen Penilaian)?' },
-  { id: 'q6', label: '6. Materi bagian mana yang diperkirakan akan sulit dipahami oleh siswa, dan apa antisipasi Bapak/Ibu?' },
-  { id: 'q7', label: '7. Target kompetensi atau karakter (Profil Pelajar) apa yang paling diharapkan tercapai pada sesi ini?' },
-  { id: 'q8', label: '8. Aspek atau fokus perhatian khusus apa yang Bapak/Ibu harapkan untuk diamati secara mendalam oleh Supervisor?' },
+  { 
+    id: 'q1', 
+    label: '1. Tujuan pembelajaran apa yang akan Saudara sajikan? Bagaimana tujuan tersebut akan dipahami murid dan diwujudkan dalam pengalaman belajar mereka?' 
+  },
+  { 
+    id: 'q2', 
+    label: '2. Strategi atau praktik pedagogis apa yang akan Saudara gunakan? Mengapa strategi tersebut dipilih sesuai tujuan dan kebutuhan belajar murid?' 
+  },
+  { 
+    id: 'q3', 
+    label: '3. Sumber belajar, media, atau teknologi apa yang akan Saudara gunakan? Bagaimana penggunaannya membantu murid memahami dan mengaplikasikan pengetahuan?' 
+  },
+  { 
+    id: 'q4', 
+    label: '4. Bagaimana tahapan pembelajaran yang akan Saudara sajikan untuk memberikan pengalaman memahami, mengaplikasi, dan merefleksi?' 
+  },
+  { 
+    id: 'q5', 
+    label: '5. Bagaimana Saudara merancang pembelajaran agar berlangsung secara berkesadaran, bermakna, dan menggembirakan bagi murid?' 
+  },
+  { 
+    id: 'q6', 
+    label: '6. Bagian atau materi apa yang diperkirakan sulit bagi murid? Bagaimana Saudara mengantisipasi perbedaan kemampuan, kebutuhan, dan karakteristik murid?' 
+  },
+  { 
+    id: 'q7', 
+    label: '7. Kompetensi dan karakter apa yang diharapkan berkembang pada murid setelah mengikuti pembelajaran?' 
+  },
+  { 
+    id: 'q8', 
+    label: '8. Hal apa yang secara khusus perlu diperhatikan dalam pembelajaran ini agar murid aktif, terlibat, dan memperoleh pengalaman belajar yang bermakna?' 
+  },
+];
+
+export const KESIMPULAN_SELIDIKI_INDIKATOR = [
+  { id: 1, label: 'Guru berorientasi pada pengalaman belajar murid', key: 'peranGuru' },
+  { id: 2, label: 'Pembelajaran menghasilkan murid aktif mengaplikasikan pengetahuan', key: 'aktivitasMurid' },
+  { id: 3, label: 'Pembelajaran terhubung dengan konteks nyata', key: 'konteksNyata' },
+  { id: 4, label: 'Pembelajaran membiasakan murid melakukan refleksi', key: 'refleksiMurid' },
 ];
 
 export const PASCA_OBSERVASI_QUESTIONS = [
@@ -276,6 +314,63 @@ export const PASCA_OBSERVASI_QUESTIONS = [
   { id: 'q7', label: '7. Alternatif solusi apa yang telah atau akan diambil untuk mengatasi kesulitan belajar siswa tersebut?' },
   { id: 'q8', label: '8. Apa rencana tindak lanjut (RTL) Bapak/Ibu untuk pertemuan kelas selanjutnya?' },
   { id: 'q9', label: '9. Identifikasi kebutuhan peningkatan kompetensi atau pengembangan diri apa yang Bapak/Ibu perlukan?' },
+];
+
+/**
+ * Instrumen Resmi MAKNAI: COACHING DAN REFLEKSI PASCA OBSERVASI
+ * Sesuai Dokumen PDF Pengawas Pembina (10 Pertanyaan + Kesan umum & Saran-Masukan)
+ */
+export const MAKNAI_COACHING_QUESTIONS = [
+  {
+    id: 'q1',
+    no: 1,
+    pertanyaan: 'Bagaimana kesan Saudara setelah menyajikan pembelajaran ini, terutama terkait keterlibatan dan antusiasme murid?'
+  },
+  {
+    id: 'q2',
+    no: 2,
+    pertanyaan: 'Apakah proses pembelajaran sudah sesuai dengan yang direncanakan? Pada bagian mana dari pengalaman memahami, mengaplikasi, dan merefleksi pembelajaran berjalan sesuai rencana, dan bagian mana yang berubah?'
+  },
+  {
+    id: 'q3',
+    no: 3,
+    pertanyaan: 'Dapatkah Saudara menceritakan hal-hal yang dirasakan memuaskan, misalnya saat murid terlihat aktif, menemukan makna, dan senang belajar?'
+  },
+  {
+    id: 'q4',
+    no: 4,
+    pertanyaan: 'Bagaimana perkiraan Saudara mengenai ketercapaian tujuan pembelajaran, dan bukti apa dari penilaian selama proses belajar yang mendukung perkiraan tersebut?'
+  },
+  {
+    id: 'q5',
+    no: 5,
+    pertanyaan: 'Apa yang menjadi kesulitan murid? Bagaimana Saudara menanggapi perbedaan kemampuan dan kebutuhan belajar mereka selama pembelajaran?'
+  },
+  {
+    id: 'q6',
+    no: 6,
+    pertanyaan: 'Bagaimana murid menilai proses dan hasil belajarnya sendiri melalui refleksi, dan umpan balik apa yang Saudara berikan kepada mereka?'
+  },
+  {
+    id: 'q7',
+    no: 7,
+    pertanyaan: 'Apa yang menjadi kesulitan Saudara dalam melaksanakan pembelajaran ini?'
+  },
+  {
+    id: 'q8',
+    no: 8,
+    pertanyaan: 'Adakah alternatif lain untuk mengatasi kesulitan Saudara?'
+  },
+  {
+    id: 'q9',
+    no: 9,
+    pertanyaan: 'Marilah bersama-sama kita identifikasi hal-hal yang telah mantap dan hal-hal yang perlu ditingkatkan, berdasarkan kegiatan yang baru saja Saudara lakukan dan hasil pengamatan pada instrumen observasi, terutama butir yang masih bernilai 0 atau 1.'
+  },
+  {
+    id: 'q10',
+    no: 10,
+    pertanyaan: 'Dengan demikian, apa yang akan Saudara lakukan pada pertemuan berikutnya untuk memperkuat praktik Pembelajaran Mendalam?'
+  }
 ];
 
 export const EVALUASI_TAHUNAN_COMPONENTS = [

@@ -801,11 +801,13 @@ export function createDefaultSambungForTeacher(
       matriksBefore: { ...DEFAULT_MATRIKS_BEFORE },
     },
     arahkan: {
+      fokusIndikatorTerpilih: ['peranGuru', 'aktivitasMurid'],
       periode: 'Semester Genap 2025/2026',
       fokusPerubahan: `Meningkatkan keterlibatan aktif dan pemahaman kontekstual murid pada pembelajaran ${subject} melalui pembelajaran bermakna.`,
       kegiatan: [
         {
           id: 1,
+          fokusIndikator: 'peranGuru',
           kegiatanPembinaan: `Bedah telaah perangkat dan modul ajar ${subject} berbasis inkuiri`,
           indikatorKeberhasilan: 'Modul ajar memuat diferensiasi konten dan asesmen otentik',
           waktu: 'Bulan ke-1',
@@ -813,6 +815,7 @@ export function createDefaultSambungForTeacher(
         },
         {
           id: 2,
+          fokusIndikator: 'aktivitasMurid',
           kegiatanPembinaan: 'Coaching reflektif strategi pelibatan murid aktif',
           indikatorKeberhasilan: 'Guru menyusun strategi pertanyaan pemantik dan studi kasus nyata',
           waktu: 'Bulan ke-2',
@@ -820,6 +823,7 @@ export function createDefaultSambungForTeacher(
         },
         {
           id: 3,
+          fokusIndikator: 'aktivitasMurid',
           kegiatanPembinaan: 'Observasi kelas kolaboratif dan refleksi pasca-observasi',
           indikatorKeberhasilan: 'Skor observasi mencapai kriteria berkembang/sangat berkembang (>85%)',
           waktu: 'Bulan ke-3',

@@ -818,7 +818,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                   Portofolio Supervisi Klinis 7 Tahap
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Selidiki, Arahkan, Maknai, Berdayakan, Uji, Nyatakan, dan Gerakkan.
+                  Selidiki, Amati, Maknai, Berdayakan, Uji, Nyatakan, dan Gerakkan.
                 </p>
               </div>
             </div>

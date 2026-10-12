@@ -5,6 +5,7 @@ import {
   SEED_SAMBUNG_SITI,
   createDefaultSambungForTeacher 
 } from './sambungSeed';
+import { generateTeacherMaknaiData, generateAmatiData, generateBerdayakanTelaahPerbaikanData } from './autoFillData';
 
 export const SAMPLE_SUPERVISIONS: Supervision[] = [
   {
@@ -1465,3 +1466,59 @@ export const SAMPLE_SUPERVISIONS: Supervision[] = [
     }
   }
 ];
+
+// Pastikan seluruh guru binaan memiliki instrumen Maknai (10 pertanyaan), Amati (4 indikator), dan Berdayakan (RPP Perbaikan 22 Aspek) lengkap
+SAMPLE_SUPERVISIONS.forEach((sup) => {
+  if (sup.sambung) {
+    if (!sup.sambung.maknai?.pertanyaanList?.q1) {
+      const maknaiData = generateTeacherMaknaiData(sup);
+      sup.sambung.maknai = {
+        ...sup.sambung.maknai,
+        ...maknaiData,
+        pertanyaanList: {
+          ...maknaiData.pertanyaanList,
+          ...(sup.sambung.maknai?.pertanyaanList || {}),
+        },
+        kesanUmum: sup.sambung.maknai?.kesanUmum ?? maknaiData.kesanUmum,
+        saranMasukan: sup.sambung.maknai?.saranMasukan ?? maknaiData.saranMasukan,
+      };
+    }
+    if (!sup.sambung.arahkan?.fokusIndikatorTerpilih || sup.sambung.arahkan.fokusIndikatorTerpilih.length === 0) {
+      const amatiData = generateAmatiData(sup, ['peranGuru', 'aktivitasMurid'], sup.sambung.selidiki?.matriksBefore);
+      sup.sambung.arahkan = {
+        ...sup.sambung.arahkan,
+        ...amatiData,
+        fokusIndikatorTerpilih: amatiData.fokusIndikatorTerpilih,
+      };
+    }
+    if (!sup.sambung.berdayakan?.telaahScores || !sup.sambung.berdayakan.rppPerbaikanUrl) {
+      const berdayakanData = generateBerdayakanTelaahPerbaikanData(sup);
+      sup.sambung.berdayakan = {
+        ...sup.sambung.berdayakan,
+        ...berdayakanData,
+        siklusList: (sup.sambung.berdayakan?.siklusList && sup.sambung.berdayakan.siklusList.length > 0)
+          ? sup.sambung.berdayakan.siklusList
+          : berdayakanData.siklusList,
+      };
+
+      if (!sup.perangkatAjarPerbaikan) {
+        sup.perangkatAjarPerbaikan = {
+          driveLinks: {
+            cpTpAtpUrl: sup.perangkatAjar?.driveLinks?.cpTpAtpUrl || 'https://drive.google.com/file/d/1CpTpAtp_Revisi/view',
+            modulAjarUrl: berdayakanData.rppPerbaikanUrl,
+            bahanAjarUrl: sup.perangkatAjar?.driveLinks?.bahanAjarUrl,
+            asesmenUrl: sup.perangkatAjar?.driveLinks?.asesmenUrl,
+          },
+          submittedAt: new Date().toISOString(),
+          telaahScores: berdayakanData.telaahScores,
+          telaahComments: berdayakanData.telaahComments,
+          telaahSummary: berdayakanData.telaahSummary,
+          feedback: berdayakanData.feedback,
+          catatanRevisiGuru: berdayakanData.catatanRefleksiGuru,
+          reviewedAt: new Date().toISOString(),
+          reviewedBy: berdayakanData.namaPenelaah,
+        };
+      }
+    }
+  }
+});

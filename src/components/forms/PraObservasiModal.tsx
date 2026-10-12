@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Supervision, UserProfile } from '../../types';
 import { PRA_OBSERVASI_QUESTIONS } from '../../data/instrumentData';
-import { X, Save, Clock, Compass, ShieldAlert } from 'lucide-react';
+import { X, Save, Clock, Compass, ShieldAlert, Sparkles, Zap } from 'lucide-react';
 import { saveSupervision } from '../../services/firebase';
+import { getTeacherAutoFillData } from '../../data/autoFillData';
 
 interface PraObservasiModalProps {
   isOpen: boolean;
@@ -41,6 +42,20 @@ export const PraObservasiModal: React.FC<PraObservasiModalProps> = ({
   const [saving, setSaving] = useState(false);
 
   const isGuru = currentUser.role === 'guru';
+
+  const handleAutoFill = () => {
+    const auto = getTeacherAutoFillData(supervision.teacherName, supervision.subject, supervision.lessonTitle);
+    setQ1(auto.praObservasiAnswers.q1_kd_indikator);
+    setQ2(auto.praObservasiAnswers.q2_metode);
+    setQ3(auto.praObservasiAnswers.q3_alat_bahan);
+    setQ4(auto.praObservasiAnswers.q4_tahapan);
+    setQ5(auto.praObservasiAnswers.q5_persiapan);
+    setQ6(auto.praObservasiAnswers.q6_materi_sulit);
+    setQ7(auto.praObservasiAnswers.q7_target_kompetensi);
+    setQ8(auto.praObservasiAnswers.q8_perhatian_khusus);
+    setNotes(auto.praObservasiAnswers.supervisorNotes);
+    setDuration(35);
+  };
 
   if (!isOpen) return null;
 
@@ -141,6 +156,29 @@ export const PraObservasiModal: React.FC<PraObservasiModalProps> = ({
               <span className="font-bold text-slate-800">{supervision.classGrade} / {supervision.semester}</span>
             </div>
           </div>
+
+          {/* Quick Auto-Fill Banner for Supervisor */}
+          {!isGuru && (
+            <div className="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-300 rounded-2xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="space-y-0.5">
+                <span className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                  <Zap className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Isi Otomatis Berdasarkan RPP &amp; Mapel Guru</span>
+                </span>
+                <p className="text-[11px] text-amber-800/90">
+                  Otomatis mengisi 8 butir pertanyaan wawancara pra-observasi selaras dengan dokumen RPP {supervision.subject}.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleAutoFill}
+                className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs transition-colors shrink-0 cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>⚡ Isi Otomatis dari RPP</span>
+              </button>
+            </div>
+          )}
 
           {/* Duration Selector */}
           <div className="flex items-center gap-3 p-3 bg-amber-50 rounded-xl border border-amber-200 max-w-sm">

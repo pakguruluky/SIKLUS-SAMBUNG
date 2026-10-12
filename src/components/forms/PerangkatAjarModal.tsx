@@ -13,9 +13,15 @@ import {
   Eye,
   Sparkles,
   UploadCloud,
-  FileText
+  FileText,
+  Zap,
+  CheckCheck,
+  RefreshCw,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { saveSupervision } from '../../services/firebase';
+import { applyAutoFillToSupervision, parseRppFileName } from '../../data/autoFillData';
 
 interface PerangkatAjarModalProps {
   isOpen: boolean;
@@ -94,6 +100,16 @@ export const PerangkatAjarModal: React.FC<PerangkatAjarModalProps> = ({
 
   const [saving, setSaving] = useState(false);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
+  const [isAutoFilling, setIsAutoFilling] = useState(false);
+  const [autoFillSuccessDetails, setAutoFillSuccessDetails] = useState<{
+    teacherName: string;
+    subject: string;
+    finalScore: number;
+    predicate: string;
+    connectedSambung: boolean;
+  } | null>(null);
+  const [uploadedFileName, setUploadedFileName] = useState<string>('');
+  const [showAdditionalDocs, setShowAdditionalDocs] = useState<boolean>(false);
 
   const isSupervisor = currentUser.role === 'admin' || (currentUser.role as string) === 'pengawas' || currentUser.role === 'kepsek';
   const isGuru = currentUser.role === 'guru';
@@ -105,11 +121,10 @@ export const PerangkatAjarModal: React.FC<PerangkatAjarModalProps> = ({
 
   if (!isOpen) return null;
 
-  // Count uploaded items (out of 4)
-  const uploadedFilesCount = [cpTpAtpUrl, modulAjarUrl, bahanAjarUrl, asesmenUrl].filter(
-    url => Boolean(url && url.trim().length > 0)
-  ).length;
-  const uploadProgressPercent = Math.round((uploadedFilesCount / 4) * 100);
+  // Sesuai permintaan pengguna: Berkas yang diunggah HANYA berkas RPP saja
+  const isRppUploaded = Boolean(modulAjarUrl && modulAjarUrl.trim().length > 0);
+  const uploadProgressPercent = isRppUploaded ? 100 : 0;
+  const uploadedFilesCount = isRppUploaded ? 1 : 0;
 
   // Auto calculate scores
   let totalScore = 0;
@@ -140,18 +155,89 @@ export const PerangkatAjarModal: React.FC<PerangkatAjarModalProps> = ({
   const handleUseSampleLink = (type: 'cp' | 'modul' | 'bahan' | 'asesmen') => {
     const baseSamples = {
       cp: 'https://drive.google.com/file/d/1Contoh_CP_TP_ATP_KurikulumMerdeka/view?usp=sharing',
-      modul: 'https://drive.google.com/file/d/1Contoh_Modul_Ajar_Pembelajaran_Mendalam/view?usp=sharing',
+      modul: `https://drive.google.com/file/d/1Contoh_Modul_Ajar_${encodeURIComponent(supervision.subject || 'Mapel')}/view?usp=sharing`,
       bahan: 'https://drive.google.com/file/d/1Contoh_Bahan_Ajar_Media_Digital/view?usp=sharing',
       asesmen: 'https://drive.google.com/file/d/1Contoh_Rubrik_Asesmen_Otentik_KKTP/view?usp=sharing',
     };
 
     if (type === 'cp') setCpTpAtpUrl(baseSamples.cp);
-    if (type === 'modul') setModulAjarUrl(baseSamples.modul);
+    if (type === 'modul') {
+      setModulAjarUrl(baseSamples.modul);
+      handleTriggerAutoFill(baseSamples.modul);
+    }
     if (type === 'bahan') setBahanAjarUrl(baseSamples.bahan);
     if (type === 'asesmen') setAsesmenUrl(baseSamples.asesmen);
   };
 
-  // Simulated local file picker that generates realistic Google Drive link
+  // Auto-fill full Instrumen Selidiki dan hubungkan ke Nilai Akhir Siklus SAMBUNG
+  const handleTriggerAutoFill = async (
+    rppLinkToUse?: string, 
+    customSubj?: string, 
+    customTeacher?: string
+  ) => {
+    const link = (rppLinkToUse || modulAjarUrl || '').trim();
+    setIsAutoFilling(true);
+    setSaveSuccessMsg('');
+    try {
+      const updated = applyAutoFillToSupervision(
+        supervision,
+        link || undefined,
+        customSubj || supervision.subject,
+        customTeacher || supervision.teacherName
+      );
+
+      // Update state for this modal
+      if (updated.perangkatAjar?.driveLinks?.modulAjarUrl) {
+        setModulAjarUrl(updated.perangkatAjar.driveLinks.modulAjarUrl);
+      }
+      if (updated.perangkatAjar?.telaahScores) {
+        setScores(updated.perangkatAjar.telaahScores);
+      }
+      if (updated.perangkatAjar?.telaahComments) {
+        setComments(updated.perangkatAjar.telaahComments);
+      }
+      if (updated.perangkatAjar?.feedback) {
+        setKelebihan(updated.perangkatAjar.feedback.kelebihan || '');
+        setPerbaikan(updated.perangkatAjar.feedback.perbaikan || '');
+        setRekomendasi(updated.perangkatAjar.feedback.rekomendasi || '');
+      }
+
+      // Persist to Firebase Firestore & local database immediately
+      await saveSupervision(updated);
+      onSaved(updated);
+
+      setAutoFillSuccessDetails({
+        teacherName: updated.teacherName,
+        subject: updated.subject,
+        finalScore: updated.perangkatAjar?.telaahSummary?.finalScore || 0,
+        predicate: updated.perangkatAjar?.telaahSummary?.predicate || 'Sangat Baik',
+        connectedSambung: true,
+      });
+
+      setSaveSuccessMsg(
+        `Instrumen Selidiki (Telaah RPP 22 Aspek, Pra-Observasi, Observasi, & Siklus SAMBUNG) berhasil diisi otomatis sesuai mapel ${updated.subject} & guru ${updated.teacherName}, dan tersimpan permanen ke Firebase!`
+      );
+    } catch (err) {
+      console.error('Error auto-filling supervision:', err);
+      alert('Gagal menjalankan analisis otomatis RPP.');
+    } finally {
+      setIsAutoFilling(false);
+    }
+  };
+
+  // Simulated local file picker that generates realistic Google Drive link and auto-fills
+  const handleRppFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setUploadedFileName(file.name);
+      const cleanName = encodeURIComponent(file.name.replace(/\s+/g, '_'));
+      const generatedDriveLink = `https://drive.google.com/file/d/drive_${Date.now()}_${cleanName}/view?usp=sharing`;
+      setModulAjarUrl(generatedDriveLink);
+      const parsed = parseRppFileName(file.name);
+      handleTriggerAutoFill(generatedDriveLink, parsed.subject, parsed.teacherName);
+    }
+  };
+
   const handleSimulatedFileUpload = (
     e: React.ChangeEvent<HTMLInputElement>,
     setter: (val: string) => void
@@ -320,19 +406,20 @@ export const PerangkatAjarModal: React.FC<PerangkatAjarModalProps> = ({
             <div className="flex items-start sm:items-center gap-2">
               <Sparkles className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5 sm:mt-0" />
               <div>
-                <strong>Tahap Pengunggahan Berkas Awal (Sebelum Penilaian):</strong> Silakan masukkan tautan Google Drive dokumen pembelajaran Anda di bawah ini. Anda dapat menyimpan secara berkala kapan saja.
+                <strong>Tahap Pengunggahan Berkas Awal:</strong> Silakan unggah dokumen RPP / Modul Ajar Anda di bawah ini.
               </div>
             </div>
-            <span className="text-[11px] font-bold text-emerald-800 bg-white px-3 py-1 rounded-full border border-emerald-300 shrink-0 self-start sm:self-auto">
-              {uploadedFilesCount} dari 4 Berkas Tersimpan ({uploadProgressPercent}%)
+            <span className="text-[11px] font-bold text-emerald-800 bg-white px-3 py-1 rounded-full border border-emerald-300 shrink-0 self-start sm:self-auto flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Berkas RPP: {isRppUploaded ? 'Sudah Diunggah' : 'Belum Diunggah'}</span>
             </span>
           </div>
         )}
 
         {/* Success Alert */}
         {saveSuccessMsg && (
-          <div className="bg-emerald-600 text-white px-5 py-2 text-xs font-semibold flex items-center gap-2 justify-center animate-fade-in">
-            <CheckCircle2 className="w-4 h-4" />
+          <div className="bg-emerald-600 text-white px-5 py-2.5 text-xs font-semibold flex items-center gap-2 justify-center animate-fade-in shadow-xs">
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
             <span>{saveSuccessMsg}</span>
           </div>
         )}
@@ -340,308 +427,244 @@ export const PerangkatAjarModal: React.FC<PerangkatAjarModalProps> = ({
         {/* Content Form Scrollable */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 text-xs sm:text-sm">
           
-          {/* SECTION 1: PERANGKAT AWAL (SEBELUM PENILAIAN) */}
-          <div className="bg-slate-50 p-4 sm:p-5 rounded-2xl border-2 border-indigo-100 shadow-xs space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-3">
+          {/* SECTION 1: PERANGKAT AWAL (SEBELUM PENILAIAN) - HANYA RPP SAJA */}
+          <div className="bg-gradient-to-br from-indigo-50/60 via-slate-50 to-amber-50/40 p-4 sm:p-6 rounded-2xl border-2 border-indigo-200 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
               <div>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-indigo-100 text-indigo-800 text-[11px] font-bold mb-1">
-                  <Link2 className="w-3.5 h-3.5" />
-                  <span>TAHAP 1: SEBELUM PENILAIAN</span>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-indigo-600 text-white text-[10px] font-extrabold uppercase tracking-wider mb-1">
+                  <FileText className="w-3.5 h-3.5 text-amber-300" />
+                  <span>BERKAS RPP / MODUL AJAR (SATU-SATUNYA BERKAS UNGGAHAN)</span>
                 </div>
                 <h3 className="font-extrabold text-slate-900 text-sm sm:text-base flex items-center gap-2">
-                  Berkas Perencanaan Pembelajaran Awal Guru
+                  <span>Unggah Berkas RPP / Modul Ajar Guru</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">
+                    Hanya Berkas RPP
+                  </span>
                 </h3>
-                <p className="text-[11px] text-slate-600 mt-0.5">
-                  Pengawas, Kepala Sekolah, dan Guru dapat menambahkan, menempelkan (*paste*), atau memperbarui tautan Google Drive dokumen pembelajaran di bawah ini.
+                <p className="text-xs text-slate-600 mt-1 leading-relaxed max-w-2xl">
+                  Sesuai ketentuan, <strong>hanya berkas RPP saja yang diunggah</strong>. Sistem secara otomatis menganalisis berkas dan mengisi seluruh instrumen Selidiki (Telaah RPP 22 Aspek, Wawancara Pra-Observasi 8 Pertanyaan, Observasi Kelas 25 Aspek), serta menghubungkannya dengan <strong>Nilai Akhir Kesimpulan Siklus SAMBUNG</strong> di Firebase.
                 </p>
               </div>
 
-              {/* Progress Indicator */}
-              <div className="flex items-center gap-2 min-w-[150px] bg-white p-2 rounded-xl border border-slate-200">
-                <div className="flex-1 bg-slate-200 rounded-full h-2.5 overflow-hidden">
-                  <div 
-                    className="bg-emerald-600 h-full rounded-full transition-all duration-300"
-                    style={{ width: `${uploadProgressPercent}%` }}
-                  />
-                </div>
-                <span className="text-xs font-bold text-slate-700">{uploadProgressPercent}%</span>
+              {/* Status Badge */}
+              <div className="shrink-0">
+                {isRppUploaded ? (
+                  <div className="bg-emerald-100 text-emerald-800 px-3 py-1.5 rounded-xl border border-emerald-300 flex items-center gap-1.5 text-xs font-bold shadow-2xs">
+                    <CheckCheck className="w-4 h-4 text-emerald-600" />
+                    <span>RPP Siap &bull; Tersinkron</span>
+                  </div>
+                ) : (
+                  <div className="bg-amber-50 text-amber-800 px-3 py-1.5 rounded-xl border border-amber-300 flex items-center gap-1.5 text-xs font-bold">
+                    <AlertCircle className="w-4 h-4 text-amber-600" />
+                    <span>RPP Belum Diunggah</span>
+                  </div>
+                )}
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs pt-1">
-              
-              {/* Item A: CP, TP, ATP */}
-              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="font-bold text-slate-800 flex items-center gap-1.5">
-                    <FileText className="w-3.5 h-3.5 text-indigo-600" />
-                    <span>a. Alur Tujuan Pembelajaran (CP, TP, ATP) *</span>
-                  </label>
-                  {cpTpAtpUrl ? (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                      Tersedia
-                    </span>
-                  ) : (
-                    <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-                      Belum Diunggah
-                    </span>
-                  )}
-                </div>
-
-                <div className="space-y-1.5">
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      type="url"
-                      value={cpTpAtpUrl}
-                      onChange={(e) => setCpTpAtpUrl(e.target.value)}
-                      placeholder="https://drive.google.com/file/d/..."
-                      className="flex-1 px-3 py-2 rounded-xl border border-slate-300 bg-white focus:outline-indigo-600 text-xs font-mono"
-                    />
-                    {cpTpAtpUrl && (
-                      <a
-                        href={cpTpAtpUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 px-3 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 text-xs font-semibold shrink-0 transition-colors"
-                        title="Buka Dokumen di Google Drive"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline">Buka Drive</span>
-                      </a>
-                    )}
+            {/* Upload Area for RPP */}
+            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-indigo-200 shadow-2xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0">
+                    <FileText className="w-5 h-5" />
                   </div>
-
-                  <div className="flex items-center justify-between text-[11px] pt-0.5">
-                    <button
-                      type="button"
-                      onClick={() => handleUseSampleLink('cp')}
-                      className="text-indigo-600 hover:text-indigo-800 font-semibold underline text-[10px]"
-                    >
-                      + Isi Contoh Tautan
-                    </button>
-
-                    <label className="cursor-pointer text-slate-500 hover:text-slate-700 flex items-center gap-1 text-[10px]">
-                      <UploadCloud className="w-3 h-3 text-slate-400" />
-                      <span>Pilih Berkas Lokal</span>
-                      <input
-                        type="file"
-                        accept=".pdf,.doc,.docx"
-                        onChange={(e) => handleSimulatedFileUpload(e, setCpTpAtpUrl)}
-                        className="sr-only"
-                      />
-                    </label>
+                  <div>
+                    <span className="text-xs font-bold text-slate-900 block">
+                      Berkas RPP: {supervision.teacherName} ({supervision.subject})
+                    </span>
+                    <span className="text-[11px] text-slate-500">
+                      Format didukung: PDF, Word (.doc, .docx), Teks, atau tautan Google Drive
+                    </span>
                   </div>
                 </div>
+
+                {uploadedFileName && (
+                  <span className="text-xs font-mono bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-lg border border-indigo-200 font-semibold truncate max-w-xs">
+                    📄 {uploadedFileName}
+                  </span>
+                )}
               </div>
 
-              {/* Item B: Modul Ajar / RPP Awal */}
-              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="font-bold text-slate-800 flex items-center gap-1.5">
-                    <FileText className="w-3.5 h-3.5 text-indigo-600" />
-                    <span>b. Modul Ajar / RPP Awal *</span>
-                  </label>
-                  {modulAjarUrl ? (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                      Tersedia
-                    </span>
-                  ) : (
-                    <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-                      Belum Diunggah
-                    </span>
-                  )}
-                </div>
-
-                <div className="space-y-1.5">
-                  <div className="flex items-center gap-1.5">
+              {/* Input URL + Drive Action */}
+              <div className="space-y-2">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                  <div className="relative flex-1">
                     <input
                       type="url"
                       value={modulAjarUrl}
                       onChange={(e) => setModulAjarUrl(e.target.value)}
-                      placeholder="https://drive.google.com/file/d/..."
-                      className="flex-1 px-3 py-2 rounded-xl border border-slate-300 bg-white focus:outline-indigo-600 text-xs font-mono"
+                      placeholder="https://drive.google.com/file/d/... atau unggah file RPP lokal di samping"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white focus:outline-indigo-600 text-xs font-mono pr-24"
                     />
+                    {modulAjarUrl && (
+                      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 pointer-events-none">
+                        Tersedia
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    {/* Pick Local File Button */}
+                    <label className="cursor-pointer px-4 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-2xs">
+                      <UploadCloud className="w-4 h-4 text-indigo-600" />
+                      <span>{isRppUploaded ? 'Ganti Berkas RPP' : 'Unggah File RPP'}</span>
+                      <input
+                        type="file"
+                        accept=".pdf,.doc,.docx,.txt"
+                        onChange={handleRppFileUpload}
+                        className="sr-only"
+                      />
+                    </label>
+
                     {modulAjarUrl && (
                       <a
                         href={modulAjarUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center gap-1 px-3 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 text-xs font-semibold shrink-0 transition-colors"
-                        title="Buka Modul di Google Drive"
+                        className="inline-flex items-center gap-1 px-3.5 py-2.5 bg-slate-800 text-white rounded-xl hover:bg-slate-900 text-xs font-semibold shrink-0 transition-colors"
+                        title="Buka Dokumen RPP di Google Drive"
                       >
                         <ExternalLink className="w-3.5 h-3.5" />
                         <span className="hidden sm:inline">Buka Drive</span>
                       </a>
                     )}
                   </div>
+                </div>
 
-                  <div className="flex items-center justify-between text-[11px] pt-0.5">
+                {/* Action Row: Auto Fill & Sample link */}
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs">
+                  <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={() => handleUseSampleLink('modul')}
-                      className="text-indigo-600 hover:text-indigo-800 font-semibold underline text-[10px]"
+                      className="text-indigo-600 hover:text-indigo-800 font-bold underline text-[11px] flex items-center gap-1"
                     >
-                      + Isi Contoh Tautan
+                      <span>+ Gunakan Contoh RPP {supervision.subject}</span>
                     </button>
-
-                    <label className="cursor-pointer text-slate-500 hover:text-slate-700 flex items-center gap-1 text-[10px]">
-                      <UploadCloud className="w-3 h-3 text-slate-400" />
-                      <span>Pilih Berkas Lokal</span>
-                      <input
-                        type="file"
-                        accept=".pdf,.doc,.docx"
-                        onChange={(e) => handleSimulatedFileUpload(e, setModulAjarUrl)}
-                        className="sr-only"
-                      />
-                    </label>
                   </div>
+
+                  <button
+                    type="button"
+                    disabled={isAutoFilling}
+                    onClick={() => handleTriggerAutoFill()}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs transition-all ${
+                      isAutoFilling
+                        ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                        : 'bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white'
+                    }`}
+                  >
+                    {isAutoFilling ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        <span>Menganalisis RPP &amp; Mengisi Otomatis...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="w-3.5 h-3.5 text-amber-300" />
+                        <span>⚡ Analisis RPP &amp; Isi Otomatis Instrumen Selidiki</span>
+                      </>
+                    )}
+                  </button>
                 </div>
               </div>
 
-              {/* Item C: Bahan Ajar / Media */}
-              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="font-bold text-slate-800 flex items-center gap-1.5">
-                    <FileText className="w-3.5 h-3.5 text-indigo-600" />
-                    <span>c. Bahan Ajar / Media / PPT (Opsional)</span>
-                  </label>
-                  {bahanAjarUrl ? (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                      Tersedia
+              {/* Breakdown Notification Box when Auto-Filled */}
+              {autoFillSuccessDetails && (
+                <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-3.5 text-xs text-emerald-950 space-y-2 animate-fade-in">
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold flex items-center gap-1.5 text-emerald-900">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <span>Hasil Analisis RPP &amp; Sinkronisasi Berhasil Disimpan di Firebase</span>
                     </span>
-                  ) : (
-                    <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
-                      Belum Diunggah
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900 font-bold text-[10px]">
+                      Tersimpan di Cloud
                     </span>
-                  )}
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 text-[11px] pt-1">
+                    <div className="bg-white/80 p-2 rounded-lg border border-emerald-200">
+                      <span className="text-slate-500 block">Guru &amp; Mapel:</span>
+                      <strong className="text-slate-900">{autoFillSuccessDetails.teacherName} ({autoFillSuccessDetails.subject})</strong>
+                    </div>
+                    <div className="bg-white/80 p-2 rounded-lg border border-emerald-200">
+                      <span className="text-slate-500 block">Nilai Telaah RPP (22 Aspek):</span>
+                      <strong className="text-emerald-700">{autoFillSuccessDetails.finalScore.toFixed(1)} / {autoFillSuccessDetails.predicate}</strong>
+                    </div>
+                    <div className="bg-white/80 p-2 rounded-lg border border-emerald-200">
+                      <span className="text-slate-500 block">Pra &amp; Observasi Kelas:</span>
+                      <strong className="text-indigo-700">8 Pertanyaan &amp; 25 Aspek Terisi</strong>
+                    </div>
+                    <div className="bg-white/80 p-2 rounded-lg border border-emerald-200">
+                      <span className="text-slate-500 block">Siklus SAMBUNG:</span>
+                      <strong className="text-purple-700">Terhubung ke Nilai Akhir</strong>
+                    </div>
+                  </div>
                 </div>
+              )}
+            </div>
 
-                <div className="space-y-1.5">
-                  <div className="flex items-center gap-1.5">
+            {/* Optional Collapsible Drawer for Secondary Links */}
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={() => setShowAdditionalDocs(!showAdditionalDocs)}
+                className="text-[11px] text-slate-500 hover:text-slate-700 font-semibold flex items-center gap-1"
+              >
+                {showAdditionalDocs ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                <span>{showAdditionalDocs ? 'Sembunyikan' : 'Tampilkan'} Tautan Tambahan (CP/TP/ATP, Media, Asesmen - Opsional)</span>
+              </button>
+
+              {showAdditionalDocs && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 text-xs">
+                  {/* Item A: CP, TP, ATP */}
+                  <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-1.5">
+                    <label className="font-semibold text-slate-700 text-[11px] block">CP / TP / ATP (Opsional)</label>
+                    <input
+                      type="url"
+                      value={cpTpAtpUrl}
+                      onChange={(e) => setCpTpAtpUrl(e.target.value)}
+                      placeholder="https://drive.google.com/..."
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-mono"
+                    />
+                  </div>
+                  {/* Item C: Bahan Ajar */}
+                  <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-1.5">
+                    <label className="font-semibold text-slate-700 text-[11px] block">Media / Bahan Tayang (Opsional)</label>
                     <input
                       type="url"
                       value={bahanAjarUrl}
                       onChange={(e) => setBahanAjarUrl(e.target.value)}
-                      placeholder="https://drive.google.com/file/d/..."
-                      className="flex-1 px-3 py-2 rounded-xl border border-slate-300 bg-white focus:outline-indigo-600 text-xs font-mono"
+                      placeholder="https://drive.google.com/..."
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-mono"
                     />
-                    {bahanAjarUrl && (
-                      <a
-                        href={bahanAjarUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 px-3 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 text-xs font-semibold shrink-0 transition-colors"
-                        title="Buka Bahan Ajar di Google Drive"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline">Buka Drive</span>
-                      </a>
-                    )}
                   </div>
-
-                  <div className="flex items-center justify-between text-[11px] pt-0.5">
-                    <button
-                      type="button"
-                      onClick={() => handleUseSampleLink('bahan')}
-                      className="text-indigo-600 hover:text-indigo-800 font-semibold underline text-[10px]"
-                    >
-                      + Isi Contoh Tautan
-                    </button>
-
-                    <label className="cursor-pointer text-slate-500 hover:text-slate-700 flex items-center gap-1 text-[10px]">
-                      <UploadCloud className="w-3 h-3 text-slate-400" />
-                      <span>Pilih Berkas Lokal</span>
-                      <input
-                        type="file"
-                        accept=".pdf,.doc,.docx,.ppt,.pptx"
-                        onChange={(e) => handleSimulatedFileUpload(e, setBahanAjarUrl)}
-                        className="sr-only"
-                      />
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              {/* Item D: Asesmen & Rubrik KKTP */}
-              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="font-bold text-slate-800 flex items-center gap-1.5">
-                    <FileText className="w-3.5 h-3.5 text-indigo-600" />
-                    <span>d. Lembar Asesmen &amp; Rubrik KKTP (Opsional)</span>
-                  </label>
-                  {asesmenUrl ? (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                      Tersedia
-                    </span>
-                  ) : (
-                    <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
-                      Belum Diunggah
-                    </span>
-                  )}
-                </div>
-
-                <div className="space-y-1.5">
-                  <div className="flex items-center gap-1.5">
+                  {/* Item D: Asesmen */}
+                  <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-1.5">
+                    <label className="font-semibold text-slate-700 text-[11px] block">Rubrik Asesmen KKTP (Opsional)</label>
                     <input
                       type="url"
                       value={asesmenUrl}
                       onChange={(e) => setAsesmenUrl(e.target.value)}
-                      placeholder="https://drive.google.com/file/d/..."
-                      className="flex-1 px-3 py-2 rounded-xl border border-slate-300 bg-white focus:outline-indigo-600 text-xs font-mono"
+                      placeholder="https://drive.google.com/..."
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-mono"
                     />
-                    {asesmenUrl && (
-                      <a
-                        href={asesmenUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 px-3 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 text-xs font-semibold shrink-0 transition-colors"
-                        title="Buka Asesmen di Google Drive"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline">Buka Drive</span>
-                      </a>
-                    )}
-                  </div>
-
-                  <div className="flex items-center justify-between text-[11px] pt-0.5">
-                    <button
-                      type="button"
-                      onClick={() => handleUseSampleLink('asesmen')}
-                      className="text-indigo-600 hover:text-indigo-800 font-semibold underline text-[10px]"
-                    >
-                      + Isi Contoh Tautan
-                    </button>
-
-                    <label className="cursor-pointer text-slate-500 hover:text-slate-700 flex items-center gap-1 text-[10px]">
-                      <UploadCloud className="w-3 h-3 text-slate-400" />
-                      <span>Pilih Berkas Lokal</span>
-                      <input
-                        type="file"
-                        accept=".pdf,.doc,.docx"
-                        onChange={(e) => handleSimulatedFileUpload(e, setAsesmenUrl)}
-                        className="sr-only"
-                      />
-                    </label>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Quick Helper for Guru */}
             {isGuru && (
               <div className="p-3 bg-white rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
                 <span className="text-slate-600">
-                  💡 <strong>Tip Guru:</strong> Anda dapat menyimpan berkas bertahap dengan tombol <em>&ldquo;Simpan Draf Berkala&rdquo;</em> di bawah.
+                  💡 <strong>Panduan Guru:</strong> Cukup unggah berkas RPP Anda di atas. Setelah mengunggah, Anda dapat menyimpan draf kapan saja.
                 </span>
                 <button
                   type="button"
-                  onClick={() => {
-                    handleUseSampleLink('cp');
-                    handleUseSampleLink('modul');
-                  }}
+                  onClick={() => handleUseSampleLink('modul')}
                   className="px-3 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg font-bold text-[11px] transition-colors shrink-0 self-start sm:self-auto"
                 >
-                  ⚡ Isi Contoh CP &amp; Modul Sekaligus
+                  ⚡ Gunakan Draf Contoh RPP
                 </button>
               </div>
             )}

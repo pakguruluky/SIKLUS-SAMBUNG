@@ -77,12 +77,12 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Navigation Links */}
           {currentUser && (
-            <div className="hidden md:flex items-center gap-1">
+            <div className="hidden md:flex items-center gap-1 xl:gap-1.5 shrink-0">
               <button
                 onClick={() => setActiveTab('landing')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5 ${
                   activeTab === 'landing'
-                    ? 'bg-slate-100 text-indigo-700 font-bold'
+                    ? 'bg-indigo-50 text-indigo-700 font-bold shadow-2xs'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                 }`}
               >
@@ -92,9 +92,9 @@ export const Navbar: React.FC<NavbarProps> = ({
 
               <button
                 onClick={() => setActiveTab('dashboard')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5 ${
                   activeTab === 'dashboard'
-                    ? 'bg-slate-100 text-indigo-700 font-bold'
+                    ? 'bg-indigo-50 text-indigo-700 font-bold shadow-2xs'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                 }`}
               >
@@ -106,9 +106,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <>
                   <button
                     onClick={() => setActiveTab('schools')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5 ${
                       activeTab === 'schools'
-                        ? 'bg-slate-100 text-indigo-700'
+                        ? 'bg-indigo-50 text-indigo-700 font-bold shadow-2xs'
                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                     }`}
                   >
@@ -118,9 +118,9 @@ export const Navbar: React.FC<NavbarProps> = ({
 
                   <button
                     onClick={() => setActiveTab('users')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5 ${
                       activeTab === 'users'
-                        ? 'bg-slate-100 text-indigo-700 font-bold'
+                        ? 'bg-indigo-50 text-indigo-700 font-bold shadow-2xs'
                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                     }`}
                   >
@@ -132,9 +132,9 @@ export const Navbar: React.FC<NavbarProps> = ({
 
               <button
                 onClick={() => setActiveTab('sambung')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5 ${
                   activeTab === 'sambung'
-                    ? 'bg-slate-100 text-indigo-700'
+                    ? 'bg-indigo-50 text-indigo-700 font-bold shadow-2xs'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                 }`}
               >
@@ -144,9 +144,9 @@ export const Navbar: React.FC<NavbarProps> = ({
 
               <button
                 onClick={() => setActiveTab('kesimpulan-sambung')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5 ${
                   activeTab === 'kesimpulan-sambung'
-                    ? 'bg-slate-100 text-indigo-700 font-bold'
+                    ? 'bg-gradient-to-r from-amber-50 to-indigo-50 text-indigo-900 font-bold border border-amber-200/60 shadow-2xs'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                 }`}
               >
@@ -157,12 +157,12 @@ export const Navbar: React.FC<NavbarProps> = ({
           )}
 
           {/* Right Actions */}
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
             {currentUser ? (
               <>
                 <button
                   onClick={onNewSupervision}
-                  className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs transition-colors"
+                  className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs transition-colors whitespace-nowrap"
                 >
                   <PlusCircle className="w-3.5 h-3.5" />
                   <span>Supervisi Baru</span>
@@ -171,17 +171,22 @@ export const Navbar: React.FC<NavbarProps> = ({
                 {onOpenLocalStorageModal && (
                   <button
                     onClick={onOpenLocalStorageModal}
-                    title="Penyimpanan Lokal & Cadangan Perangkat"
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50/50 text-xs font-semibold transition-colors"
+                    title="Penyimpanan Cloud Firebase & Cadangan Lokal"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-slate-50/70 hover:bg-indigo-50/80 text-slate-700 hover:text-indigo-700 text-xs font-semibold transition-all shadow-2xs whitespace-nowrap"
                   >
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
                     <HardDrive className="w-3.5 h-3.5 text-emerald-600" />
-                    <span className="hidden sm:inline">Memori Device</span>
+                    <span className="hidden xl:inline text-[11px] font-bold text-slate-700">Firebase &amp; Backup</span>
+                    <span className="hidden sm:inline xl:hidden text-[11px] font-bold text-slate-700">Database</span>
                   </button>
                 )}
 
-                <div className="hidden lg:flex flex-col items-end leading-tight pl-3 border-l border-slate-200">
-                  <span className="text-xs font-bold text-slate-900">{currentUser.displayName}</span>
-                  <span className="text-[11px] text-slate-400 font-medium">
+                <div className="hidden lg:flex flex-col items-end leading-tight pl-2.5 border-l border-slate-200">
+                  <span className="text-xs font-bold text-slate-900 truncate max-w-[170px]">{currentUser.displayName}</span>
+                  <span className="text-[11px] text-slate-400 font-medium truncate max-w-[170px]">
                     {getRoleLabel(currentUser.role)}
                     {currentUser.schoolName ? ` · ${currentUser.schoolName}` : ''}
                   </span>

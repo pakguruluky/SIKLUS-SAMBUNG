@@ -102,11 +102,11 @@ export const LocalStorageBackupModal: React.FC<LocalStorageBackupModalProps> = (
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600">
-              <HardDrive className="w-5 h-5" />
+              <Database className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-slate-900">Penyimpanan Lokal Perangkat</h3>
-              <p className="text-xs text-slate-500">Local Storage Device &amp; Cadangan Mandiri</p>
+              <h3 className="text-base font-bold text-slate-900">Database &amp; Penyimpanan Sistem</h3>
+              <p className="text-xs text-slate-500">Firebase Firestore Cloud &amp; Cadangan Memori Device</p>
             </div>
           </div>
           <button
@@ -119,13 +119,21 @@ export const LocalStorageBackupModal: React.FC<LocalStorageBackupModalProps> = (
 
         {/* Content */}
         <div className="p-6 space-y-5">
-          {/* Status Card */}
-          <div className="bg-emerald-50/60 border border-emerald-200 rounded-xl p-4 flex items-start gap-3">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+          {/* Status Card: Firebase Cloud */}
+          <div className="bg-gradient-to-r from-indigo-50 to-emerald-50 border border-indigo-200/80 rounded-xl p-4 flex items-start gap-3">
+            <div className="relative mt-0.5 shrink-0">
+              <span className="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-emerald-400 opacity-75"></span>
+              <CheckCircle2 className="relative w-5 h-5 text-emerald-600" />
+            </div>
             <div className="text-xs text-slate-700 leading-relaxed">
-              <p className="font-bold text-emerald-900">Penyimpanan Lokal Aktif &amp; Terlindungi</p>
-              <p className="mt-0.5 text-slate-600">
-                Setiap perubahan pada instrumen telaah, observasi kelas, dan evaluasi tahunan otomatis tersimpan di peramban (browser) perangkat Anda.
+              <p className="font-bold text-indigo-950 flex items-center gap-2">
+                <span>Firebase Firestore Cloud Aktif &amp; Terhubung</span>
+                <span className="text-[10px] font-black bg-emerald-600 text-white px-2 py-0.5 rounded-full uppercase tracking-wider">
+                  Real-time Sync
+                </span>
+              </p>
+              <p className="mt-1 text-slate-600">
+                Proyek: <strong className="text-indigo-900">siklus-sambung</strong>. Seluruh berkas supervisi, instrumen 7 tahap SAMBUNG, telaah modul ajar, dan evaluasi tersimpan aman di database cloud serta tersinkronisasi antar-perangkat.
               </p>
             </div>
           </div>

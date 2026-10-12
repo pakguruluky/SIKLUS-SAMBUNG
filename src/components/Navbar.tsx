@@ -54,22 +54,22 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="flex items-center justify-between h-16">
           {/* Logo & Brand */}
           <div 
-            className="flex items-center gap-3 cursor-pointer select-none shrink-0" 
+            className="flex items-center gap-2.5 cursor-pointer select-none shrink-0 min-w-fit" 
             onClick={() => setActiveTab('landing')}
           >
-            <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-xs">
+            <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-xs shrink-0">
               <GraduationCap className="w-5 h-5" />
             </div>
-            <div className="leading-tight">
+            <div className="leading-tight shrink-0 whitespace-nowrap">
               <div className="flex items-center gap-1.5">
-                <span className="font-extrabold text-base tracking-tight text-slate-900">
+                <span className="font-extrabold text-sm sm:text-base tracking-tight text-slate-900 whitespace-nowrap">
                   SIKLUS <span className="text-indigo-600">SAMBUNG</span>
                 </span>
-                <span className="text-[10px] font-bold text-slate-400 border border-slate-200 px-1 py-0.2 rounded">
+                <span className="text-[10px] font-bold text-slate-500 border border-slate-200 bg-slate-50 px-1 py-0.2 rounded">
                   SMA
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400 font-medium hidden sm:block">
+              <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium hidden lg:block whitespace-nowrap">
                 Sistem Supervisi Akademik
               </p>
             </div>
@@ -77,28 +77,28 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Navigation Links */}
           {currentUser && (
-            <div className="hidden md:flex items-center gap-1 xl:gap-1.5 shrink-0">
+            <div className="hidden md:flex items-center gap-0.5 lg:gap-1 xl:gap-1.5 shrink min-w-0">
               <button
                 onClick={() => setActiveTab('landing')}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5 ${
+                className={`px-2 lg:px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5 ${
                   activeTab === 'landing'
                     ? 'bg-indigo-50 text-indigo-700 font-bold shadow-2xs'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                 }`}
               >
-                <Home className="w-3.5 h-3.5 text-indigo-600" />
+                <Home className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
                 <span>Beranda</span>
               </button>
 
               <button
                 onClick={() => setActiveTab('dashboard')}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5 ${
+                className={`px-2 lg:px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5 ${
                   activeTab === 'dashboard'
                     ? 'bg-indigo-50 text-indigo-700 font-bold shadow-2xs'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                 }`}
               >
-                <BarChart3 className="w-3.5 h-3.5 text-indigo-600" />
+                <BarChart3 className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
                 <span>Dashboard</span>
               </button>
 
@@ -106,96 +106,104 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <>
                   <button
                     onClick={() => setActiveTab('schools')}
-                    className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5 ${
+                    title="Sekolah Binaan"
+                    className={`px-2 lg:px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5 ${
                       activeTab === 'schools'
                         ? 'bg-indigo-50 text-indigo-700 font-bold shadow-2xs'
                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                     }`}
                   >
-                    <Building2 className="w-3.5 h-3.5 text-indigo-600" />
-                    <span>Sekolah Binaan</span>
+                    <Building2 className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                    <span className="hidden xl:inline">Sekolah Binaan</span>
+                    <span className="xl:hidden">Sekolah</span>
                   </button>
 
                   <button
                     onClick={() => setActiveTab('users')}
-                    className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5 ${
+                    title="Kelola Pengguna"
+                    className={`px-2 lg:px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5 ${
                       activeTab === 'users'
                         ? 'bg-indigo-50 text-indigo-700 font-bold shadow-2xs'
                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                     }`}
                   >
-                    <Users className="w-3.5 h-3.5 text-indigo-600" />
-                    <span>Kelola Pengguna</span>
+                    <Users className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                    <span className="hidden xl:inline">Kelola Pengguna</span>
+                    <span className="xl:hidden">Pengguna</span>
                   </button>
                 </>
               )}
 
               <button
                 onClick={() => setActiveTab('sambung')}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5 ${
+                title="Instrumen Siklus SAMBUNG"
+                className={`px-2 lg:px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5 ${
                   activeTab === 'sambung'
                     ? 'bg-indigo-50 text-indigo-700 font-bold shadow-2xs'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                 }`}
               >
-                <BookOpen className="w-3.5 h-3.5 text-indigo-600" />
-                <span>Instrumen SAMBUNG</span>
+                <BookOpen className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                <span className="hidden xl:inline">Instrumen SAMBUNG</span>
+                <span className="xl:hidden">Instrumen</span>
               </button>
 
               <button
                 onClick={() => setActiveTab('kesimpulan-sambung')}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5 ${
+                title="Kesimpulan Siklus SAMBUNG"
+                className={`px-2 lg:px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5 ${
                   activeTab === 'kesimpulan-sambung'
                     ? 'bg-gradient-to-r from-amber-50 to-indigo-50 text-indigo-900 font-bold border border-amber-200/60 shadow-2xs'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                 }`}
               >
-                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                <span>Kesimpulan Siklus SAMBUNG</span>
+                <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                <span className="hidden xl:inline">Kesimpulan SAMBUNG</span>
+                <span className="xl:hidden">Kesimpulan</span>
               </button>
             </div>
           )}
 
           {/* Right Actions */}
-          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {currentUser ? (
               <>
                 <button
                   onClick={onNewSupervision}
-                  className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs transition-colors whitespace-nowrap"
+                  className="hidden sm:inline-flex items-center gap-1.5 px-2.5 lg:px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs transition-colors whitespace-nowrap shrink-0"
                 >
                   <PlusCircle className="w-3.5 h-3.5" />
-                  <span>Supervisi Baru</span>
+                  <span className="hidden lg:inline">Supervisi Baru</span>
+                  <span className="lg:hidden">+ Supervisi</span>
                 </button>
 
                 {onOpenLocalStorageModal && (
                   <button
                     onClick={onOpenLocalStorageModal}
                     title="Penyimpanan Cloud Firebase & Cadangan Lokal"
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-slate-50/70 hover:bg-indigo-50/80 text-slate-700 hover:text-indigo-700 text-xs font-semibold transition-all shadow-2xs whitespace-nowrap"
+                    className="inline-flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 text-xs font-semibold transition-all shadow-2xs whitespace-nowrap shrink-0"
                   >
                     <span className="relative flex h-2 w-2">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                       <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                     </span>
-                    <HardDrive className="w-3.5 h-3.5 text-emerald-600" />
-                    <span className="hidden xl:inline text-[11px] font-bold text-slate-700">Firebase &amp; Backup</span>
-                    <span className="hidden sm:inline xl:hidden text-[11px] font-bold text-slate-700">Database</span>
+                    <HardDrive className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span className="hidden 2xl:inline text-[11px] font-bold text-slate-700">Firebase &amp; Backup</span>
+                    <span className="hidden sm:inline 2xl:hidden text-[11px] font-bold text-slate-700">Cloud</span>
                   </button>
                 )}
 
-                <div className="hidden lg:flex flex-col items-end leading-tight pl-2.5 border-l border-slate-200">
-                  <span className="text-xs font-bold text-slate-900 truncate max-w-[170px]">{currentUser.displayName}</span>
-                  <span className="text-[11px] text-slate-400 font-medium truncate max-w-[170px]">
+                <div className="hidden lg:flex flex-col items-end leading-tight pl-2 border-l border-slate-200 shrink-0">
+                  <span className="text-xs font-bold text-slate-900 truncate max-w-[110px] xl:max-w-[150px]">{currentUser.displayName}</span>
+                  <span className="text-[10px] text-slate-400 font-medium truncate max-w-[110px] xl:max-w-[150px]">
                     {getRoleLabel(currentUser.role)}
-                    {currentUser.schoolName ? ` · ${currentUser.schoolName}` : ''}
                   </span>
                 </div>
 
                 <button
                   onClick={onLogout}
                   title="Keluar"
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors shrink-0"
                 >
                   <LogOut className="w-4 h-4" />
                 </button>
@@ -205,14 +213,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <button
                   onClick={() => setActiveTab('landing')}
                   className={`px-3 py-1.5 text-xs font-semibold rounded-lg ${
-                    activeTab === 'landing' ? 'text-indigo-600' : 'text-slate-600 hover:text-slate-900'
+                    activeTab === 'landing' ? 'text-indigo-600 font-bold bg-indigo-50' : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   Beranda
                 </button>
                 <button
                   onClick={onOpenAuth}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs transition-colors"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs transition-colors whitespace-nowrap"
                 >
                   <LogIn className="w-3.5 h-3.5" />
                   <span>Masuk / Daftar</span>

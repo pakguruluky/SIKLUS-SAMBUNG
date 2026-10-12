@@ -257,6 +257,8 @@ export default function App() {
             onOpenAuth={() => setIsAuthModalOpen(true)}
             currentUser={currentUser}
             onGoToDashboard={() => setActiveTab('dashboard')}
+            onGoToSambung={() => setActiveTab('sambung')}
+            onGoToKesimpulan={() => setActiveTab('kesimpulan-sambung')}
           />
         )}
 
@@ -321,8 +323,8 @@ export default function App() {
         )}
       </main>
 
-      {/* Footer */}
-      <Footer />
+      {/* Footer (only on inner tabs to keep landing page cleanly within viewport) */}
+      {activeTab !== 'landing' && <Footer />}
 
       {/* Modals */}
       <AuthModal

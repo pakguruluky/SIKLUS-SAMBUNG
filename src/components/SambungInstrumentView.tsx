@@ -1012,8 +1012,8 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
       key: 'S',
       letter: 'S',
       name: 'SELIDIKI',
-      title: 'S — Lembar Pemetaan Pembelajaran',
-      subtitle: 'SELIDIKI — diisi dari telaah perangkat, observasi awal, dan dialog',
+      title: 'S — Penyelidikan Kondisi Awal & Supervisi Akademik',
+      subtitle: 'SELIDIKI — 1. Telaah RPP (22 Indikator), 2. Praobservasi (8 Pertanyaan), 3. Observasi Kelas (25 Indikator), 4. Kesimpulan SELIDIKI',
       color: 'bg-indigo-600',
     },
     {
@@ -1341,7 +1341,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                     isActive ? 'text-indigo-100' : 'text-slate-400'
                   }`}
                 >
-                  {tab.key === 'S' && 'Pemetaan'}
+                  {tab.key === 'S' && 'Kondisi Awal'}
                   {tab.key === 'A' && 'Aksi Pembinaan'}
                   {tab.key === 'M' && 'Coaching'}
                   {tab.key === 'B' && 'Rancang-Coba'}
@@ -1534,20 +1534,6 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
 
                       {/* Action buttons */}
                       <div className="flex flex-wrap items-center gap-2 shrink-0">
-                        <label className="cursor-pointer px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/20 text-xs font-bold flex items-center gap-1.5 transition-colors shadow-2xs">
-                          <UploadCloud className="w-4 h-4 text-indigo-300" />
-                          <span>Unggah File RPP</span>
-                          <input
-                            type="file"
-                            accept=".pdf,.doc,.docx,.txt"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) handleAutoFillSelidiki(file);
-                            }}
-                            className="sr-only"
-                          />
-                        </label>
-
                         <button
                           type="button"
                           onClick={handleAutoFillTelaahOnly}
@@ -2629,146 +2615,17 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                         </tbody>
                       </table>
                     </div>
-                  </div>
-
-                  {/* LEMBAR PEMETAAN ASPEK PEMBELAJARAN SAMBUNG (6 ASPEK) */}
-                  <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
-                      <div>
-                        <h5 className="text-sm font-bold text-slate-900">
-                          Tabel Pemetaan Aspek Pembelajaran SIKLUS SAMBUNG (6 Aspek)
-                        </h5>
-                        <p className="text-xs text-slate-600 mt-0.5">
-                          Tandai aspek prioritas pembinaan untuk melangkah ke tahap A (Amati).
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-xs border-collapse">
-                        <thead>
-                          <tr className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
-                            <th className="py-2.5 px-3 text-center w-12">No</th>
-                            <th className="py-2.5 px-3 text-left w-56">Aspek</th>
-                            <th className="py-2.5 px-3 text-left">Kondisi Awal</th>
-                            <th className="py-2.5 px-3 text-left w-48">Bukti (Kode/Foto/Karya)</th>
-                            <th className="py-2.5 px-3 text-left">Kebutuhan Pembinaan</th>
-                            <th className="py-2.5 px-3 text-center w-24">Prioritas</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                          {sambungDraft.selidiki.items.map((item, idx) => (
-                            <tr key={item.id} className={item.isPrioritas ? 'bg-amber-50/40' : ''}>
-                              <td className="py-3 px-3 text-center font-bold text-slate-500">{item.id}</td>
-                              <td className="py-3 px-3 font-semibold text-slate-900 align-top">
-                                {item.aspek}
-                              </td>
-                              <td className="py-3 px-3 align-top">
-                                <textarea
-                                  rows={2}
-                                  value={item.kondisiAwal}
-                                  onChange={(e) => {
-                                    const newItems = [...sambungDraft.selidiki.items];
-                                    newItems[idx].kondisiAwal = e.target.value;
-                                    setSambungDraft({
-                                      ...sambungDraft,
-                                      selidiki: { ...sambungDraft.selidiki, items: newItems },
-                                    });
-                                  }}
-                                  placeholder="Deskripsikan kondisi awal murid & guru..."
-                                  className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-indigo-600 bg-white"
-                                />
-                              </td>
-                              <td className="py-3 px-3 align-top">
-                                <input
-                                  type="text"
-                                  value={item.bukti}
-                                  onChange={(e) => {
-                                    const newItems = [...sambungDraft.selidiki.items];
-                                    newItems[idx].bukti = e.target.value;
-                                    setSambungDraft({
-                                      ...sambungDraft,
-                                      selidiki: { ...sambungDraft.selidiki, items: newItems },
-                                    });
-                                  }}
-                                  placeholder="Contoh: Dok-01, Pretest"
-                                  className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-indigo-600 bg-white"
-                                />
-                              </td>
-                              <td className="py-3 px-3 align-top">
-                                <textarea
-                                  rows={2}
-                                  value={item.kebutuhanPembinaan}
-                                  onChange={(e) => {
-                                    const newItems = [...sambungDraft.selidiki.items];
-                                    newItems[idx].kebutuhanPembinaan = e.target.value;
-                                    setSambungDraft({
-                                      ...sambungDraft,
-                                      selidiki: { ...sambungDraft.selidiki, items: newItems },
-                                    });
-                                  }}
-                                  placeholder="Kebutuhan pembinaan guru..."
-                                  className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-indigo-600 bg-white"
-                                />
-                              </td>
-                              <td className="py-3 px-3 text-center align-top">
-                                <label className="inline-flex items-center gap-1 cursor-pointer">
-                                  <input
-                                    type="checkbox"
-                                    checked={!!item.isPrioritas}
-                                    onChange={(e) => {
-                                      const newItems = [...sambungDraft.selidiki.items];
-                                      newItems[idx].isPrioritas = e.target.checked;
-                                      setSambungDraft({
-                                        ...sambungDraft,
-                                        selidiki: { ...sambungDraft.selidiki, items: newItems },
-                                      });
-                                    }}
-                                    className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
-                                  />
-                                  <span className="text-[11px] font-medium text-slate-700">Prioritas</span>
-                                </label>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl space-y-2">
-                      <div className="flex items-center gap-2">
-                        <AlertCircle className="w-4 h-4 text-amber-700" />
-                        <span className="text-xs font-bold text-amber-900">
-                          Panduan Catatan Prioritas Pembinaan:
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-amber-800">
-                        Tandai aspek yang paling banyak perlu penguatan sebagai prioritas pembinaan untuk melangkah ke tahap A (Amati).
-                      </p>
-                      <textarea
-                        rows={2}
-                        value={sambungDraft.selidiki.catatanPrioritas || ''}
-                        onChange={(e) =>
-                          setSambungDraft({
-                            ...sambungDraft,
-                            selidiki: { ...sambungDraft.selidiki, catatanPrioritas: e.target.value },
-                          })
-                        }
-                        placeholder="Tuliskan catatan kesimpulan aspek prioritas pembinaan..."
-                        className="w-full px-3 py-2 rounded-lg border border-amber-300 text-xs focus:outline-indigo-600 bg-white"
-                      />
-                    </div>
 
                     {/* Bottom Save Bar */}
-                    <div className="pt-3 flex items-center justify-between border-t border-slate-100">
-                      <span className="text-xs text-slate-400">
-                        *Kesimpulan 4 indikator dan pemetaan aspek tersimpan di Firebase Firestore dan terhubung ke Siklus SAMBUNG.
+                    <div className="pt-4 mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-slate-200">
+                      <span className="text-xs text-slate-500">
+                        *Kesimpulan 4 indikator kunci kondisi awal guru tersimpan di Firebase Firestore dan terhubung otomatis ke seluruh siklus SAMBUNG (A &rarr; M &rarr; B &rarr; U &rarr; N &rarr; G).
                       </span>
                       <button
                         type="button"
                         onClick={handleSaveKesimpulanSelidikiSection}
                         disabled={isSaving}
-                        className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                        className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
                       >
                         <Save className="w-4 h-4" />
                         <span>{isSaving ? 'Menyimpan...' : 'Simpan Kesimpulan SELIDIKI'}</span>
@@ -6753,7 +6610,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
               </div>
             </div>
 
-            {/* 2. Data Dampak Table (Sesuai File / Gambar yang Diunggah) */}
+            {/* 2. Data Dampak Table */}
             <div className="space-y-4 pt-2">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-slate-50 via-indigo-50/50 to-slate-50 p-4 rounded-2xl border border-indigo-100">
                 <div>

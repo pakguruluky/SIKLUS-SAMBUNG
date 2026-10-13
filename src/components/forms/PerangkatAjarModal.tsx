@@ -471,19 +471,13 @@ export const PerangkatAjarModal: React.FC<PerangkatAjarModalProps> = ({
                   </div>
                   <div>
                     <span className="text-xs font-bold text-slate-900 block">
-                      Berkas RPP: {supervision.teacherName} ({supervision.subject})
+                      Dokumen RPP / Modul Ajar: {supervision.teacherName} ({supervision.subject})
                     </span>
                     <span className="text-[11px] text-slate-500">
-                      Format didukung: PDF, Word (.doc, .docx), Teks, atau tautan Google Drive
+                      Tautan Google Drive atau penyimpanan dokumen modul ajar
                     </span>
                   </div>
                 </div>
-
-                {uploadedFileName && (
-                  <span className="text-xs font-mono bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-lg border border-indigo-200 font-semibold truncate max-w-xs">
-                    📄 {uploadedFileName}
-                  </span>
-                )}
               </div>
 
               {/* Input URL + Drive Action */}
@@ -494,7 +488,7 @@ export const PerangkatAjarModal: React.FC<PerangkatAjarModalProps> = ({
                       type="url"
                       value={modulAjarUrl}
                       onChange={(e) => setModulAjarUrl(e.target.value)}
-                      placeholder="https://drive.google.com/file/d/... atau unggah file RPP lokal di samping"
+                      placeholder="https://drive.google.com/file/d/..."
                       className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white focus:outline-indigo-600 text-xs font-mono pr-24"
                     />
                     {modulAjarUrl && (
@@ -505,17 +499,6 @@ export const PerangkatAjarModal: React.FC<PerangkatAjarModalProps> = ({
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
-                    {/* Pick Local File Button */}
-                    <label className="cursor-pointer px-4 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-2xs">
-                      <UploadCloud className="w-4 h-4 text-indigo-600" />
-                      <span>{isRppUploaded ? 'Ganti Berkas RPP' : 'Unggah File RPP'}</span>
-                      <input
-                        type="file"
-                        accept=".pdf,.doc,.docx,.txt"
-                        onChange={handleRppFileUpload}
-                        className="sr-only"
-                      />
-                    </label>
 
                     {modulAjarUrl && (
                       <a

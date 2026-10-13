@@ -191,34 +191,6 @@ export const SambungPrintModal: React.FC<SambungPrintModalProps> = ({
               </div>
             </div>
 
-            <table className="w-full border-collapse border border-slate-300 text-[11px] mb-2">
-              <thead>
-                <tr className="bg-slate-100 text-slate-800 font-bold">
-                  <th className="border border-slate-300 px-2 py-1.5 w-8 text-center">No</th>
-                  <th className="border border-slate-300 px-2 py-1.5 w-48 text-left">Aspek</th>
-                  <th className="border border-slate-300 px-2 py-1.5 text-left">Kondisi awal</th>
-                  <th className="border border-slate-300 px-2 py-1.5 text-left w-36">Bukti</th>
-                  <th className="border border-slate-300 px-2 py-1.5 text-left">Kebutuhan pembinaan</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sambung.selidiki.items.map((item) => (
-                  <tr key={item.id} className={item.isPrioritas ? 'bg-amber-50/50' : ''}>
-                    <td className="border border-slate-300 px-2 py-2 text-center font-semibold">
-                      {item.id}
-                      {item.isPrioritas && <span className="block text-[9px] text-amber-700 font-bold">*Prioritas</span>}
-                    </td>
-                    <td className="border border-slate-300 px-2 py-2 font-medium">{item.aspek}</td>
-                    <td className="border border-slate-300 px-2 py-2 text-slate-700">{item.kondisiAwal || '-'}</td>
-                    <td className="border border-slate-300 px-2 py-2 text-slate-600">{item.bukti || '-'}</td>
-                    <td className="border border-slate-300 px-2 py-2 text-slate-700">{item.kebutuhanPembinaan || '-'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <p className="text-[10px] text-slate-500 italic mb-4">
-              Tandai aspek yang paling banyak perlu penguatan sebagai prioritas pembinaan. {sambung.selidiki.catatanPrioritas && `(Catatan: ${sambung.selidiki.catatanPrioritas})`}
-            </p>
 
             {/* Tabel Kesimpulan Selidiki: Indikator dan Selidiki */}
             <div className="mt-3 pt-3 border-t border-slate-300">

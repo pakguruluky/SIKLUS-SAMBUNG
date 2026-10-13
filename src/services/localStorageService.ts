@@ -8,6 +8,8 @@ export const STORAGE_KEYS = {
   DRAFT_PREFIX: 'siklus_sambung_draft_',
 } as const;
 
+const isBrowser = typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+
 /**
  * Safely parse JSON from local storage
  */
@@ -25,6 +27,7 @@ function safeJsonParse<T>(raw: string | null, fallback: T): T {
  * Supervisions Storage
  */
 export function loadLocalSupervisions(): Supervision[] | null {
+  if (!isBrowser) return null;
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.SUPERVISIONS);
     if (!raw) return null;
@@ -37,6 +40,7 @@ export function loadLocalSupervisions(): Supervision[] | null {
 }
 
 export function saveLocalSupervisions(supervisions: Supervision[]): void {
+  if (!isBrowser) return;
   try {
     localStorage.setItem(STORAGE_KEYS.SUPERVISIONS, JSON.stringify(supervisions));
     localStorage.setItem(STORAGE_KEYS.LAST_SYNC, new Date().toISOString());
@@ -46,6 +50,7 @@ export function saveLocalSupervisions(supervisions: Supervision[]): void {
 }
 
 export function saveSingleLocalSupervision(supervision: Supervision): void {
+  if (!isBrowser) return;
   try {
     const existing = loadLocalSupervisions() || [];
     const index = existing.findIndex(s => s.id === supervision.id);
@@ -66,6 +71,7 @@ export function saveSingleLocalSupervision(supervision: Supervision): void {
  * Schools Storage
  */
 export function loadLocalSchools(): School[] | null {
+  if (!isBrowser) return null;
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.SCHOOLS);
     if (!raw) return null;
@@ -78,6 +84,7 @@ export function loadLocalSchools(): School[] | null {
 }
 
 export function saveLocalSchools(schools: School[]): void {
+  if (!isBrowser) return;
   try {
     localStorage.setItem(STORAGE_KEYS.SCHOOLS, JSON.stringify(schools));
   } catch (err) {
@@ -89,6 +96,7 @@ export function saveLocalSchools(schools: School[]): void {
  * User Profile Storage
  */
 export function loadLocalUser(): UserProfile | null {
+  if (!isBrowser) return null;
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.USER);
     return safeJsonParse<UserProfile | null>(raw, null);
@@ -99,6 +107,7 @@ export function loadLocalUser(): UserProfile | null {
 }
 
 export function saveLocalUser(user: UserProfile | null): void {
+  if (!isBrowser) return;
   try {
     if (user) {
       localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
@@ -114,6 +123,7 @@ export function saveLocalUser(user: UserProfile | null): void {
  * Form Draft Auto-Save
  */
 export function saveFormDraft(formKey: string, data: unknown): void {
+  if (!isBrowser) return;
   try {
     localStorage.setItem(`${STORAGE_KEYS.DRAFT_PREFIX}${formKey}`, JSON.stringify({
       data,
@@ -125,6 +135,7 @@ export function saveFormDraft(formKey: string, data: unknown): void {
 }
 
 export function loadFormDraft<T>(formKey: string): { data: T; savedAt: string } | null {
+  if (!isBrowser) return null;
   try {
     const raw = localStorage.getItem(`${STORAGE_KEYS.DRAFT_PREFIX}${formKey}`);
     if (!raw) return null;
@@ -136,6 +147,7 @@ export function loadFormDraft<T>(formKey: string): { data: T; savedAt: string } 
 }
 
 export function clearFormDraft(formKey: string): void {
+  if (!isBrowser) return;
   try {
     localStorage.removeItem(`${STORAGE_KEYS.DRAFT_PREFIX}${formKey}`);
   } catch (err) {

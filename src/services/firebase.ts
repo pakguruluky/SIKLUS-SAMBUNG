@@ -11,6 +11,7 @@ import {
 } from 'firebase/auth';
 import { 
   getFirestore, 
+  initializeFirestore,
   doc, 
   getDoc, 
   setDoc, 
@@ -36,12 +37,35 @@ import {
 import { SAMPLE_SUPERVISIONS } from '../data/seedData';
 import { generateTeacherMaknaiData, generateAmatiData, generateBerdayakanTelaahPerbaikanData, generateUjiData } from '../data/autoFillData';
 
-// Initialize Firebase with provisioned credentials
+// Initialize Firebase with provisioned credentials & ignore undefined fields
 const app = initializeApp(firebaseConfig);
 export const db = (firebaseConfig as any).firestoreDatabaseId
-  ? getFirestore(app, (firebaseConfig as any).firestoreDatabaseId)
-  : getFirestore(app);
+  ? initializeFirestore(app, { ignoreUndefinedProperties: true }, (firebaseConfig as any).firestoreDatabaseId)
+  : initializeFirestore(app, { ignoreUndefinedProperties: true });
 export const auth = getAuth(app);
+
+// Helper to remove any undefined or non-serializable fields before sending to Firestore
+export function cleanForFirestore<T>(obj: T): T {
+  if (obj === null || obj === undefined) {
+    return null as unknown as T;
+  }
+  if (Array.isArray(obj)) {
+    return obj.map(item => cleanForFirestore(item)) as unknown as T;
+  }
+  if (typeof obj === 'object') {
+    if (obj instanceof Date) {
+      return obj.toISOString() as unknown as T;
+    }
+    const cleaned: Record<string, any> = {};
+    for (const [key, val] of Object.entries(obj)) {
+      if (val !== undefined) {
+        cleaned[key] = cleanForFirestore(val);
+      }
+    }
+    return cleaned as T;
+  }
+  return obj;
+}
 
 // Connection verification test per Firebase skill guidelines
 async function testConnection() {
@@ -507,12 +531,12 @@ export async function addUserAccount(user: UserProfile): Promise<UserProfile> {
     uid,
     createdAt: user.createdAt || new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    approvalStatus: 'approved',
+    approvalStatus: user.approvalStatus || 'approved',
   };
 
   // 1. Save local
   const current = getStoredUsers();
-  const existingIdx = current.findIndex(u => u.uid === uid || u.username === user.username);
+  const existingIdx = current.findIndex(u => u.uid === uid || (user.username && u.username === user.username));
   if (existingIdx >= 0) {
     current[existingIdx] = completeUser;
   } else {
@@ -522,7 +546,8 @@ export async function addUserAccount(user: UserProfile): Promise<UserProfile> {
 
   // 2. Save to Firestore
   try {
-    await setDoc(doc(db, 'users', uid), completeUser, { merge: true });
+    const cleaned = cleanForFirestore(completeUser);
+    await setDoc(doc(db, 'users', uid), cleaned, { merge: true });
   } catch (err) {
     console.warn('Notice saving user to Firestore (saved locally):', err);
   }
@@ -548,7 +573,8 @@ export async function updateUserAccount(user: UserProfile): Promise<UserProfile>
 
   // 2. Save to Firestore
   try {
-    await setDoc(doc(db, 'users', user.uid), completeUser, { merge: true });
+    const cleaned = cleanForFirestore(completeUser);
+    await setDoc(doc(db, 'users', user.uid), cleaned, { merge: true });
   } catch (err) {
     console.warn('Notice updating user in Firestore (saved locally):', err);
   }
@@ -576,7 +602,7 @@ export async function updateUserAccount(user: UserProfile): Promise<UserProfile>
       saveLocalSupervisions(updatedSupervisions);
       for (const s of updatedSupervisions) {
         if (s.teacherId === user.uid || (user.username && s.teacherId === user.username)) {
-          setDoc(doc(db, 'supervisions', s.id), s, { merge: true }).catch(() => {});
+          setDoc(doc(db, 'supervisions', s.id), cleanForFirestore(s), { merge: true }).catch(() => {});
         }
       }
     }
@@ -613,10 +639,16 @@ export async function saveUserProfile(profile: UserProfile): Promise<void> {
 }
 
 export async function updateUserApprovalStatus(uid: string, status: 'approved' | 'rejected' | 'pending'): Promise<void> {
+  const current = getStoredUsers();
+  const idx = current.findIndex(u => u.uid === uid);
+  if (idx >= 0) {
+    current[idx] = { ...current[idx], approvalStatus: status, updatedAt: new Date().toISOString() };
+    saveStoredUsers(current);
+  }
   try {
-    await updateDoc(doc(db, 'users', uid), { approvalStatus: status, updatedAt: new Date().toISOString() });
+    await setDoc(doc(db, 'users', uid), { approvalStatus: status, updatedAt: new Date().toISOString() }, { merge: true });
   } catch (err) {
-    console.warn('Could not update user approval in Firestore, updating state locally', err);
+    console.warn('Could not update user approval in Firestore, updated state locally', err);
   }
 }
 
@@ -696,12 +728,41 @@ export async function fetchAllSchools(): Promise<School[]> {
 
 export async function addSchool(data: Omit<School, 'id'>): Promise<School> {
   const newDoc = doc(collection(db, 'schools'));
-  await setDoc(newDoc, data);
-  return { id: newDoc.id, ...data };
+  const school: School = { id: newDoc.id, ...data };
+  const current = loadLocalSchools() || DEFAULT_SCHOOLS;
+  saveLocalSchools([...current.filter(s => s.id !== school.id), school]);
+  try {
+    const cleaned = cleanForFirestore(school);
+    await setDoc(newDoc, cleaned);
+  } catch (err) {
+    console.warn('Notice saving school to Firestore (saved locally):', err);
+  }
+  return school;
 }
 
 export async function updateSchool(id: string, data: Partial<School>): Promise<void> {
-  await updateDoc(doc(db, 'schools', id), data);
+  const current = loadLocalSchools() || DEFAULT_SCHOOLS;
+  const idx = current.findIndex(s => s.id === id);
+  if (idx >= 0) {
+    current[idx] = { ...current[idx], ...data };
+    saveLocalSchools(current);
+  }
+  try {
+    const cleaned = cleanForFirestore({ ...data, updatedAt: new Date().toISOString() });
+    await setDoc(doc(db, 'schools', id), cleaned, { merge: true });
+  } catch (err) {
+    console.warn('Notice updating school in Firestore (saved locally):', err);
+  }
+}
+
+export async function deleteSchool(id: string): Promise<void> {
+  const current = (loadLocalSchools() || DEFAULT_SCHOOLS).filter(s => s.id !== id);
+  saveLocalSchools(current);
+  try {
+    await deleteDoc(doc(db, 'schools', id));
+  } catch (err) {
+    console.warn('Notice deleting school from Firestore:', err);
+  }
 }
 
 // Supervisions CRUD & Real-Time Sync
@@ -822,7 +883,6 @@ export function subscribeToSupervisions(
 
 // Save Supervision with immediate Firebase Firestore write and auto-update
 export async function saveSupervision(supervision: Partial<Supervision> & { id?: string }): Promise<string> {
-  const isNew = !supervision.id;
   const targetId = supervision.id || `sup-${Date.now()}`;
   const now = new Date().toISOString();
 
@@ -836,15 +896,68 @@ export async function saveSupervision(supervision: Partial<Supervision> & { id?:
   // 1. ALWAYS persist to device local storage immediately
   saveSingleLocalSupervision(fullData);
 
-  // 2. ALWAYS persist to Firebase Firestore directly so real-time updates trigger for all users
+  // 2. ALWAYS persist to Firebase Firestore directly with sanitized data
   try {
     const docRef = doc(db, 'supervisions', targetId);
-    await setDoc(docRef, fullData, { merge: true });
+    const cleaned = cleanForFirestore(fullData);
+    await setDoc(docRef, cleaned, { merge: true });
     return targetId;
   } catch (err) {
     console.warn('Firestore write notice (saved in device local storage):', err);
     return targetId;
   }
+}
+
+export async function deleteSupervision(id: string): Promise<void> {
+  const localList = (loadLocalSupervisions() || []).filter(s => s.id !== id);
+  saveLocalSupervisions(localList);
+  try {
+    await deleteDoc(doc(db, 'supervisions', id));
+  } catch (err) {
+    console.warn('Notice deleting supervision from Firestore:', err);
+  }
+}
+
+// Synchronize all pending local data (users, schools, supervisions) to Firebase Firestore
+export async function syncAllPendingLocalChangesToFirestore(): Promise<{ usersCount: number; schoolsCount: number; supervisionsCount: number }> {
+  let uCount = 0;
+  let sCount = 0;
+  let supCount = 0;
+
+  // 1. Users
+  try {
+    const users = getStoredUsers();
+    for (const u of users) {
+      await setDoc(doc(db, 'users', u.uid), cleanForFirestore(u), { merge: true });
+      uCount++;
+    }
+  } catch (err) {
+    console.warn('Pending users sync notice:', err);
+  }
+
+  // 2. Schools
+  try {
+    const schools = loadLocalSchools() || DEFAULT_SCHOOLS;
+    for (const s of schools) {
+      await setDoc(doc(db, 'schools', s.id), cleanForFirestore(s), { merge: true });
+      sCount++;
+    }
+  } catch (err) {
+    console.warn('Pending schools sync notice:', err);
+  }
+
+  // 3. Supervisions
+  try {
+    const supervisions = loadLocalSupervisions() || [];
+    for (const s of supervisions) {
+      await setDoc(doc(db, 'supervisions', s.id), cleanForFirestore(s), { merge: true });
+      supCount++;
+    }
+  } catch (err) {
+    console.warn('Pending supervisions sync notice:', err);
+  }
+
+  return { usersCount: uCount, schoolsCount: sCount, supervisionsCount: supCount };
 }
 
 // Master boot initialization to ensure Firestore collections exist with full data
@@ -854,10 +967,22 @@ export async function syncAllInitialDataToFirestore() {
     await ensureInitialSchools();
     // 2. Seed initial users (pengawas, kepsek, guru)
     for (const u of DEFAULT_USERS) {
-      await setDoc(doc(db, 'users', u.uid), u, { merge: true });
+      await setDoc(doc(db, 'users', u.uid), cleanForFirestore(u), { merge: true });
     }
-    // 3. Seed supervisions if empty
-    await ensureInitialSupervisions();
+    // 3. Sync any local custom users to Firestore
+    const storedUsers = getStoredUsers();
+    for (const u of storedUsers) {
+      await setDoc(doc(db, 'users', u.uid), cleanForFirestore(u), { merge: true });
+    }
+    // 4. Seed supervisions if empty, or sync existing local supervisions
+    const localSupervisions = loadLocalSupervisions();
+    if (localSupervisions && localSupervisions.length > 0) {
+      for (const sup of localSupervisions) {
+        await setDoc(doc(db, 'supervisions', sup.id), cleanForFirestore(sup), { merge: true });
+      }
+    } else {
+      await ensureInitialSupervisions();
+    }
     console.log(`Firebase Firestore synchronized successfully with project: ${firebaseConfig.projectId}`);
   } catch (err) {
     console.warn('Notice during Firestore background sync:', err);

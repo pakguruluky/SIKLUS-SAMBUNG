@@ -25,6 +25,7 @@ import {
   getUserProfile,
   fetchSupervisions,
   saveSupervision,
+  updateSchool,
   updateUserApprovalStatus,
   syncAllInitialDataToFirestore,
   subscribeToSupervisions
@@ -196,14 +197,20 @@ export default function App() {
     await saveSupervision(newSup);
   };
 
-  const handleRestoreData = (restoredSupervisions: Supervision[], restoredSchools: School[]) => {
+  const handleRestoreData = async (restoredSupervisions: Supervision[], restoredSchools: School[]) => {
     if (restoredSupervisions.length > 0) {
       setSupervisions(restoredSupervisions);
       saveLocalSupervisions(restoredSupervisions);
+      for (const sup of restoredSupervisions) {
+        await saveSupervision(sup);
+      }
     }
     if (restoredSchools.length > 0) {
       setSchools(restoredSchools);
       saveLocalSchools(restoredSchools);
+      for (const sch of restoredSchools) {
+        await updateSchool(sch.id, sch);
+      }
     }
   };
 

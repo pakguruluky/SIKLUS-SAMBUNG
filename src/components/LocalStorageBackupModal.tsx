@@ -18,6 +18,7 @@ import {
   saveLocalSupervisions, 
   saveLocalSchools 
 } from '../services/localStorageService';
+import { syncAllPendingLocalChangesToFirestore, saveSupervision, updateSchool } from '../services/firebase';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 interface LocalStorageBackupModalProps {
@@ -77,7 +78,16 @@ export const LocalStorageBackupModal: React.FC<LocalStorageBackupModalProps> = (
 
       // Propagate to App state
       onRestoreData(restored.supervisions, restored.schools);
-      setSuccessMessage(`Berhasil memulihkan ${restored.supervisions.length} berkas supervisi dari perangkat!`);
+
+      // Persist all restored data to Firebase backend
+      for (const sup of restored.supervisions) {
+        await saveSupervision(sup);
+      }
+      for (const sch of restored.schools) {
+        await updateSchool(sch.id, sch);
+      }
+
+      setSuccessMessage(`Berhasil memulihkan ${restored.supervisions.length} berkas supervisi & tersimpan ke Firebase Backend!`);
       setTimeout(() => setSuccessMessage(''), 6000);
     } catch (err: any) {
       setErrorMessage(err.message || 'Gagal memulihkan berkas.');
@@ -89,11 +99,20 @@ export const LocalStorageBackupModal: React.FC<LocalStorageBackupModalProps> = (
     }
   };
 
-  const handleForceSync = () => {
-    saveLocalSupervisions(supervisions);
-    saveLocalSchools(schools);
-    setSuccessMessage('Data terbaru telah disinkronkan ke Penyimpanan Lokal (Local Storage) perangkat.');
-    setTimeout(() => setSuccessMessage(''), 4000);
+  const handleForceSync = async () => {
+    try {
+      setIsProcessing(true);
+      saveLocalSupervisions(supervisions);
+      saveLocalSchools(schools);
+      const res = await syncAllPendingLocalChangesToFirestore();
+      setSuccessMessage(`Semua perubahan (${res.supervisionsCount} supervisi, ${res.schoolsCount} sekolah, ${res.usersCount} pengguna) berhasil tersimpan di Firebase Firestore Backend & Penyimpanan Lokal!`);
+      setTimeout(() => setSuccessMessage(''), 5000);
+    } catch (err: any) {
+      setErrorMessage('Gagal menyinkronkan ke Firebase: ' + (err.message || ''));
+      setTimeout(() => setErrorMessage(''), 5000);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (

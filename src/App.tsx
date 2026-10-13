@@ -317,6 +317,14 @@ export default function App() {
                   const updated = await fetchSupervisions();
                   setSupervisions(filterValidSupervisions(updated));
                 }}
+                onUserUpdated={async (updatedUser) => {
+                  if (currentUser.uid === updatedUser.uid) {
+                    setCurrentUser(updatedUser);
+                    saveLocalUser(updatedUser);
+                  }
+                  const updated = await fetchSupervisions();
+                  setSupervisions(filterValidSupervisions(updated));
+                }}
               />
             )}
           </div>

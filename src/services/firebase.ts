@@ -530,6 +530,63 @@ export async function addUserAccount(user: UserProfile): Promise<UserProfile> {
   return completeUser;
 }
 
+export async function updateUserAccount(user: UserProfile): Promise<UserProfile> {
+  const completeUser: UserProfile = {
+    ...user,
+    updatedAt: new Date().toISOString(),
+  };
+
+  // 1. Save local
+  const current = getStoredUsers();
+  const existingIdx = current.findIndex(u => u.uid === user.uid || (user.username && u.username === user.username));
+  if (existingIdx >= 0) {
+    current[existingIdx] = completeUser;
+  } else {
+    current.push(completeUser);
+  }
+  saveStoredUsers(current);
+
+  // 2. Save to Firestore
+  try {
+    await setDoc(doc(db, 'users', user.uid), completeUser, { merge: true });
+  } catch (err) {
+    console.warn('Notice updating user in Firestore (saved locally):', err);
+  }
+
+  // 3. Update related supervisions if teacher information changed
+  try {
+    const supervisions = loadLocalSupervisions() || [];
+    let supModified = false;
+    const updatedSupervisions = supervisions.map(s => {
+      if (s.teacherId === user.uid || (user.username && s.teacherId === user.username)) {
+        supModified = true;
+        return {
+          ...s,
+          teacherName: user.displayName || s.teacherName,
+          teacherNip: user.nip !== undefined ? user.nip : s.teacherNip,
+          subject: user.subject || s.subject,
+          schoolId: user.schoolId || s.schoolId,
+          schoolName: user.schoolName || s.schoolName,
+          updatedAt: new Date().toISOString(),
+        };
+      }
+      return s;
+    });
+    if (supModified) {
+      saveLocalSupervisions(updatedSupervisions);
+      for (const s of updatedSupervisions) {
+        if (s.teacherId === user.uid || (user.username && s.teacherId === user.username)) {
+          setDoc(doc(db, 'supervisions', s.id), s, { merge: true }).catch(() => {});
+        }
+      }
+    }
+  } catch (supErr) {
+    console.warn('Notice syncing supervisions for updated user:', supErr);
+  }
+
+  return completeUser;
+}
+
 export async function deleteUserAccount(uid: string): Promise<void> {
   const current = getStoredUsers().filter(u => u.uid !== uid);
   saveStoredUsers(current);

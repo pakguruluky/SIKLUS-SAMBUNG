@@ -36,22 +36,24 @@ import {
 import { SAMPLE_SUPERVISIONS } from '../data/seedData';
 import { generateTeacherMaknaiData, generateAmatiData, generateBerdayakanTelaahPerbaikanData, generateUjiData } from '../data/autoFillData';
 
-// User-provided Firebase Configuration fallback
-const activeFirebaseConfig = {
-  apiKey: firebaseConfig.apiKey || 'AIzaSyCtHOq0ydsobNPC6wUj8_3sx89-37umvF8',
-  authDomain: firebaseConfig.authDomain || 'siklus-sambung.firebaseapp.com',
-  projectId: firebaseConfig.projectId || 'siklus-sambung',
-  storageBucket: firebaseConfig.storageBucket || 'siklus-sambung.firebasestorage.app',
-  messagingSenderId: firebaseConfig.messagingSenderId || '531003779056',
-  appId: firebaseConfig.appId || '1:531003779056:web:773985709ed02731509f35',
-};
-
-// Initialize Firebase
-const app = initializeApp(activeFirebaseConfig);
+// Initialize Firebase with provisioned credentials
+const app = initializeApp(firebaseConfig);
 export const db = (firebaseConfig as any).firestoreDatabaseId
   ? getFirestore(app, (firebaseConfig as any).firestoreDatabaseId)
   : getFirestore(app);
 export const auth = getAuth(app);
+
+// Connection verification test per Firebase skill guidelines
+async function testConnection() {
+  try {
+    await getDocFromServer(doc(db, 'test', 'connection'));
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('the client is offline')) {
+      console.warn('Firebase configuration notice: operating in offline-cached mode until connection is re-established.');
+    }
+  }
+}
+testConnection();
 
 // 11 Official Schools
 export const DEFAULT_SCHOOLS: School[] = [
@@ -799,7 +801,7 @@ export async function syncAllInitialDataToFirestore() {
     }
     // 3. Seed supervisions if empty
     await ensureInitialSupervisions();
-    console.log('Firebase Firestore synchronized successfully with project: siklus-sambung');
+    console.log(`Firebase Firestore synchronized successfully with project: ${firebaseConfig.projectId}`);
   } catch (err) {
     console.warn('Notice during Firestore background sync:', err);
   }

@@ -18,6 +18,7 @@ import {
   saveLocalSupervisions, 
   saveLocalSchools 
 } from '../services/localStorageService';
+import firebaseConfig from '../../firebase-applet-config.json';
 
 interface LocalStorageBackupModalProps {
   isOpen: boolean;
@@ -133,7 +134,7 @@ export const LocalStorageBackupModal: React.FC<LocalStorageBackupModalProps> = (
                 </span>
               </p>
               <p className="mt-1 text-slate-600">
-                Proyek: <strong className="text-indigo-900">siklus-sambung</strong>. Seluruh berkas supervisi, instrumen 7 tahap SAMBUNG, telaah modul ajar, dan evaluasi tersimpan aman di database cloud serta tersinkronisasi antar-perangkat.
+                Proyek: <strong className="text-indigo-900">{firebaseConfig.projectId || 'Siklus SAMBUNG'}</strong>. Seluruh berkas supervisi, instrumen 7 tahap SAMBUNG, telaah modul ajar, dan evaluasi tersimpan aman di database cloud serta tersinkronisasi antar-perangkat.
               </p>
             </div>
           </div>

@@ -147,20 +147,48 @@ export const SambungPrintModal: React.FC<SambungPrintModalProps> = ({
           </div>
 
           {/* S — LEMBAR PEMETAAN PEMBELAJARAN */}
+          {/* S — LEMBAR PEMETAAN & INSTRUMEN SELIDIKI */}
           <div className="page-break-after">
             <div className="flex items-center gap-3 mb-3 bg-indigo-900 text-white p-2.5 rounded-lg">
               <span className="w-7 h-7 rounded-md bg-white text-indigo-900 font-extrabold flex items-center justify-center text-sm">
                 S
               </span>
               <div>
-                <h3 className="font-bold text-sm">Lembar Pemetaan Pembelajaran</h3>
-                <p className="text-[10px] text-indigo-200">SELIDIKI — diisi dari telaah perangkat, observasi awal, dan dialog</p>
+                <h3 className="font-bold text-sm">Tahap S — SELIDIKI: Instrumen Supervisi &amp; Kesimpulan Kondisi Awal</h3>
+                <p className="text-[10px] text-indigo-200">
+                  1. Telaah RPP (22 Indikator) &bull; 2. Praobservasi (8 Pertanyaan) &bull; 3. Observasi Kelas (25 Indikator) &bull; 4. Kesimpulan SELIDIKI
+                </p>
               </div>
             </div>
 
             <div className="text-xs mb-3 space-y-0.5">
               <p><strong>Sekolah / Guru / Mata pelajaran :</strong> {supervision.schoolName} / {supervision.teacherName} / {supervision.subject}</p>
-              <p><strong>Tanggal :</strong> {sambung.selidiki.tanggal}</p>
+              <p><strong>Tanggal Pemetaan :</strong> {sambung.selidiki.tanggal}</p>
+            </div>
+
+            {/* Ringkasan 3 Instrumen Data Awal Selidiki */}
+            <div className="grid grid-cols-3 gap-2 mb-3 text-[10px]">
+              <div className="border border-slate-300 p-2 rounded bg-slate-50">
+                <span className="font-bold text-slate-800 block">1. Telaah RPP (22 Indikator)</span>
+                <span className="text-slate-600 block mt-0.5">
+                  Nilai: <strong>{supervision.perangkatAjar?.telaahSummary?.finalScore?.toFixed(1) || '0'}%</strong> ({supervision.perangkatAjar?.telaahSummary?.predicate || 'Perlu Perbaikan'})
+                </span>
+                <span className="text-slate-500 block text-[9px]">Skor Mentah: {supervision.perangkatAjar?.telaahSummary?.totalScore || 0} / 44</span>
+              </div>
+              <div className="border border-slate-300 p-2 rounded bg-slate-50">
+                <span className="font-bold text-slate-800 block">2. Praobservasi (8 Pertanyaan)</span>
+                <span className="text-slate-600 block mt-0.5">
+                  Durasi: <strong>{supervision.praObservasi?.interviewDurationMinutes || 30} Menit</strong>
+                </span>
+                <span className="text-slate-500 block text-[9px]">Status: {supervision.praObservasi?.completedAt ? 'Wawancara Terlaksana' : 'Terencana'}</span>
+              </div>
+              <div className="border border-slate-300 p-2 rounded bg-slate-50">
+                <span className="font-bold text-slate-800 block">3. Observasi Kelas (25 Indikator)</span>
+                <span className="text-slate-600 block mt-0.5">
+                  Capaian: <strong>{supervision.observasiKelas?.score?.toFixed(1) || '0'}%</strong> ({supervision.observasiKelas?.predicate || 'Kurang'})
+                </span>
+                <span className="text-slate-500 block text-[9px]">Aspek Terpenuhi: {supervision.observasiKelas?.totalYa || 0} / 25</span>
+              </div>
             </div>
 
             <table className="w-full border-collapse border border-slate-300 text-[11px] mb-2">

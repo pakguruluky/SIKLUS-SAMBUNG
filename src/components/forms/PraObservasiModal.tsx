@@ -157,29 +157,6 @@ export const PraObservasiModal: React.FC<PraObservasiModalProps> = ({
             </div>
           </div>
 
-          {/* Quick Auto-Fill Banner for Supervisor */}
-          {!isGuru && (
-            <div className="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-300 rounded-2xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="space-y-0.5">
-                <span className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
-                  <Zap className="w-3.5 h-3.5 text-amber-600" />
-                  <span>Isi Otomatis Berdasarkan RPP &amp; Mapel Guru</span>
-                </span>
-                <p className="text-[11px] text-amber-800/90">
-                  Otomatis mengisi 8 butir pertanyaan wawancara pra-observasi selaras dengan dokumen RPP {supervision.subject}.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={handleAutoFill}
-                className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs transition-colors shrink-0 cursor-pointer"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>⚡ Isi Otomatis dari RPP</span>
-              </button>
-            </div>
-          )}
-
           {/* Duration Selector */}
           <div className="flex items-center gap-3 p-3 bg-amber-50 rounded-xl border border-amber-200 max-w-sm">
             <Clock className="w-5 h-5 text-amber-600 shrink-0" />

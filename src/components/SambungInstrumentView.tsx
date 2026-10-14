@@ -1575,17 +1575,6 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
 
                         <button
                           type="button"
-                          onClick={handleAutoFillTelaahOnly}
-                          disabled={isAnalyzingTelaahAI}
-                          className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-                          title="Isi otomatis nilai standar sesuai mapel guru"
-                        >
-                          <Zap className="w-3.5 h-3.5 text-slate-950" />
-                          <span>⚡ Isi Standar</span>
-                        </button>
-
-                        <button
-                          type="button"
                           onClick={handleSaveTelaahRppSection}
                           disabled={isSaving || isAnalyzingTelaahAI}
                           className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
@@ -1871,15 +1860,6 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                       <div className="flex flex-wrap items-center gap-2 shrink-0">
                         <button
                           type="button"
-                          onClick={handleAutoFillPraOnly}
-                          className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-                        >
-                          <Zap className="w-3.5 h-3.5 text-slate-950" />
-                          <span>⚡ Isi Jawaban Otomatis Guru</span>
-                        </button>
-
-                        <button
-                          type="button"
                           onClick={handleSavePraObservasiSection}
                           disabled={isSaving}
                           className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
@@ -2018,15 +1998,6 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                       </div>
 
                       <div className="flex flex-wrap items-center gap-2 shrink-0">
-                        <button
-                          type="button"
-                          onClick={handleAutoFillObservasiOnly}
-                          className="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-                        >
-                          <Zap className="w-3.5 h-3.5 text-slate-950" />
-                          <span>⚡ Isi Otomatis Observasi Baseline</span>
-                        </button>
-
                         <button
                           type="button"
                           onClick={handleSaveObservasiSection}
@@ -2473,22 +2444,6 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                     Memilih fokus perbaikan dari empat indikator di Kesimpulan Selidiki serta menghubungkan instrumen sebelumnya secara berkesinambungan untuk {currentSupervision.teacherName} ({currentSupervision.subject}).
                   </p>
                 </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleAutoFillAmati()}
-                    disabled={isAutoFillingAmati}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs shadow-sm hover:shadow transition-all disabled:opacity-60 cursor-pointer"
-                  >
-                    {isAutoFillingAmati ? (
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Zap className="w-4 h-4 text-amber-300" />
-                    )}
-                    <span>{isAutoFillingAmati ? 'Memeriksa & Mengisi...' : 'Periksa & Isikan Otomatis Berkesinambungan'}</span>
-                  </button>
-                </div>
               </div>
 
               {/* 1. Panel Pemeriksaan Kontinuitas Instrumen Sebelumnya (Pipeline Continuity Audit) */}
@@ -2592,17 +2547,35 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => handleAutoFillAmati(['peranGuru', 'aktivitasMurid', 'konteksNyata', 'refleksiMurid'])}
-                      className="px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold transition-colors"
+                      onClick={() => {
+                        if (!sambungDraft) return;
+                        setSambungDraft({
+                          ...sambungDraft,
+                          arahkan: {
+                            ...sambungDraft.arahkan,
+                            fokusIndikatorTerpilih: ['peranGuru', 'aktivitasMurid', 'konteksNyata', 'refleksiMurid'],
+                          },
+                        });
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold transition-colors cursor-pointer"
                     >
                       Pilih Semua (4 Indikator)
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleAutoFillAmati(['peranGuru', 'aktivitasMurid'])}
-                      className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors"
+                      onClick={() => {
+                        if (!sambungDraft) return;
+                        setSambungDraft({
+                          ...sambungDraft,
+                          arahkan: {
+                            ...sambungDraft.arahkan,
+                            fokusIndikatorTerpilih: ['peranGuru', 'aktivitasMurid'],
+                          },
+                        });
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors cursor-pointer"
                     >
-                      Rekomendasi Utama (2 Indikator)
+                      Pilih 2 Indikator Utama
                     </button>
                   </div>
                 </div>
@@ -3055,24 +3028,8 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                     Coaching dan Refleksi Pasca Observasi
                   </h3>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    Coaching dan Refleksi Guru, <strong>JAWABAN terisikan otomatis dari hasil observasi</strong> dan disesuaikan dengan kesimpulan akhir siklus SAMBUNG.
+                    Instrumen percakapan coaching dan refleksi guru pasca observasi pembelajaran untuk menumbuhkan kesadaran metakognisi dan komitmen perbaikan.
                   </p>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleAutoFillMaknai()}
-                    disabled={isAutoFillingMaknai}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs shadow-sm hover:shadow transition-all disabled:opacity-60 cursor-pointer"
-                  >
-                    {isAutoFillingMaknai ? (
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Zap className="w-4 h-4 text-amber-300" />
-                    )}
-                    <span>{isAutoFillingMaknai ? 'Menyinkronkan...' : 'Sinkronkan Jawaban dari Hasil Observasi & Kesimpulan'}</span>
-                  </button>
                 </div>
               </div>
 
@@ -3366,17 +3323,6 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                       </div>
 
                       <div className="flex flex-wrap sm:flex-col items-end gap-2 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => handleAutoFillBerdayakan()}
-                          disabled={isAutoFillingBerdayakan}
-                          className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-slate-950 font-extrabold text-xs shadow-lg transition-all flex items-center gap-2 cursor-pointer active:scale-95"
-                          title="Analisis otomatis 22 aspek telaah RPP perbaikan dan sinkronkan ke Firebase"
-                        >
-                          <Zap className={`w-4 h-4 text-slate-950 ${isAutoFillingBerdayakan ? 'animate-spin' : ''}`} />
-                          <span>{isAutoFillingBerdayakan ? 'Menganalisis RPP...' : 'Telaah Kembali Secara Otomatis'}</span>
-                        </button>
-
                         <div className="text-[11px] text-amber-200 bg-black/20 px-3 py-1 rounded-lg border border-white/10">
                           Tersinkron Database Firebase
                         </div>
@@ -3544,37 +3490,21 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                               className="hidden"
                               onChange={(e) => {
                                 const file = e.target.files?.[0];
-                                if (file) {
+                                if (file && sambungDraft) {
                                   const clean = encodeURIComponent(file.name.replace(/\s+/g, '_'));
                                   const generatedLink = `https://drive.google.com/file/d/drive_${Date.now()}_${clean}/view?usp=sharing`;
-                                  handleAutoFillBerdayakan(generatedLink, `RPP Perbaikan: ${file.name}`);
+                                  setSambungDraft({
+                                    ...sambungDraft,
+                                    berdayakan: {
+                                      ...sambungDraft.berdayakan,
+                                      rppPerbaikanUrl: generatedLink,
+                                    },
+                                  });
                                 }
                               }}
                             />
                           </label>
-
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const sampleUrl = `https://drive.google.com/file/d/1Contoh_Modul_Ajar_Revisi_${encodeURIComponent(currentSupervision.subject)}_${encodeURIComponent(currentSupervision.teacherName.replace(/\s+/g, '_'))}/view?usp=sharing`;
-                              handleAutoFillBerdayakan(sampleUrl);
-                            }}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-semibold transition-colors"
-                          >
-                            <Sparkles className="w-3.5 h-3.5 text-amber-700" />
-                            <span>Gunakan Contoh RPP Perbaikan Guru Ini</span>
-                          </button>
                         </div>
-
-                        <button
-                          type="button"
-                          onClick={() => handleAutoFillBerdayakan()}
-                          disabled={isAutoFillingBerdayakan}
-                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-extrabold shadow-sm transition-all active:scale-95 cursor-pointer ml-auto"
-                        >
-                          <Zap className={`w-3.5 h-3.5 text-amber-200 ${isAutoFillingBerdayakan ? 'animate-spin' : ''}`} />
-                          <span>{isAutoFillingBerdayakan ? 'Sedang Menganalisis...' : 'Telaah Kembali Secara Otomatis'}</span>
-                        </button>
                       </div>
                     </div>
                   </div>
@@ -4074,17 +4004,6 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
 
                 {/* Toolbar Aksi Tahap U */}
                 <div className="flex flex-wrap items-center gap-2 shrink-0">
-                  <button
-                    type="button"
-                    onClick={handleAutoFillUji}
-                    disabled={isAutoFillingUji}
-                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-700 hover:to-indigo-800 text-white font-extrabold text-xs shadow-md transition-all flex items-center gap-2 cursor-pointer active:scale-95 border border-purple-400/40"
-                    title="Otomatis mengisi Pra-Observasi, 25 Butir Observasi, Pasca-Observasi, & Matriks After yang selaras dari Selidiki sampai Berdayakan"
-                  >
-                    <Sparkles className={`w-4 h-4 text-amber-300 ${isAutoFillingUji ? 'animate-spin' : ''}`} />
-                    <span>{isAutoFillingUji ? 'Menyinkronkan Instrumen Uji...' : 'Isi & Sinkronkan Otomatis Tahap UJI'}</span>
-                  </button>
-
                   <button
                     type="button"
                     onClick={() => setIsPrintModalOpen(true)}
@@ -5934,17 +5853,6 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
 
                   {/* Toolbar Aksi Tahap G */}
                   <div className="flex flex-wrap items-center gap-2 shrink-0">
-                    <button
-                      type="button"
-                      onClick={handleAutoFillGerakkan}
-                      disabled={isAutoFillingGerakkan}
-                      className="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-600 via-teal-600 to-indigo-700 hover:from-cyan-700 hover:to-indigo-800 text-white font-extrabold text-xs shadow-md transition-all flex items-center gap-2 cursor-pointer active:scale-95 border border-cyan-400/40"
-                      title="Otomatis menyinkronkan temuan Selidiki, Amati, Maknai, Berdayakan, Uji, dan Nyatakan ke dalam 5 RTL Terstruktur & Program Pengimbasan"
-                    >
-                      <Sparkles className={`w-4 h-4 text-amber-300 ${isAutoFillingGerakkan ? 'animate-spin' : ''}`} />
-                      <span>{isAutoFillingGerakkan ? 'Menyinkronkan Instrumen Gerakkan...' : 'Isi & Sinkronkan Otomatis Tahap GERAKKAN'}</span>
-                    </button>
-
                     <button
                       type="button"
                       onClick={() => setIsPrintModalOpen(true)}

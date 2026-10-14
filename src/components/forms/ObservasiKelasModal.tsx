@@ -284,18 +284,6 @@ export const ObservasiKelasModal: React.FC<ObservasiKelasModalProps> = ({
                 <span className="text-[10px] text-slate-500 uppercase font-semibold block">Predikat</span>
                 <p className="text-xs font-black text-emerald-800">{predicate}</p>
               </div>
-
-              {isSupervisor && (
-                <button
-                  type="button"
-                  onClick={handleAutoFill}
-                  className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs shadow-xs transition-all flex items-center gap-1.5"
-                  title="Isi otomatis 25 aspek dan komentar kritis sesuai RPP dan mapel guru"
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>Isi Otomatis dari RPP</span>
-                </button>
-              )}
             </div>
           </div>
 

@@ -80,7 +80,7 @@ export const NewSupervisionModal: React.FC<NewSupervisionModalProps> = ({
       : 'Kusnandar, M.Si'
   );
 
-  const [autoFillSelidiki, setAutoFillSelidiki] = useState(true);
+  const [autoFillSelidiki, setAutoFillSelidiki] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errMsg, setErrMsg] = useState('');
 
@@ -368,26 +368,7 @@ export const NewSupervisionModal: React.FC<NewSupervisionModalProps> = ({
             />
           </div>
 
-          {/* Checkbox Auto-Fill Selidiki */}
-          <div className="p-3 bg-indigo-50/70 border border-indigo-200 rounded-xl space-y-1">
-            <label className="flex items-start gap-2.5 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={autoFillSelidiki}
-                onChange={(e) => setAutoFillSelidiki(e.target.checked)}
-                className="mt-0.5 rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
-              />
-              <div className="text-xs">
-                <span className="font-bold text-indigo-950 flex items-center gap-1.5">
-                  <Zap className="w-3.5 h-3.5 text-amber-500" />
-                  <span>Isi Otomatis Instrumen Selidiki Berdasarkan Mapel &amp; Guru</span>
-                </span>
-                <p className="text-[11px] text-indigo-800/80 mt-0.5">
-                  Otomatis mengisi 22 aspek Telaah RPP, Wawancara Pra-Observasi, Observasi Kelas 25 Aspek, dan menghubungkan ke Siklus SAMBUNG.
-                </p>
-              </div>
-            </label>
-          </div>
+
 
           <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
             <button

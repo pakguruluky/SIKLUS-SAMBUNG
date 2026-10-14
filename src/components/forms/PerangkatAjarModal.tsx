@@ -557,16 +557,7 @@ export const PerangkatAjarModal: React.FC<PerangkatAjarModalProps> = ({
                 </div>
 
                 {/* Action Row: Auto Fill & Sample link */}
-                <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs">
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleUseSampleLink('modul')}
-                      className="text-indigo-600 hover:text-indigo-800 font-bold underline text-[11px] flex items-center gap-1"
-                    >
-                      <span>+ Gunakan Contoh RPP {supervision.subject}</span>
-                    </button>
-                  </div>
+                <div className="flex flex-wrap items-center justify-end gap-2 pt-1 text-xs">
 
                   <button
                     type="button"

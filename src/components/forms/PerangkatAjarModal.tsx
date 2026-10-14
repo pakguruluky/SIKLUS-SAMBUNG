@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { saveSupervision } from '../../services/firebase';
 import { applyAutoFillToSupervision, parseRppFileName } from '../../data/autoFillData';
+import { analyzeTelaahRppWithAI } from '../../services/aiService';
 
 interface PerangkatAjarModalProps {
   isOpen: boolean;
@@ -179,12 +180,52 @@ export const PerangkatAjarModal: React.FC<PerangkatAjarModalProps> = ({
     setIsAutoFilling(true);
     setSaveSuccessMsg('');
     try {
+      // 1. Analyze 22 indicators with AI intelligence
+      const aiResult = await analyzeTelaahRppWithAI({
+        teacherName: customTeacher || supervision.teacherName,
+        subject: customSubj || supervision.subject,
+        lessonTitle: supervision.lessonTitle,
+        classGrade: supervision.classGrade,
+        schoolName: supervision.schoolName,
+        rppText: link,
+      });
+
+      // 2. Apply base supervision mapping
       const updated = applyAutoFillToSupervision(
         supervision,
         link || undefined,
         customSubj || supervision.subject,
         customTeacher || supervision.teacherName
       );
+
+      // 3. Merge AI analyzed 22 indicators, scores, comments, and feedback
+      if (updated.perangkatAjar) {
+        updated.perangkatAjar.telaahScores = aiResult.scores;
+        updated.perangkatAjar.telaahComments = aiResult.comments;
+        updated.perangkatAjar.feedback = aiResult.feedback;
+
+        let tot = 0;
+        let maxP = 0;
+        TELAAH_ITEMS.forEach((item) => {
+          const val = aiResult.scores[item.id];
+          if (val !== 'NA' && val !== undefined) {
+            tot += Number(val);
+            maxP += 2;
+          }
+        });
+        const fScore = maxP > 0 ? parseFloat(((tot / maxP) * 100).toFixed(1)) : 0;
+        let pred: 'Sangat Baik' | 'Baik' | 'Cukup' | 'Perlu Perbaikan' = 'Perlu Perbaikan';
+        if (fScore >= 91) pred = 'Sangat Baik';
+        else if (fScore >= 81) pred = 'Baik';
+        else if (fScore >= 71) pred = 'Cukup';
+
+        updated.perangkatAjar.telaahSummary = {
+          totalScore: tot,
+          maxPossibleScore: maxP,
+          finalScore: fScore,
+          predicate: pred,
+        };
+      }
 
       // Update state for this modal
       if (updated.perangkatAjar?.driveLinks?.modulAjarUrl) {
@@ -215,7 +256,7 @@ export const PerangkatAjarModal: React.FC<PerangkatAjarModalProps> = ({
       });
 
       setSaveSuccessMsg(
-        `Instrumen Selidiki (Telaah RPP 22 Aspek, Pra-Observasi, Observasi, & Siklus SAMBUNG) berhasil diisi otomatis sesuai mapel ${updated.subject} & guru ${updated.teacherName}, dan tersimpan permanen ke Firebase!`
+        `✨ Instrumen Selidiki (Telaah RPP 22 Aspek) berhasil dianalisis dengan Kecerdasan AI (${aiResult.source === 'ai_gemini' ? 'Gemini AI' : 'Pedagogical AI Engine'}) & tersimpan permanen ke Firebase!`
       );
     } catch (err) {
       console.error('Error auto-filling supervision:', err);
@@ -539,13 +580,13 @@ export const PerangkatAjarModal: React.FC<PerangkatAjarModalProps> = ({
                   >
                     {isAutoFilling ? (
                       <>
-                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                        <span>Menganalisis RPP &amp; Mengisi Otomatis...</span>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-300" />
+                        <span>Menganalisis 22 Indikator dengan AI...</span>
                       </>
                     ) : (
                       <>
-                        <Zap className="w-3.5 h-3.5 text-amber-300" />
-                        <span>⚡ Analisis RPP &amp; Isi Otomatis Instrumen Selidiki</span>
+                        <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                        <span>✨ Analisis Cerdas AI (22 Indikator) &amp; Simpan ke Firebase</span>
                       </>
                     )}
                   </button>

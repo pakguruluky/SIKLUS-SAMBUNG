@@ -19,6 +19,7 @@ import {
   getTeacherDescriptiveDataDampak
 } from '../data/sambungSeed';
 import { saveSupervision } from '../services/firebase';
+import { analyzeTelaahRppWithAI } from '../services/aiService';
 import { SambungPrintModal } from './SambungPrintModal';
 import { PerangkatAjarModal } from './forms/PerangkatAjarModal';
 import { PraObservasiModal } from './forms/PraObservasiModal';
@@ -144,6 +145,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
   const [gSubTab, setGSubTab] = useState<'rtl_nyatakan' | 'benang_merah' | 'pengimbasan' | 'pengesahan'>('rtl_nyatakan');
   const [isAutoFillingUji, setIsAutoFillingUji] = useState(false);
   const [isAutoFillingGerakkan, setIsAutoFillingGerakkan] = useState(false);
+  const [isAnalyzingTelaahAI, setIsAnalyzingTelaahAI] = useState(false);
   const [activeSupervisiModal, setActiveSupervisiModal] = useState<{
     stage: 'perangkat' | 'pra' | 'observasi' | 'pasca';
     mode: 'awal' | 'perbaikan';
@@ -475,6 +477,60 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
     await saveSupervision(updated);
     setSaveToast('Telaah RPP (22 Indikator) berhasil diisi otomatis & tersimpan ke Firebase!');
     setTimeout(() => setSaveToast(null), 3500);
+  };
+
+  const handleAiAnalyzeTelaahRPP = async () => {
+    if (!currentSupervision) return;
+    setIsAnalyzingTelaahAI(true);
+    try {
+      const aiResult = await analyzeTelaahRppWithAI({
+        teacherName: currentSupervision.teacherName,
+        subject: currentSupervision.subject,
+        lessonTitle: currentSupervision.lessonTitle,
+        classGrade: currentSupervision.classGrade,
+        schoolName: currentSupervision.schoolName,
+        rppText: currentSupervision.perangkatAjar?.driveLinks?.modulAjarUrl || '',
+        focusAspects: currentSupervision.perangkatAjar?.feedback?.rekomendasi || '',
+      });
+
+      const summary = calculateTelaahSummary(aiResult.scores);
+      const auto = getTeacherAutoFillData(
+        currentSupervision.teacherName,
+        currentSupervision.subject,
+        currentSupervision.lessonTitle,
+        currentSupervision.schoolName
+      );
+
+      const updated: Supervision = {
+        ...currentSupervision,
+        perangkatAjar: {
+          ...currentSupervision.perangkatAjar,
+          driveLinks: {
+            cpTpAtpUrl: currentSupervision.perangkatAjar?.driveLinks?.cpTpAtpUrl || 'https://drive.google.com/file/d/1CpTpAtp_Awal/view',
+            modulAjarUrl: currentSupervision.perangkatAjar?.driveLinks?.modulAjarUrl || auto.rppUrl,
+          },
+          telaahScores: aiResult.scores,
+          telaahComments: aiResult.comments,
+          telaahSummary: summary,
+          feedback: aiResult.feedback,
+          reviewedAt: new Date().toISOString(),
+          reviewedBy: 'Kusnandar, M.Si (Pengawas Pembina)',
+        },
+        updatedAt: new Date().toISOString(),
+      };
+
+      onUpdateSupervision(updated);
+      await saveSupervision(updated);
+      setSaveToast(
+        `✨ Telaah RPP (22 Indikator) berhasil dianalisis dengan Kecerdasan AI (${aiResult.source === 'ai_gemini' ? 'Gemini 3.8 Flash' : 'Pedagogical AI Engine'}) & tersimpan permanen di Database Firebase!`
+      );
+      setTimeout(() => setSaveToast(null), 5000);
+    } catch (err) {
+      console.error('Error analyzing Telaah RPP with AI:', err);
+      await handleAutoFillTelaahOnly();
+    } finally {
+      setIsAnalyzingTelaahAI(false);
+    }
   };
 
   // Praobservasi helpers
@@ -1499,17 +1555,39 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                       <div className="flex flex-wrap items-center gap-2 shrink-0">
                         <button
                           type="button"
+                          onClick={handleAiAnalyzeTelaahRPP}
+                          disabled={isAnalyzingTelaahAI}
+                          className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-black text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer disabled:opacity-60"
+                          title="Analisis kecerdasan AI mendalam dan akurat untuk 22 indikator modul ajar, dan langsung tersimpan ke Firebase"
+                        >
+                          {isAnalyzingTelaahAI ? (
+                            <>
+                              <RefreshCw className="w-3.5 h-3.5 text-amber-300 animate-spin" />
+                              <span>Menganalisis AI...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                              <span>✨ Analisa AI (22 Indikator)</span>
+                            </>
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
                           onClick={handleAutoFillTelaahOnly}
-                          className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                          disabled={isAnalyzingTelaahAI}
+                          className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                          title="Isi otomatis nilai standar sesuai mapel guru"
                         >
                           <Zap className="w-3.5 h-3.5 text-slate-950" />
-                          <span>⚡ Isi Otomatis 22 Indikator</span>
+                          <span>⚡ Isi Standar</span>
                         </button>
 
                         <button
                           type="button"
                           onClick={handleSaveTelaahRppSection}
-                          disabled={isSaving}
+                          disabled={isSaving || isAnalyzingTelaahAI}
                           className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
                         >
                           <Save className="w-3.5 h-3.5" />
@@ -1729,19 +1807,39 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                     </div>
 
                     {/* Bottom Save Bar */}
-                    <div className="pt-3 flex items-center justify-between border-t border-slate-100">
+                    <div className="pt-3 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100">
                       <span className="text-xs text-slate-400">
-                        *Seluruh skor 22 indikator dan feedback tersimpan otomatis di Firebase Firestore.
+                        *Seluruh skor 22 indikator, catatan analitis, dan feedback tersimpan otomatis di Firebase Firestore.
                       </span>
-                      <button
-                        type="button"
-                        onClick={handleSaveTelaahRppSection}
-                        disabled={isSaving}
-                        className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <Save className="w-4 h-4" />
-                        <span>{isSaving ? 'Menyimpan...' : 'Simpan Telaah RPP (22 Indikator)'}</span>
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={handleAiAnalyzeTelaahRPP}
+                          disabled={isAnalyzingTelaahAI}
+                          className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
+                        >
+                          {isAnalyzingTelaahAI ? (
+                            <>
+                              <RefreshCw className="w-3.5 h-3.5 text-amber-300 animate-spin" />
+                              <span>Menganalisis AI...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                              <span>✨ Analisa Ulang AI (22 Indikator)</span>
+                            </>
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleSaveTelaahRppSection}
+                          disabled={isSaving || isAnalyzingTelaahAI}
+                          className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <Save className="w-4 h-4" />
+                          <span>{isSaving ? 'Menyimpan...' : 'Simpan Telaah RPP (22 Indikator)'}</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -3956,7 +4054,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
         )}
 
         {/* ==================================================== */}
-        {/* TAB U: UJI — OBSERVASI KELAS (U-1) & ANGKET MURID (U-2) */}
+        {/* TAB U: UJI — OBSERVASI KELAS & SUPERVISI PERBAIKAN */}
         {/* ==================================================== */}
         {activeTab === 'U' && (
           <div className="space-y-6">
@@ -4804,7 +4902,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                         Kesimpulan Hasil Uji Coba: TABEL INDIKATOR &amp; UJI &bull; {currentSupervision.teacherName}
                       </h4>
                       <p className="text-xs text-purple-200/90 max-w-3xl leading-relaxed">
-                        Data kesimpulan kondisi setelah perbaikan ini dirumuskan dari hasil telaah modul ajar revisi, pra-observasi lanjutan, observasi kelas tatap muka verifikasi lapangan, angket suara murid (U-2), dan pasca-observasi perbaikan. Menyajikan 4 indikator kunci kondisi hasil uji coba (Uji) yang otomatis dipaparkan di Tahap Nyatakan.
+                        Data kesimpulan kondisi setelah perbaikan ini dirumuskan dari hasil telaah modul ajar revisi, pra-observasi lanjutan, observasi kelas tatap muka verifikasi lapangan 25 aspek, dan pasca-observasi perbaikan. Menyajikan 4 indikator kunci kondisi hasil uji coba (Uji) yang otomatis dipaparkan di Tahap Nyatakan.
                       </p>
                     </div>
 

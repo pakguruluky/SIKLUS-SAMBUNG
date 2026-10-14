@@ -1564,7 +1564,7 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
                     <div className="p-4 rounded-2xl border border-purple-200 bg-purple-50/30 space-y-1">
                       <div className="flex items-center gap-2">
                         <span className="w-6 h-6 rounded-lg bg-purple-600 text-white font-black text-xs flex items-center justify-center">U</span>
-                        <span className="font-black text-purple-950 uppercase text-xs">Tahap 5 &bull; UJI (Uji Coba Lapangan 25 Aspek, Pra/Pasca Wawancara &amp; Suara Murid)</span>
+                        <span className="font-black text-purple-950 uppercase text-xs">Tahap 5 &bull; UJI (Uji Coba Lapangan 25 Aspek, Pra &amp; Pasca Wawancara Supervisi)</span>
                       </div>
                       <p className="text-slate-700 leading-relaxed pl-8 text-xs">{alur.ujiPembuktian}</p>
                     </div>

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Supervision, UserProfile } from '../../types';
 import { OBSERVASI_ITEMS } from '../../data/instrumentData';
-import { getTeacherAutoFillData } from '../../data/autoFillData';
 import { getTeacherDescriptiveDataDampak } from '../../data/sambungSeed';
 import { X, Save, CheckCircle2, FileSpreadsheet, Award, ShieldAlert, Sparkles } from 'lucide-react';
 import { saveSupervision } from '../../services/firebase';
@@ -29,7 +28,7 @@ export const ObservasiKelasModal: React.FC<ObservasiKelasModalProps> = ({
     : supervision.observasiKelas;
 
   // Initialize items from sourceData or auto-fill defaults
-  const [items, setItems] = useState<Record<string, { score: number; note: string; status?: 'Ya' | 'Tidak' }>>(() => {
+  const [items, setItems] = useState<Record<string, { score?: number; note: string; status?: 'Ya' | 'Tidak' }>>(() => {
     if (sourceData?.items && Object.keys(sourceData.items).length > 0) {
       const normalized: Record<string, { score: number; note: string; status?: 'Ya' | 'Tidak' }> = {};
       Object.entries(sourceData.items).forEach(([key, val]) => {
@@ -42,24 +41,23 @@ export const ObservasiKelasModal: React.FC<ObservasiKelasModalProps> = ({
       });
       return normalized;
     }
-    // Auto-fill defaults based on teacher and subject
-    const auto = getTeacherAutoFillData(supervision.teacherName, supervision.subject, supervision.lessonTitle);
-    return auto.observasiScores;
+    // Tanpa auto-fill otomatis: inisialisasi kosong untuk diisi supervisor
+    const emptyScores: Record<string, { status?: 'Ya' | 'Tidak'; score?: number; note: string }> = {};
+    OBSERVASI_ITEMS.forEach(it => {
+      emptyScores[it.id] = { score: undefined, note: '', status: undefined };
+    });
+    return emptyScores;
   });
 
   // 3-point Feedback Implementasi Pembelajaran (PDF Hal 12)
   const [kelebihan, setKelebihan] = useState(
-    sourceData?.feedback?.kelebihan ||
-    sourceData?.feedbackNotes ||
-    getTeacherAutoFillData(supervision.teacherName, supervision.subject, supervision.lessonTitle).observasiFeedback.kelebihan
+    sourceData?.feedback?.kelebihan || sourceData?.feedbackNotes || ''
   );
   const [peningkatan, setPeningkatan] = useState(
-    sourceData?.feedback?.peningkatan ||
-    getTeacherAutoFillData(supervision.teacherName, supervision.subject, supervision.lessonTitle).observasiFeedback.peningkatan
+    sourceData?.feedback?.peningkatan || ''
   );
   const [rekomendasi, setRekomendasi] = useState(
-    sourceData?.feedback?.rekomendasi ||
-    getTeacherAutoFillData(supervision.teacherName, supervision.subject, supervision.lessonTitle).observasiFeedback.rekomendasi
+    sourceData?.feedback?.rekomendasi || ''
   );
 
   const [saving, setSaving] = useState(false);
@@ -76,27 +74,34 @@ export const ObservasiKelasModal: React.FC<ObservasiKelasModalProps> = ({
   const maxPossibleScore = totalAspek * 2; // 50
   let totalScore = 0;
   let totalYa = 0;
+  let hasScoredAny = false;
 
   OBSERVASI_ITEMS.forEach(it => {
     const itState = items[it.id];
-    const sc = itState?.score !== undefined ? Number(itState.score) : 2;
-    totalScore += sc;
-    if (sc >= 1) {
-      totalYa += 1;
+    if (itState?.score !== undefined) {
+      hasScoredAny = true;
+      const sc = Number(itState.score);
+      totalScore += sc;
+      if (sc >= 1) {
+        totalYa += 1;
+      }
     }
   });
 
-  const scorePercent = parseFloat(((totalScore / maxPossibleScore) * 100).toFixed(1));
+  const scorePercent = hasScoredAny ? parseFloat(((totalScore / maxPossibleScore) * 100).toFixed(1)) : 0;
   
   // Predikat resmi sesuai dokumen PDF Halaman 13:
   // 90–100 : Sangat Baik
   // 80–89  : Baik
   // 70–79  : Cukup
   // <70    : Perlu Perbaikan
-  let predicate = 'Perlu Perbaikan';
-  if (scorePercent >= 90) predicate = 'Sangat Baik';
-  else if (scorePercent >= 80) predicate = 'Baik';
-  else if (scorePercent >= 70) predicate = 'Cukup';
+  let predicate = 'Belum Dinilai';
+  if (hasScoredAny) {
+    if (scorePercent >= 90) predicate = 'Sangat Baik';
+    else if (scorePercent >= 80) predicate = 'Baik';
+    else if (scorePercent >= 70) predicate = 'Cukup';
+    else predicate = 'Perlu Perbaikan';
+  }
 
   const handleScoreChange = (id: string, scoreVal: number) => {
     if (!isSupervisor) return;
@@ -115,23 +120,14 @@ export const ObservasiKelasModal: React.FC<ObservasiKelasModalProps> = ({
     setItems(prev => ({
       ...prev,
       [id]: {
-        score: prev[id]?.score !== undefined ? prev[id].score : 2,
+        score: prev[id]?.score,
         note: noteVal,
-        status: (prev[id]?.score ?? 2) >= 1 ? 'Ya' : 'Tidak',
+        status: prev[id]?.score !== undefined ? (prev[id].score! >= 1 ? 'Ya' : 'Tidak') : undefined,
       }
     }));
   };
 
-  const handleAutoFill = () => {
-    if (!isSupervisor) return;
-    const auto = getTeacherAutoFillData(supervision.teacherName, supervision.subject, supervision.lessonTitle);
-    setItems(auto.observasiScores);
-    setKelebihan(auto.observasiFeedback.kelebihan);
-    setPeningkatan(auto.observasiFeedback.peningkatan);
-    setRekomendasi(auto.observasiFeedback.rekomendasi);
-    setSuccessToast('Berhasil mengisi otomatis 25 aspek observasi dan komentar kritis sesuai RPP & mapel guru!');
-    setTimeout(() => setSuccessToast(''), 3000);
-  };
+
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -302,8 +298,8 @@ export const ObservasiKelasModal: React.FC<ObservasiKelasModalProps> = ({
 
                   <div className="divide-y divide-slate-100">
                     {catItems.map((item) => {
-                      const itemState = items[item.id] || { score: 2, note: '' };
-                      const currentScore = itemState.score !== undefined ? itemState.score : 2;
+                      const itemState = items[item.id] || { score: undefined, note: '' };
+                      const currentScore = itemState.score;
 
                       return (
                         <div key={item.id} className="p-3.5 sm:p-4 hover:bg-slate-50/80 transition-colors flex flex-col lg:flex-row lg:items-center justify-between gap-3">

@@ -3,9 +3,10 @@ import {
   SEED_SAMBUNG_DEWI, 
   SEED_SAMBUNG_AHMAD, 
   SEED_SAMBUNG_SITI,
-  createDefaultSambungForTeacher 
+  createDefaultSambungForTeacher,
+  DEFAULT_MATRIKS_BEFORE
 } from './sambungSeed';
-import { generateTeacherMaknaiData, generateAmatiData, generateBerdayakanTelaahPerbaikanData, generateUjiData } from './autoFillData';
+import { generateTeacherMaknaiData, generateAmatiData, generateBerdayakanTelaahPerbaikanData, generateUjiData, getTeacherAutoFillData } from './autoFillData';
 
 export const SAMPLE_SUPERVISIONS: Supervision[] = [
   {
@@ -1469,7 +1470,25 @@ export const SAMPLE_SUPERVISIONS: Supervision[] = [
 
 // Pastikan seluruh guru binaan memiliki instrumen Maknai (10 pertanyaan), Amati (4 indikator), dan Berdayakan (RPP Perbaikan 22 Aspek) lengkap
 SAMPLE_SUPERVISIONS.forEach((sup) => {
+  if (!sup.sambung) {
+    sup.sambung = createDefaultSambungForTeacher(sup.teacherName, sup.schoolName, sup.subject);
+  }
   if (sup.sambung) {
+    if (!sup.sambung.selidiki) {
+      sup.sambung.selidiki = {
+        tanggal: '2025-08-10',
+        items: [],
+      };
+    }
+    const autoSeed = getTeacherAutoFillData(sup.teacherName, sup.subject, sup.lessonTitle, sup.schoolName);
+    const existingBefore: any = sup.sambung.selidiki.matriksBefore || {};
+    sup.sambung.selidiki.matriksBefore = {
+      peranGuru: existingBefore.peranGuru || autoSeed.kesimpulanSelidiki.guruBerorientasi || DEFAULT_MATRIKS_BEFORE.peranGuru,
+      aktivitasMurid: existingBefore.aktivitasMurid || autoSeed.kesimpulanSelidiki.muridAktif || DEFAULT_MATRIKS_BEFORE.aktivitasMurid,
+      konteksNyata: existingBefore.konteksNyata || autoSeed.kesimpulanSelidiki.konteksNyata || DEFAULT_MATRIKS_BEFORE.konteksNyata,
+      refleksiMurid: existingBefore.refleksiMurid || autoSeed.kesimpulanSelidiki.refleksiMurid || DEFAULT_MATRIKS_BEFORE.refleksiMurid,
+    };
+
     if (!sup.sambung.maknai?.pertanyaanList?.q1) {
       const maknaiData = generateTeacherMaknaiData(sup);
       sup.sambung.maknai = {

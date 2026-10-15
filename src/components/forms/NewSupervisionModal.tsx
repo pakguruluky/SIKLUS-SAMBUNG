@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Supervision, UserProfile, School } from '../../types';
 import { X, CheckCircle, GraduationCap, Building2, Zap, Sparkles } from 'lucide-react';
 import { saveSupervision } from '../../services/firebase';
-import { applyAutoFillToSupervision } from '../../data/autoFillData';
 
 interface NewSupervisionModalProps {
   isOpen: boolean;
@@ -80,7 +79,6 @@ export const NewSupervisionModal: React.FC<NewSupervisionModalProps> = ({
       : 'Kusnandar, M.Si'
   );
 
-  const [autoFillSelidiki, setAutoFillSelidiki] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errMsg, setErrMsg] = useState('');
 
@@ -109,7 +107,7 @@ export const NewSupervisionModal: React.FC<NewSupervisionModalProps> = ({
         semester,
         schoolYear,
         lessonTitle,
-        status: autoFillSelidiki ? 'in_progress' : 'draft',
+        status: 'draft',
         supervisorId: currentUser.role === 'admin' || currentUser.role === 'kepsek' ? currentUser.uid : 'admin-kusnandar',
         supervisorName,
         supervisorRole: currentUser.role === 'admin' ? 'admin' : currentUser.role === 'kepsek' ? 'kepsek' : 'admin',
@@ -180,12 +178,8 @@ export const NewSupervisionModal: React.FC<NewSupervisionModalProps> = ({
       };
 
       const baseSup: Supervision = { id: `sup-${Date.now()}`, ...newSup };
-      const supToSave: Supervision = autoFillSelidiki 
-        ? applyAutoFillToSupervision(baseSup) 
-        : baseSup;
-
-      const newId = await saveSupervision(supToSave);
-      onCreated({ ...supToSave, id: newId });
+      const newId = await saveSupervision(baseSup);
+      onCreated({ ...baseSup, id: newId });
       onClose();
     } catch (err: any) {
       console.error(err);

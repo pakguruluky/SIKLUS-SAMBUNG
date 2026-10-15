@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { Supervision, UserProfile } from '../../types';
 import { PRA_OBSERVASI_QUESTIONS } from '../../data/instrumentData';
-import { X, Save, Clock, Compass, ShieldAlert, Sparkles, Zap } from 'lucide-react';
+import { X, Save, Clock, Compass, ShieldAlert } from 'lucide-react';
 import { saveSupervision } from '../../services/firebase';
-import { getTeacherAutoFillData } from '../../data/autoFillData';
 
 interface PraObservasiModalProps {
   isOpen: boolean;
@@ -42,20 +41,6 @@ export const PraObservasiModal: React.FC<PraObservasiModalProps> = ({
   const [saving, setSaving] = useState(false);
 
   const isGuru = currentUser.role === 'guru';
-
-  const handleAutoFill = () => {
-    const auto = getTeacherAutoFillData(supervision.teacherName, supervision.subject, supervision.lessonTitle);
-    setQ1(auto.praObservasiAnswers.q1_kd_indikator);
-    setQ2(auto.praObservasiAnswers.q2_metode);
-    setQ3(auto.praObservasiAnswers.q3_alat_bahan);
-    setQ4(auto.praObservasiAnswers.q4_tahapan);
-    setQ5(auto.praObservasiAnswers.q5_persiapan);
-    setQ6(auto.praObservasiAnswers.q6_materi_sulit);
-    setQ7(auto.praObservasiAnswers.q7_target_kompetensi);
-    setQ8(auto.praObservasiAnswers.q8_perhatian_khusus);
-    setNotes(auto.praObservasiAnswers.supervisorNotes);
-    setDuration(35);
-  };
 
   if (!isOpen) return null;
 

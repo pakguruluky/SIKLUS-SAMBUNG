@@ -264,14 +264,6 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
             }),
           };
         }
-        // Pastikan instrumen Maknai (10 pertanyaan) sudah terisi otomatis sesuai hasil observasi & kesimpulan akhir
-        if (!cloned.maknai?.pertanyaanList?.q1) {
-          const maknaiInit = generateTeacherMaknaiData(currentSupervision);
-          cloned.maknai = {
-            ...cloned.maknai,
-            ...maknaiInit,
-          };
-        }
         setSambungDraft(cloned);
       } else {
         const defaultSambung = createDefaultSambungForTeacher(
@@ -527,7 +519,8 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
       setTimeout(() => setSaveToast(null), 5000);
     } catch (err) {
       console.error('Error analyzing Telaah RPP with AI:', err);
-      await handleAutoFillTelaahOnly();
+      setSaveToast('Gagal memproses analisis AI. Silakan periksa koneksi atau isi manual.');
+      setTimeout(() => setSaveToast(null), 4000);
     } finally {
       setIsAnalyzingTelaahAI(false);
     }
@@ -720,18 +713,45 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
     if (!currentSupervision || !sambungDraft) return;
     try {
       setIsSaving(true);
+      const curBefore = sambungDraft.selidiki.matriksBefore || {
+        peranGuru: '',
+        aktivitasMurid: '',
+        konteksNyata: '',
+        refleksiMurid: '',
+      };
+
+      const updatedBeforeAfter = (sambungDraft.nyatakan?.beforeAfter || []).map((item) => {
+        if (item.aspek.toLowerCase().includes('peran')) return { ...item, sebelumSambung: curBefore.peranGuru || item.sebelumSambung };
+        if (item.aspek.toLowerCase().includes('aktivitas')) return { ...item, sebelumSambung: curBefore.aktivitasMurid || item.sebelumSambung };
+        if (item.aspek.toLowerCase().includes('konteks')) return { ...item, sebelumSambung: curBefore.konteksNyata || item.sebelumSambung };
+        if (item.aspek.toLowerCase().includes('refleksi')) return { ...item, sebelumSambung: curBefore.refleksiMurid || item.sebelumSambung };
+        return item;
+      });
+
       const updated: Supervision = {
         ...currentSupervision,
         sambung: {
           ...sambungDraft,
+          selidiki: {
+            ...sambungDraft.selidiki,
+            matriksBefore: curBefore,
+          },
+          arahkan: {
+            ...sambungDraft.arahkan,
+            analisisKesimpulanSelidiki: curBefore,
+          },
+          nyatakan: {
+            ...sambungDraft.nyatakan,
+            beforeAfter: updatedBeforeAfter,
+          },
           lastUpdated: new Date().toISOString(),
         },
         updatedAt: new Date().toISOString(),
       };
       onUpdateSupervision(updated);
       await saveSupervision(updated);
-      setSaveToast('Kesimpulan SELIDIKI berhasil disimpan ke Firebase!');
-      setTimeout(() => setSaveToast(null), 3000);
+      setSaveToast('Kesimpulan SELIDIKI (4 Kategori Indikator) berhasil disimpan ke Firebase!');
+      setTimeout(() => setSaveToast(null), 3500);
     } catch (err) {
       console.error(err);
       setSaveToast('Gagal menyimpan ke Firebase.');
@@ -1555,29 +1575,9 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                       <div className="flex flex-wrap items-center gap-2 shrink-0">
                         <button
                           type="button"
-                          onClick={handleAiAnalyzeTelaahRPP}
-                          disabled={isAnalyzingTelaahAI}
-                          className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-black text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer disabled:opacity-60"
-                          title="Analisis kecerdasan AI mendalam dan akurat untuk 22 indikator modul ajar, dan langsung tersimpan ke Firebase"
-                        >
-                          {isAnalyzingTelaahAI ? (
-                            <>
-                              <RefreshCw className="w-3.5 h-3.5 text-amber-300 animate-spin" />
-                              <span>Menganalisis AI...</span>
-                            </>
-                          ) : (
-                            <>
-                              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                              <span>✨ Analisa AI (22 Indikator)</span>
-                            </>
-                          )}
-                        </button>
-
-                        <button
-                          type="button"
                           onClick={handleSaveTelaahRppSection}
-                          disabled={isSaving || isAnalyzingTelaahAI}
-                          className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                          disabled={isSaving}
+                          className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
                         >
                           <Save className="w-3.5 h-3.5" />
                           <span>{isSaving ? 'Menyimpan...' : 'Simpan ke Firebase'}</span>
@@ -1803,27 +1803,9 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={handleAiAnalyzeTelaahRPP}
-                          disabled={isAnalyzingTelaahAI}
-                          className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
-                        >
-                          {isAnalyzingTelaahAI ? (
-                            <>
-                              <RefreshCw className="w-3.5 h-3.5 text-amber-300 animate-spin" />
-                              <span>Menganalisis AI...</span>
-                            </>
-                          ) : (
-                            <>
-                              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                              <span>✨ Analisa Ulang AI (22 Indikator)</span>
-                            </>
-                          )}
-                        </button>
-                        <button
-                          type="button"
                           onClick={handleSaveTelaahRppSection}
-                          disabled={isSaving || isAnalyzingTelaahAI}
-                          className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                          disabled={isSaving}
+                          className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
                         >
                           <Save className="w-4 h-4" />
                           <span>{isSaving ? 'Menyimpan...' : 'Simpan Telaah RPP (22 Indikator)'}</span>
@@ -2220,52 +2202,16 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                           Kesimpulan Kondisi Awal (Baseline) Guru: {currentSupervision.teacherName}
                         </h4>
                         <p className="text-xs text-indigo-200/90 max-w-3xl leading-relaxed">
-                          Sintesis menyeluruh dari <strong>Telaah RPP (22 Indikator)</strong>, <strong>Praobservasi (8 Pertanyaan)</strong>, dan <strong>Observasi Kelas (25 Indikator)</strong>. Menyajikan indikator pembiasaan refleksi murid kondisi awal (Selidiki) yang terhubung ke AMATI, MAKNAI, BERDAYAKAN, UJI, NYATAKAN, dan GERAKKAN.
+                          Sintesis menyeluruh dari <strong>Telaah RPP (22 Indikator)</strong>, <strong>Praobservasi (8 Pertanyaan)</strong>, dan <strong>Observasi Kelas (25 Indikator)</strong>. Menyajikan 4 kategori indikator kondisi awal (Selidiki): Peran Guru, Aktivitas Murid, Konteks Kehidupan Nyata, dan Refleksi Murid yang terhubung ke AMATI, MAKNAI, BERDAYAKAN, UJI, NYATAKAN, dan GERAKKAN.
                         </p>
                       </div>
 
                       <div className="flex flex-wrap items-center gap-2 shrink-0">
                         <button
                           type="button"
-                          onClick={() => {
-                            const auto = getTeacherAutoFillData(currentSupervision.teacherName, currentSupervision.subject, currentSupervision.lessonTitle, currentSupervision.schoolName);
-                            const updatedMatriks = {
-                              peranGuru: auto.kesimpulanSelidiki.guruBerorientasi,
-                              aktivitasMurid: auto.kesimpulanSelidiki.muridAktif,
-                              konteksNyata: auto.kesimpulanSelidiki.konteksNyata,
-                              refleksiMurid: auto.kesimpulanSelidiki.refleksiMurid,
-                            };
-                            setSambungDraft({
-                              ...sambungDraft,
-                              selidiki: {
-                                ...sambungDraft.selidiki,
-                                matriksBefore: updatedMatriks,
-                              },
-                              nyatakan: {
-                                ...sambungDraft.nyatakan,
-                                beforeAfter: sambungDraft.nyatakan.beforeAfter.map((item) => {
-                                  if (item.aspek.toLowerCase().includes('peran')) return { ...item, sebelumSambung: updatedMatriks.peranGuru };
-                                  if (item.aspek.toLowerCase().includes('aktivitas')) return { ...item, sebelumSambung: updatedMatriks.aktivitasMurid };
-                                  if (item.aspek.toLowerCase().includes('konteks')) return { ...item, sebelumSambung: updatedMatriks.konteksNyata };
-                                  if (item.aspek.toLowerCase().includes('refleksi')) return { ...item, sebelumSambung: updatedMatriks.refleksiMurid };
-                                  return item;
-                                }),
-                              },
-                            });
-                            setSaveToast('Kesimpulan Selidiki berhasil disinkronkan dari 3 instrumen data awal!');
-                            setTimeout(() => setSaveToast(null), 3500);
-                          }}
-                          className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-colors shrink-0 cursor-pointer"
-                        >
-                          <RefreshCw className="w-3.5 h-3.5" />
-                          <span>⚡ Sinkronkan dari 3 Data Awal</span>
-                        </button>
-
-                        <button
-                          type="button"
                           onClick={handleSaveKesimpulanSelidikiSection}
                           disabled={isSaving}
-                          className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                          className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
                         >
                           <Save className="w-3.5 h-3.5" />
                           <span>{isSaving ? 'Menyimpan...' : 'Simpan ke Firebase'}</span>
@@ -2282,7 +2228,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                         <span>Keterhubungan Langsung dengan Seluruh Tahapan SAMBUNG</span>
                       </div>
                       <p className="text-[11px] text-slate-600 max-w-2xl leading-relaxed">
-                        Data indikator kondisi awal di bawah ini secara otomatis menjadi acuan pemilihan fokus perbaikan di <strong>Tahap A (Amati)</strong>, topik dialog coaching di <strong>Tahap M (Maknai)</strong>, perbaikan RPP di <strong>Tahap B (Berdayakan)</strong>, pembanding observasi di <strong>Tahap U (Uji)</strong>, dan kolom <em>Sebelum SAMBUNG (Before)</em> di <strong>Tahap N (Nyatakan)</strong>.
+                        Data indikator kondisi awal di bawah ini menjadi acuan pemilihan fokus perbaikan di <strong>Tahap A (Amati)</strong>, topik dialog coaching di <strong>Tahap M (Maknai)</strong>, perbaikan RPP di <strong>Tahap B (Berdayakan)</strong>, pembanding observasi di <strong>Tahap U (Uji)</strong>, dan kolom <em>Sebelum SAMBUNG (Before)</em> di <strong>Tahap N (Nyatakan)</strong>.
                       </p>
                     </div>
                     <div className="shrink-0 flex items-center gap-1 text-[11px] font-extrabold text-indigo-700 bg-white px-3 py-1.5 rounded-xl border border-indigo-200">
@@ -2290,10 +2236,199 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                     </div>
                   </div>
 
-                  {/* Card Matriks Refleksi Murid (Before) */}
-                  <div className="grid grid-cols-1 gap-5">
-                    {/* CARD: REFLEKSI MURID */}
+                  {/* 4 Cards: Kesimpulan Indikator Selidiki Berdasarkan Kategori */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                    {/* CARD 1: PERAN GURU */}
                     <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs hover:border-indigo-300 transition-all flex flex-col justify-between">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm">
+                              <User className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md">
+                                Kategori 1: Peran Guru (Kondisi Awal)
+                              </span>
+                              <h5 className="text-sm font-bold text-slate-900 mt-0.5">
+                                Guru berorientasi pada pengalaman belajar murid
+                              </h5>
+                            </div>
+                          </div>
+                          <span className="text-[10px] text-slate-400 font-semibold uppercase">
+                            Baseline S
+                          </span>
+                        </div>
+
+                        <div className="bg-indigo-50/50 p-2.5 rounded-xl border border-indigo-100/80 text-[11px] text-indigo-900">
+                          <strong>Arah Transformasi:</strong> Dari transfer materi ceramah instruksional satu arah menjadi fasilitasi pengalaman inkuiri dan perancangan belajar bermakna.
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-xs font-bold text-slate-700 block">
+                            Deskripsi Kesimpulan Selidiki (Peran Guru):
+                          </label>
+                          <textarea
+                            rows={3}
+                            value={sambungDraft.selidiki.matriksBefore?.peranGuru ?? ''}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              const cur = sambungDraft.selidiki.matriksBefore || {
+                                peranGuru: '',
+                                aktivitasMurid: '',
+                                konteksNyata: '',
+                                refleksiMurid: '',
+                              };
+                              const updatedMatriks = { ...cur, peranGuru: val };
+                              setSambungDraft({
+                                ...sambungDraft,
+                                selidiki: { ...sambungDraft.selidiki, matriksBefore: updatedMatriks },
+                                nyatakan: {
+                                  ...sambungDraft.nyatakan,
+                                  beforeAfter: (sambungDraft.nyatakan?.beforeAfter || []).map((item) =>
+                                    item.aspek.toLowerCase().includes('peran') ? { ...item, sebelumSambung: val } : item
+                                  ),
+                                },
+                              });
+                            }}
+                            className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-indigo-600 bg-white"
+                            placeholder="Jelaskan kondisi awal peran guru (orientasi pengalaman belajar murid)..."
+                          />
+                        </div>
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-3 pt-2 border-t border-slate-100 italic">
+                        *Tersimpan ke Firebase dan terhubung ke kolom Before Tahap Nyatakan &amp; Tahap Amati.
+                      </p>
+                    </div>
+
+                    {/* CARD 2: AKTIVITAS MURID */}
+                    <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs hover:border-emerald-300 transition-all flex flex-col justify-between">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm">
+                              <Users className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
+                                Kategori 2: Aktivitas Murid (Kondisi Awal)
+                              </span>
+                              <h5 className="text-sm font-bold text-slate-900 mt-0.5">
+                                Pembelajaran menghasilkan murid aktif mengaplikasikan pengetahuan
+                              </h5>
+                            </div>
+                          </div>
+                          <span className="text-[10px] text-slate-400 font-semibold uppercase">
+                            Baseline S
+                          </span>
+                        </div>
+
+                        <div className="bg-emerald-50/50 p-2.5 rounded-xl border border-emerald-100/80 text-[11px] text-emerald-900">
+                          <strong>Arah Transformasi:</strong> Dari pasif mencatat dan menunggu instruksi menjadi aktif berkolaborasi, bereksperimen, dan memecahkan tantangan masalah nyata.
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-xs font-bold text-slate-700 block">
+                            Deskripsi Kesimpulan Selidiki (Aktivitas Murid):
+                          </label>
+                          <textarea
+                            rows={3}
+                            value={sambungDraft.selidiki.matriksBefore?.aktivitasMurid ?? ''}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              const cur = sambungDraft.selidiki.matriksBefore || {
+                                peranGuru: '',
+                                aktivitasMurid: '',
+                                konteksNyata: '',
+                                refleksiMurid: '',
+                              };
+                              const updatedMatriks = { ...cur, aktivitasMurid: val };
+                              setSambungDraft({
+                                ...sambungDraft,
+                                selidiki: { ...sambungDraft.selidiki, matriksBefore: updatedMatriks },
+                                nyatakan: {
+                                  ...sambungDraft.nyatakan,
+                                  beforeAfter: (sambungDraft.nyatakan?.beforeAfter || []).map((item) =>
+                                    item.aspek.toLowerCase().includes('aktivitas') ? { ...item, sebelumSambung: val } : item
+                                  ),
+                                },
+                              });
+                            }}
+                            className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-indigo-600 bg-white"
+                            placeholder="Jelaskan kondisi awal aktivitas murid dalam mengaplikasikan pengetahuan..."
+                          />
+                        </div>
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-3 pt-2 border-t border-slate-100 italic">
+                        *Tersimpan ke Firebase dan terhubung ke kolom Before Tahap Nyatakan &amp; Tahap Amati.
+                      </p>
+                    </div>
+
+                    {/* CARD 3: KONTEKS KEHIDUPAN NYATA */}
+                    <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs hover:border-amber-300 transition-all flex flex-col justify-between">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-sm">
+                              <Compass className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md">
+                                Kategori 3: Konteks Nyata (Kondisi Awal)
+                              </span>
+                              <h5 className="text-sm font-bold text-slate-900 mt-0.5">
+                                Pembelajaran terhubung dengan konteks nyata
+                              </h5>
+                            </div>
+                          </div>
+                          <span className="text-[10px] text-slate-400 font-semibold uppercase">
+                            Baseline S
+                          </span>
+                        </div>
+
+                        <div className="bg-amber-50/50 p-2.5 rounded-xl border border-amber-100/80 text-[11px] text-amber-900">
+                          <strong>Arah Transformasi:</strong> Dari materi abstrak buku teks yang terisolasi menjadi pemecahan studi kasus riil yang relevan dengan kehidupan murid.
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-xs font-bold text-slate-700 block">
+                            Deskripsi Kesimpulan Selidiki (Konteks Nyata):
+                          </label>
+                          <textarea
+                            rows={3}
+                            value={sambungDraft.selidiki.matriksBefore?.konteksNyata ?? ''}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              const cur = sambungDraft.selidiki.matriksBefore || {
+                                peranGuru: '',
+                                aktivitasMurid: '',
+                                konteksNyata: '',
+                                refleksiMurid: '',
+                              };
+                              const updatedMatriks = { ...cur, konteksNyata: val };
+                              setSambungDraft({
+                                ...sambungDraft,
+                                selidiki: { ...sambungDraft.selidiki, matriksBefore: updatedMatriks },
+                                nyatakan: {
+                                  ...sambungDraft.nyatakan,
+                                  beforeAfter: (sambungDraft.nyatakan?.beforeAfter || []).map((item) =>
+                                    item.aspek.toLowerCase().includes('konteks') ? { ...item, sebelumSambung: val } : item
+                                  ),
+                                },
+                              });
+                            }}
+                            className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-indigo-600 bg-white"
+                            placeholder="Jelaskan kondisi awal keterhubungan materi dengan konteks kehidupan nyata..."
+                          />
+                        </div>
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-3 pt-2 border-t border-slate-100 italic">
+                        *Tersimpan ke Firebase dan terhubung ke kolom Before Tahap Nyatakan &amp; Tahap Amati.
+                      </p>
+                    </div>
+
+                    {/* CARD 4: REFLEKSI MURID */}
+                    <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs hover:border-blue-300 transition-all flex flex-col justify-between">
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2.5">
@@ -2302,7 +2437,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                             </div>
                             <div>
                               <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md">
-                                Indikator Refleksi Murid (Before)
+                                Kategori 4: Refleksi Murid (Kondisi Awal)
                               </span>
                               <h5 className="text-sm font-bold text-slate-900 mt-0.5">
                                 Pembelajaran membiasakan murid melakukan refleksi
@@ -2310,57 +2445,62 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                             </div>
                           </div>
                           <span className="text-[10px] text-slate-400 font-semibold uppercase">
-                            Kondisi Awal
+                            Baseline S
                           </span>
                         </div>
 
                         <div className="bg-blue-50/50 p-2.5 rounded-xl border border-blue-100/80 text-[11px] text-blue-900">
-                          <strong>Transformasi:</strong> Dari refleksi sporadis atau sekadar tes menjadi pembiasaan metakognisi &amp; kesadaran diri murid.
+                          <strong>Arah Transformasi:</strong> Dari refleksi belum rutin / sekadar tes di akhir sesi menjadi pembiasaan metakognisi, evaluasi kesadaran diri, dan pemaknaan belajar murid.
                         </div>
 
                         <div className="space-y-1">
                           <label className="text-xs font-bold text-slate-700 block">
-                            Deskripsi Kondisi Awal Refleksi Murid:
+                            Deskripsi Kesimpulan Selidiki (Refleksi Murid):
                           </label>
                           <textarea
                             rows={3}
-                            value={sambungDraft.selidiki.matriksBefore?.refleksiMurid || DEFAULT_MATRIKS_BEFORE.refleksiMurid}
+                            value={sambungDraft.selidiki.matriksBefore?.refleksiMurid ?? ''}
                             onChange={(e) => {
                               const val = e.target.value;
-                              const cur = sambungDraft.selidiki.matriksBefore || { ...DEFAULT_MATRIKS_BEFORE };
+                              const cur = sambungDraft.selidiki.matriksBefore || {
+                                peranGuru: '',
+                                aktivitasMurid: '',
+                                konteksNyata: '',
+                                refleksiMurid: '',
+                              };
                               const updatedMatriks = { ...cur, refleksiMurid: val };
                               setSambungDraft({
                                 ...sambungDraft,
                                 selidiki: { ...sambungDraft.selidiki, matriksBefore: updatedMatriks },
                                 nyatakan: {
                                   ...sambungDraft.nyatakan,
-                                  beforeAfter: sambungDraft.nyatakan.beforeAfter.map((item) =>
+                                  beforeAfter: (sambungDraft.nyatakan?.beforeAfter || []).map((item) =>
                                     item.aspek.toLowerCase().includes('refleksi') ? { ...item, sebelumSambung: val } : item
                                   ),
                                 },
                               });
                             }}
                             className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-indigo-600 bg-white"
-                            placeholder="Jelaskan pembiasaan refleksi murid pada awal..."
+                            placeholder="Jelaskan kondisi awal pembiasaan refleksi murid..."
                           />
                         </div>
                       </div>
                       <p className="text-[11px] text-slate-400 mt-3 pt-2 border-t border-slate-100 italic">
-                        *Otomatis disinkronkan ke kolom BEFORE Tahap Nyatakan &amp; Tahap Amati.
+                        *Tersimpan ke Firebase dan terhubung ke kolom Before Tahap Nyatakan &amp; Tahap Amati.
                       </p>
                     </div>
                   </div>
 
-                  {/* TABEL KESIMPULAN SELIDIKI: INDIKATOR DAN SELIDIKI */}
+                  {/* TABEL KESIMPULAN SELIDIKI: 4 INDIKATOR & SELIDIKI */}
                   <div className="bg-white rounded-2xl border border-indigo-200 p-5 shadow-xs">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3 border-b border-slate-100 pb-3">
                       <div>
                         <h5 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                           <Layers className="w-4 h-4 text-indigo-600" />
-                          <span>Tabel Kesimpulan Selidiki: Indikator &amp; Selidiki (Kondisi Awal / Baseline Guru)</span>
+                          <span>Tabel Kesimpulan Selidiki: 4 Indikator &amp; Selidiki (Kondisi Awal / Baseline Guru)</span>
                         </h5>
                         <p className="text-xs text-slate-500 mt-0.5">
-                          Rekapitulasi indikator kunci pembiasaan refleksi murid hasil supervisi akademik kondisi awal (baseline) untuk {currentSupervision.teacherName}.
+                          Rekapitulasi 4 indikator kunci supervisi akademik kondisi awal (baseline) berkesinambungan untuk {currentSupervision.teacherName} ({currentSupervision.subject}).
                         </p>
                       </div>
                     </div>
@@ -2369,27 +2509,99 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                         <thead className="bg-slate-100/90 text-slate-800 font-bold uppercase text-[11px] border-b border-slate-200">
                           <tr>
                             <th className="py-3 px-3.5 w-12 text-center">No</th>
-                            <th className="py-3 px-3.5 w-60">Indikator Pembelajaran</th>
+                            <th className="py-3 px-3.5 w-64">Kategori &amp; Indikator Pembelajaran</th>
                             <th className="py-3 px-3.5">Kesimpulan Selidiki (Kondisi Awal / Baseline Guru)</th>
-                            <th className="py-3 px-3.5 w-56 text-center">Arah Transformasi Sasaran</th>
+                            <th className="py-3 px-3.5 w-64 text-center">Arah Transformasi Sasaran</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                          {/* Row 1: Refleksi Murid */}
-                          <tr className="hover:bg-blue-50/20">
+                          {/* Row 1: Peran Guru */}
+                          <tr className="hover:bg-indigo-50/20">
                             <td className="py-3 px-3.5 text-center font-bold text-slate-400 align-top">1</td>
                             <td className="py-3 px-3.5 font-bold text-slate-900 bg-slate-50/60 align-top">
                               <div className="flex items-start gap-2">
-                                <Sparkles className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                                <User className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
                                 <div>
-                                  <span className="font-extrabold text-slate-900 block leading-snug">Refleksi menjadi bagian rutin dalam proses pembelajaran</span>
-                                  <span className="text-[10px] text-blue-600 font-bold uppercase tracking-wider">Aspek: Refleksi Murid</span>
+                                  <span className="font-extrabold text-slate-900 block leading-snug">Guru berorientasi pada pengalaman belajar murid</span>
+                                  <span className="text-[10px] text-indigo-600 font-bold uppercase tracking-wider">Kategori: Peran Guru</span>
                                 </div>
                               </div>
                             </td>
                             <td className="py-3 px-3.5 text-slate-700 align-top">
                               <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 leading-relaxed text-xs">
-                                {sambungDraft.selidiki.matriksBefore?.refleksiMurid || DEFAULT_MATRIKS_BEFORE.refleksiMurid}
+                                {sambungDraft.selidiki.matriksBefore?.peranGuru || <span className="text-slate-400 italic">Belum diisi</span>}
+                              </div>
+                            </td>
+                            <td className="py-3 px-3.5 text-center text-indigo-700 font-semibold bg-indigo-50/30 text-xs align-top">
+                              <span className="inline-block p-2 rounded-lg bg-white border border-indigo-200/80 font-bold text-indigo-900 leading-snug">
+                                &rarr; Dari transfer konten ceramah menuju fasilitasi pengalaman bermakna murid
+                              </span>
+                            </td>
+                          </tr>
+
+                          {/* Row 2: Aktivitas Murid */}
+                          <tr className="hover:bg-emerald-50/20">
+                            <td className="py-3 px-3.5 text-center font-bold text-slate-400 align-top">2</td>
+                            <td className="py-3 px-3.5 font-bold text-slate-900 bg-slate-50/60 align-top">
+                              <div className="flex items-start gap-2">
+                                <Users className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                                <div>
+                                  <span className="font-extrabold text-slate-900 block leading-snug">Pembelajaran menghasilkan murid aktif mengaplikasikan pengetahuan</span>
+                                  <span className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider">Kategori: Aktivitas Murid</span>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-3 px-3.5 text-slate-700 align-top">
+                              <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 leading-relaxed text-xs">
+                                {sambungDraft.selidiki.matriksBefore?.aktivitasMurid || <span className="text-slate-400 italic">Belum diisi</span>}
+                              </div>
+                            </td>
+                            <td className="py-3 px-3.5 text-center text-emerald-700 font-semibold bg-emerald-50/30 text-xs align-top">
+                              <span className="inline-block p-2 rounded-lg bg-white border border-emerald-200/80 font-bold text-emerald-900 leading-snug">
+                                &rarr; Dari pasif mencatat menuju aktif bereksperimen dan mengaplikasikan konsep
+                              </span>
+                            </td>
+                          </tr>
+
+                          {/* Row 3: Konteks Nyata */}
+                          <tr className="hover:bg-amber-50/20">
+                            <td className="py-3 px-3.5 text-center font-bold text-slate-400 align-top">3</td>
+                            <td className="py-3 px-3.5 font-bold text-slate-900 bg-slate-50/60 align-top">
+                              <div className="flex items-start gap-2">
+                                <Compass className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                                <div>
+                                  <span className="font-extrabold text-slate-900 block leading-snug">Pembelajaran terhubung dengan konteks nyata</span>
+                                  <span className="text-[10px] text-amber-700 font-bold uppercase tracking-wider">Kategori: Konteks Kehidupan Nyata</span>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-3 px-3.5 text-slate-700 align-top">
+                              <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 leading-relaxed text-xs">
+                                {sambungDraft.selidiki.matriksBefore?.konteksNyata || <span className="text-slate-400 italic">Belum diisi</span>}
+                              </div>
+                            </td>
+                            <td className="py-3 px-3.5 text-center text-amber-700 font-semibold bg-amber-50/30 text-xs align-top">
+                              <span className="inline-block p-2 rounded-lg bg-white border border-amber-200/80 font-bold text-amber-900 leading-snug">
+                                &rarr; Dari materi abstrak buku teks menuju keterhubungan fenomena kontekstual riil
+                              </span>
+                            </td>
+                          </tr>
+
+                          {/* Row 4: Refleksi Murid */}
+                          <tr className="hover:bg-blue-50/20">
+                            <td className="py-3 px-3.5 text-center font-bold text-slate-400 align-top">4</td>
+                            <td className="py-3 px-3.5 font-bold text-slate-900 bg-slate-50/60 align-top">
+                              <div className="flex items-start gap-2">
+                                <Sparkles className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                                <div>
+                                  <span className="font-extrabold text-slate-900 block leading-snug">Pembelajaran membiasakan murid melakukan refleksi</span>
+                                  <span className="text-[10px] text-blue-600 font-bold uppercase tracking-wider">Kategori: Refleksi Murid</span>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-3 px-3.5 text-slate-700 align-top">
+                              <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 leading-relaxed text-xs">
+                                {sambungDraft.selidiki.matriksBefore?.refleksiMurid || <span className="text-slate-400 italic">Belum diisi</span>}
                               </div>
                             </td>
                             <td className="py-3 px-3.5 text-center text-blue-700 font-semibold bg-blue-50/30 text-xs align-top">
@@ -2760,26 +2972,6 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                   <label className="block text-xs font-bold text-blue-950">
                     Fokus Perubahan (Satu kalimat sintetis: berdasarkan kebutuhan dari indikator terpilih, terukur, berdampak pada murid):
                   </label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const gen = generateAmatiData(
-                        currentSupervision,
-                        sambungDraft.arahkan?.fokusIndikatorTerpilih || ['peranGuru', 'aktivitasMurid'],
-                        sambungDraft.selidiki?.matriksBefore
-                      );
-                      setSambungDraft({
-                        ...sambungDraft,
-                        arahkan: {
-                          ...sambungDraft.arahkan,
-                          fokusPerubahan: gen.fokusPerubahan,
-                        },
-                      });
-                    }}
-                    className="text-[11px] font-bold text-blue-700 hover:text-blue-900 underline"
-                  >
-                    Sintesiskan Otomatis
-                  </button>
                 </div>
                 <textarea
                   rows={2}
@@ -3080,19 +3272,18 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                   <div className="flex items-center gap-2 text-emerald-950 font-medium">
                     <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
                     <span>
-                      Jawaban diselaraskan dengan Skor Observasi Kelas: <strong>{currentSupervision.observasiKelas?.score ?? 86.7}/100</strong> ({currentSupervision.observasiKelas?.predicate ?? 'Baik'}) &bull; Kesimpulan Akhir: <strong>Peran Guru &amp; Aktivitas Murid Aktif</strong>.
+                      Dialog coaching diselaraskan dengan hasil observasi kelas tatap muka &bull; Kesimpulan Akhir: <strong>Peran Guru &amp; Aktivitas Murid Aktif</strong>.
                     </span>
                   </div>
                   <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full shrink-0">
-                    Otomatis Terisi &amp; Terhubung
+                    Tersinkronisasi &amp; Terhubung
                   </span>
                 </div>
               </div>
 
               {/* Tabel 10 Pertanyaan Coaching & Refleksi Pasca Observasi */}
               {(() => {
-                const autoGenerated = generateTeacherMaknaiData(currentSupervision);
-                const currentPertanyaan = sambungDraft.maknai?.pertanyaanList || autoGenerated.pertanyaanList;
+                const currentPertanyaan = sambungDraft.maknai?.pertanyaanList || {};
 
                 return (
                   <div className="space-y-4">
@@ -3103,15 +3294,14 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                             <th className="py-3 px-3 text-center w-12">No</th>
                             <th className="py-3 px-4 text-left w-5/12 sm:w-1/3">Pertanyaan Coaching &amp; Refleksi</th>
                             <th className="py-3 px-4 text-left">
-                              Jawaban Guru (Terisi Otomatis dari Hasil Observasi &amp; Disesuaikan Kesimpulan Akhir)
+                              Jawaban Guru &amp; Catatan Dialog Refleksi Pasca-Observasi
                             </th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                           {MAKNAI_COACHING_QUESTIONS.map((item) => {
                             const currentList = currentPertanyaan || {};
-                            const autoList = autoGenerated.pertanyaanList || {};
-                            const answerValue = currentList[item.id] || autoList[item.id] || '';
+                            const answerValue = currentList[item.id] || '';
 
                             return (
                               <tr key={item.id} className="hover:bg-slate-50/60 transition-colors">
@@ -3160,7 +3350,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                         </label>
                         <textarea
                           rows={3}
-                          value={sambungDraft.maknai.kesanUmum ?? autoGenerated.kesanUmum}
+                          value={sambungDraft.maknai.kesanUmum ?? ''}
                           onChange={(e) =>
                             setSambungDraft({
                               ...sambungDraft,
@@ -3182,7 +3372,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                         </label>
                         <textarea
                           rows={3}
-                          value={sambungDraft.maknai.saranMasukan ?? autoGenerated.saranMasukan}
+                          value={sambungDraft.maknai.saranMasukan ?? ''}
                           onChange={(e) =>
                             setSambungDraft({
                               ...sambungDraft,
@@ -5083,31 +5273,6 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                         Rekapitulasi 4 indikator kunci kondisi setelah perbaikan hasil uji coba lapangan untuk {currentSupervision.teacherName}.
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const cur = { ...DEFAULT_MATRIKS_AFTER };
-                        setSambungDraft({
-                          ...sambungDraft,
-                          uji: { ...sambungDraft.uji, matriksAfter: cur },
-                          nyatakan: {
-                            ...sambungDraft.nyatakan,
-                            beforeAfter: sambungDraft.nyatakan.beforeAfter.map(item => {
-                              if (item.aspek.toLowerCase().includes('peran')) return { ...item, setelahSambung: cur.peranGuru };
-                              if (item.aspek.toLowerCase().includes('aktivitas')) return { ...item, setelahSambung: cur.aktivitasMurid };
-                              if (item.aspek.toLowerCase().includes('konteks')) return { ...item, setelahSambung: cur.konteksNyata };
-                              if (item.aspek.toLowerCase().includes('refleksi')) return { ...item, setelahSambung: cur.refleksiMurid };
-                              return item;
-                            }),
-                          },
-                        });
-                        setSaveToast('Template standar kesimpulan hasil uji berhasil dipulihkan!');
-                        setTimeout(() => setSaveToast(null), 3000);
-                      }}
-                      className="text-xs text-purple-600 hover:text-purple-800 font-bold bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-xl border border-purple-200 transition-colors self-start sm:self-auto"
-                    >
-                      Pulihkan Deskripsi Standar
-                    </button>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs bg-white rounded-xl border border-slate-200 overflow-hidden">

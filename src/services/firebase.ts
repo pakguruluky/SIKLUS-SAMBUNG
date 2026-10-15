@@ -35,7 +35,8 @@ import {
   loadLocalSchools 
 } from './localStorageService';
 import { SAMPLE_SUPERVISIONS } from '../data/seedData';
-import { generateTeacherMaknaiData, generateAmatiData, generateBerdayakanTelaahPerbaikanData, generateUjiData } from '../data/autoFillData';
+import { generateTeacherMaknaiData, generateAmatiData, generateBerdayakanTelaahPerbaikanData, generateUjiData, getTeacherAutoFillData } from '../data/autoFillData';
+import { DEFAULT_MATRIKS_BEFORE, createDefaultSambungForTeacher } from '../data/sambungSeed';
 
 // Initialize Firebase with provisioned credentials & ignore undefined fields
 const app = initializeApp(firebaseConfig);
@@ -309,7 +310,32 @@ function normalizeSupervisionData(sup: Supervision): Supervision {
 
   const normalized: Supervision = { ...sup, teacherName, schoolName, subject, lessonTitle };
 
+  if (!normalized.sambung) {
+    normalized.sambung = createDefaultSambungForTeacher(teacherName, schoolName, subject);
+  }
+
   if (normalized.sambung) {
+    // Pastikan seluruh 4 indikator Kesimpulan Selidiki (Peran Guru, Aktivitas Murid, Konteks Nyata, Refleksi Murid) lengkap
+    let selidiki = normalized.sambung.selidiki;
+    if (!selidiki) {
+      selidiki = {
+        tanggal: new Date().toISOString().split('T')[0],
+        items: [],
+      };
+    }
+    const autoData = getTeacherAutoFillData(teacherName, subject, lessonTitle, schoolName);
+    const existingMatriks: any = selidiki.matriksBefore || {};
+    selidiki = {
+      ...selidiki,
+      matriksBefore: {
+        peranGuru: existingMatriks.peranGuru || autoData.kesimpulanSelidiki.guruBerorientasi || DEFAULT_MATRIKS_BEFORE.peranGuru,
+        aktivitasMurid: existingMatriks.aktivitasMurid || autoData.kesimpulanSelidiki.muridAktif || DEFAULT_MATRIKS_BEFORE.aktivitasMurid,
+        konteksNyata: existingMatriks.konteksNyata || autoData.kesimpulanSelidiki.konteksNyata || DEFAULT_MATRIKS_BEFORE.konteksNyata,
+        refleksiMurid: existingMatriks.refleksiMurid || autoData.kesimpulanSelidiki.refleksiMurid || DEFAULT_MATRIKS_BEFORE.refleksiMurid,
+      },
+    };
+    normalized.sambung.selidiki = selidiki;
+
     let maknai = normalized.sambung.maknai;
     if (!maknai?.pertanyaanList?.q1) {
       const autoMaknai = generateTeacherMaknaiData(normalized);

@@ -162,10 +162,7 @@ export const PerangkatAjarModal: React.FC<PerangkatAjarModalProps> = ({
     };
 
     if (type === 'cp') setCpTpAtpUrl(baseSamples.cp);
-    if (type === 'modul') {
-      setModulAjarUrl(baseSamples.modul);
-      handleTriggerAutoFill(baseSamples.modul);
-    }
+    if (type === 'modul') setModulAjarUrl(baseSamples.modul);
     if (type === 'bahan') setBahanAjarUrl(baseSamples.bahan);
     if (type === 'asesmen') setAsesmenUrl(baseSamples.asesmen);
   };
@@ -274,8 +271,6 @@ export const PerangkatAjarModal: React.FC<PerangkatAjarModalProps> = ({
       const cleanName = encodeURIComponent(file.name.replace(/\s+/g, '_'));
       const generatedDriveLink = `https://drive.google.com/file/d/drive_${Date.now()}_${cleanName}/view?usp=sharing`;
       setModulAjarUrl(generatedDriveLink);
-      const parsed = parseRppFileName(file.name);
-      handleTriggerAutoFill(generatedDriveLink, parsed.subject, parsed.teacherName);
     }
   };
 
@@ -557,31 +552,6 @@ export const PerangkatAjarModal: React.FC<PerangkatAjarModalProps> = ({
                 </div>
 
                 {/* Action Row: Auto Fill & Sample link */}
-                <div className="flex flex-wrap items-center justify-end gap-2 pt-1 text-xs">
-
-                  <button
-                    type="button"
-                    disabled={isAutoFilling}
-                    onClick={() => handleTriggerAutoFill()}
-                    className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs transition-all ${
-                      isAutoFilling
-                        ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
-                        : 'bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white'
-                    }`}
-                  >
-                    {isAutoFilling ? (
-                      <>
-                        <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-300" />
-                        <span>Menganalisis 22 Indikator dengan AI...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                        <span>✨ Analisis Cerdas AI (22 Indikator) &amp; Simpan ke Firebase</span>
-                      </>
-                    )}
-                  </button>
-                </div>
               </div>
 
               {/* Breakdown Notification Box when Auto-Filled */}

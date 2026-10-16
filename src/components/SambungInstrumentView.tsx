@@ -143,7 +143,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
   // Current active SAMBUNG letter tab
   const [activeTab, setActiveTab] = useState<TabType>('S');
   const [sSubTab, setSSubTab] = useState<'telaah_rpp' | 'pra_observasi' | 'observasi_kelas' | 'kesimpulan_selidiki'>('telaah_rpp');
-  const [uSubTab, setUSubTab] = useState<'pra_observasi' | 'observasi_25' | 'pasca_observasi'>('pra_observasi');
+  const [uSubTab, setUSubTab] = useState<'pra_observasi' | 'observasi_25' | 'pasca_observasi' | 'kesimpulan_uji'>('pra_observasi');
   const [gSubTab, setGSubTab] = useState<'rtl_nyatakan' | 'benang_merah' | 'pengimbasan' | 'pengesahan'>('rtl_nyatakan');
   const [isAutoFillingUji, setIsAutoFillingUji] = useState(false);
   const [isAutoFillingGerakkan, setIsAutoFillingGerakkan] = useState(false);
@@ -882,6 +882,141 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
       onUpdateSupervision(updatedSupervision);
       await saveSupervision(updatedSupervision);
       setSaveToast('Kesimpulan Selidiki (4 Indikator) berhasil disintesis otomatis & tersimpan ke Firebase!');
+      setTimeout(() => setSaveToast(null), 3500);
+    } catch (err) {
+      console.error(err);
+      setSaveToast('Gagal menyinkronkan data.');
+      setTimeout(() => setSaveToast(null), 3000);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // --- Kesimpulan Uji Helpers (4 Indikator Kunci Pasca Intervensi) ---
+  const handleUpdateKesimpulanUjiIndikator = (
+    field: 'peranGuru' | 'aktivitasMurid' | 'konteksNyata' | 'refleksiMurid',
+    value: string
+  ) => {
+    if (!canEdit || !currentSupervision || !sambungDraft) return;
+
+    const curMatriks = sambungDraft.uji?.matriksAfter || DEFAULT_MATRIKS_AFTER;
+    const nextMatriks: SambungMatriksPerubahan = {
+      ...curMatriks,
+      [field]: value,
+    };
+
+    const updatedUji = {
+      ...sambungDraft.uji,
+      matriksAfter: nextMatriks,
+    };
+
+    // Synchronize to Nyatakan beforeAfter (setelahSambung column) so it immediately reflects across elements
+    const curBeforeAfter = sambungDraft.nyatakan?.beforeAfter || [];
+    const nextBeforeAfter = curBeforeAfter.map(item => {
+      if (field === 'peranGuru' && item.aspek.toLowerCase().includes('peran')) {
+        return { ...item, setelahSambung: value };
+      }
+      if (field === 'aktivitasMurid' && item.aspek.toLowerCase().includes('aktivitas')) {
+        return { ...item, setelahSambung: value };
+      }
+      if (field === 'konteksNyata' && item.aspek.toLowerCase().includes('konteks')) {
+        return { ...item, setelahSambung: value };
+      }
+      if (field === 'refleksiMurid' && item.aspek.toLowerCase().includes('refleksi')) {
+        return { ...item, setelahSambung: value };
+      }
+      return item;
+    });
+
+    const updatedDraft: SambungData = {
+      ...sambungDraft,
+      uji: updatedUji,
+      nyatakan: {
+        ...sambungDraft.nyatakan,
+        beforeAfter: nextBeforeAfter,
+      },
+    };
+
+    setSambungDraft(updatedDraft);
+  };
+
+  const handleSaveKesimpulanUji = async () => {
+    if (!currentSupervision || !sambungDraft) return;
+    try {
+      setIsSaving(true);
+      const updatedSupervision: Supervision = {
+        ...currentSupervision,
+        sambung: sambungDraft,
+        updatedAt: new Date().toISOString(),
+      };
+      await saveSupervision(updatedSupervision);
+      onUpdateSupervision(updatedSupervision);
+      setSaveToast('Kesimpulan Uji (4 Indikator) berhasil disimpan ke Firebase!');
+      setTimeout(() => setSaveToast(null), 3000);
+    } catch (err) {
+      console.error(err);
+      setSaveToast('Gagal menyimpan ke Firebase.');
+      setTimeout(() => setSaveToast(null), 3000);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleAutoFillKesimpulanUji = async () => {
+    if (!currentSupervision || !sambungDraft) return;
+    try {
+      setIsSaving(true);
+      const autoUji = generateUjiData(currentSupervision);
+      const newMatriksAfter: SambungMatriksPerubahan = {
+        peranGuru: autoUji.matriksAfter?.peranGuru || DEFAULT_MATRIKS_AFTER.peranGuru,
+        aktivitasMurid: autoUji.matriksAfter?.aktivitasMurid || DEFAULT_MATRIKS_AFTER.aktivitasMurid,
+        konteksNyata: autoUji.matriksAfter?.konteksNyata || DEFAULT_MATRIKS_AFTER.konteksNyata,
+        refleksiMurid: autoUji.matriksAfter?.refleksiMurid || DEFAULT_MATRIKS_AFTER.refleksiMurid,
+      };
+
+      const updatedUji = {
+        ...sambungDraft.uji,
+        matriksAfter: newMatriksAfter,
+      };
+
+      // Keep Nyatakan Before-After synchronized
+      const curBeforeAfter = sambungDraft.nyatakan?.beforeAfter || [];
+      const nextBeforeAfter = curBeforeAfter.map(item => {
+        if (item.aspek.toLowerCase().includes('peran')) {
+          return { ...item, setelahSambung: newMatriksAfter.peranGuru };
+        }
+        if (item.aspek.toLowerCase().includes('aktivitas')) {
+          return { ...item, setelahSambung: newMatriksAfter.aktivitasMurid };
+        }
+        if (item.aspek.toLowerCase().includes('konteks')) {
+          return { ...item, setelahSambung: newMatriksAfter.konteksNyata };
+        }
+        if (item.aspek.toLowerCase().includes('refleksi')) {
+          return { ...item, setelahSambung: newMatriksAfter.refleksiMurid };
+        }
+        return item;
+      });
+
+      const updatedDraft: SambungData = {
+        ...sambungDraft,
+        uji: updatedUji,
+        nyatakan: {
+          ...sambungDraft.nyatakan,
+          beforeAfter: nextBeforeAfter,
+        },
+        lastUpdated: new Date().toISOString(),
+      };
+
+      const updatedSupervision: Supervision = {
+        ...currentSupervision,
+        sambung: updatedDraft,
+        updatedAt: new Date().toISOString(),
+      };
+
+      setSambungDraft(updatedDraft);
+      onUpdateSupervision(updatedSupervision);
+      await saveSupervision(updatedSupervision);
+      setSaveToast('Kesimpulan Uji berhasil disintesis dari Telaah RPP Berdayakan & Observasi Uji, serta tersimpan ke Firebase!');
       setTimeout(() => setSaveToast(null), 3500);
     } catch (err) {
       console.error(err);
@@ -4327,6 +4462,24 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                     Refleksi &amp; RTL
                   </span>
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() => setUSubTab('kesimpulan_uji')}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                    uSubTab === 'kesimpulan_uji'
+                      ? 'bg-purple-600 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  <Layers className="w-4 h-4" />
+                  <span>4. Kesimpulan Uji</span>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                    uSubTab === 'kesimpulan_uji' ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800 border border-amber-300/60'
+                  }`}>
+                    4 Indikator
+                  </span>
+                </button>
               </div>
             </div>
 
@@ -5028,6 +5181,355 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                         <Save className="w-4 h-4" />
                         <span>{isSaving ? 'Menyimpan...' : 'Simpan Pasca-Observasi ke Firebase'}</span>
                       </button>
+                    </div>
+                  </div>
+                </div>
+              </fieldset>
+            )}
+
+            {/* ========================================================= */}
+            {/* SUBTAB 4: KESIMPULAN UJI (SESUAI KOMPONEN UNGGAHAN)       */}
+            {/* ========================================================= */}
+            {uSubTab === 'kesimpulan_uji' && (
+              <fieldset disabled={!canEdit} className="contents border-0 p-0 m-0">
+                <div className="space-y-6">
+                  {/* Header & Quick Action Bar */}
+                  <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-purple-50 via-emerald-50/50 to-indigo-50/40 border border-purple-200/80 shadow-2xs">
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-purple-600 text-white text-[11px] font-extrabold uppercase tracking-wide">
+                            <Layers className="w-3.5 h-3.5" />
+                            <span>Kesimpulan Uji</span>
+                          </span>
+                          <span className="text-[11px] font-bold text-purple-900 bg-purple-100 border border-purple-300 px-2 py-0.5 rounded">
+                            Hasil Uji Coba Lapangan &bull; 4 Indikator
+                          </span>
+                          <span className="text-[11px] font-semibold text-emerald-800 bg-emerald-100/80 border border-emerald-300 px-2 py-0.5 rounded flex items-center gap-1">
+                            <CheckCheck className="w-3 h-3 text-emerald-600" />
+                            <span>Tersinkronkan ke Tahap NYATAKAN (After)</span>
+                          </span>
+                        </div>
+                        <h4 className="text-base sm:text-lg font-black text-slate-900">
+                          Kesimpulan Uji diambil dari telaah RPP Berdayakan dan Observasi di UJI
+                        </h4>
+                        <p className="text-xs text-slate-600 max-w-3xl leading-relaxed">
+                          Sintesis capaian akhir (kondisi setelah perbaikan) guru <strong>{currentSupervision.teacherName}</strong> pada mata pelajaran <strong>{currentSupervision.subject}</strong>. Data ini dirumuskan dari perpaduan hasil <em>Telaah Modul Ajar Perbaikan (Tahap B &bull; Berdayakan)</em> serta <em>Observasi Kelas Tatap Muka 25 Aspek (Tahap U &bull; Uji)</em>, dan otomatis menjadi data rujukan kolom <strong>Setelah SAMBUNG (After)</strong> di Tahap Nyatakan.
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={handleAutoFillKesimpulanUji}
+                          disabled={isSaving}
+                          className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold text-xs shadow-xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                          title="Sintesis deskripsi 4 indikator otomatis berdasarkan perpaduan hasil Telaah RPP Berdayakan dan Observasi Kelas di Uji"
+                        >
+                          <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                          <span>Sintesis Otomatis Uji</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handleSaveKesimpulanUji}
+                          disabled={isSaving}
+                          className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                          title="Simpan tabel kesimpulan uji ke database Firebase"
+                        >
+                          <Save className="w-4 h-4" />
+                          <span>{isSaving ? 'Menyimpan...' : 'Simpan Kesimpulan Uji'}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('N')}
+                          className="px-3.5 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                          title="Lanjutkan ke Tahap N • Nyatakan untuk melihat perbandingan Before vs After secara menyeluruh"
+                        >
+                          <span>Ke Tahap N • Nyatakan</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Ringkasan Sumber Data Penarikan Kesimpulan Uji */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                    <div className="p-3 rounded-xl bg-white border border-slate-200/90 shadow-2xs space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase">1. Telaah RPP Berdayakan (B)</span>
+                        <FolderGit2 className="w-3.5 h-3.5 text-blue-600" />
+                      </div>
+                      <p className="font-extrabold text-slate-900 text-sm">
+                        {sambungDraft.berdayakan?.telaahSummary?.finalScore || 95.5} / 100
+                      </p>
+                      <p className="text-[11px] text-slate-500">
+                        Predikat: <strong className="text-blue-600">{sambungDraft.berdayakan?.telaahSummary?.predicate || 'Sangat Baik'}</strong> (Desain RPP Revisi)
+                      </p>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-white border border-slate-200/90 shadow-2xs space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase">2. Observasi Kelas di UJI (U)</span>
+                        <CheckCheck className="w-3.5 h-3.5 text-emerald-600" />
+                      </div>
+                      <p className="font-extrabold text-slate-900 text-sm">
+                        {sambungDraft.uji?.observasiPelaksanaan?.persentaseCapaian || 100}%
+                      </p>
+                      <p className="text-[11px] text-slate-500">
+                        25 Aspek &bull; Predikat: <strong className="text-emerald-600">{sambungDraft.uji?.observasiPelaksanaan?.predicate || 'Sangat Baik'}</strong>
+                      </p>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-white border border-slate-200/90 shadow-2xs space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase">3. Pasca-Observasi &amp; Refleksi</span>
+                        <MessageSquare className="w-3.5 h-3.5 text-purple-600" />
+                      </div>
+                      <p className="font-extrabold text-slate-900 text-sm">
+                        10 Pertanyaan Lengkap
+                      </p>
+                      <p className="text-[11px] text-slate-500">
+                        Komitmen &amp; Kesadaran Guru Terwujud
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* TABEL KESIMPULAN UJI (SESUAI KOMPONEN UNGGAHAN) */}
+                  <div className="bg-white rounded-2xl border-2 border-slate-300 shadow-sm overflow-hidden">
+                    {/* Header Tabel */}
+                    <div className="bg-slate-100 px-5 py-3 border-b-2 border-slate-300 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div>
+                        <h4 className="text-sm font-black text-slate-900 tracking-tight">
+                          Kesimpulan Uji diambil dari telaah RPP Berdayakan dan Observasi di UJI
+                        </h4>
+                        <span className="text-[11px] text-slate-500 font-medium">
+                          Tabel Indikator dan Deskripsi Kondisi Akhir (Setelah Supervisi SAMBUNG)
+                        </span>
+                      </div>
+                      <span className="text-[11px] font-semibold text-slate-500 italic shrink-0">
+                        *Klik dan ketik langsung pada kolom Deskripsi untuk mengubah data
+                      </span>
+                    </div>
+
+                    {/* Table View */}
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="bg-slate-50/80 border-b-2 border-slate-300 text-xs font-black text-slate-800">
+                            <th className="py-3 px-4 border-r-2 border-slate-300 w-2/5 sm:w-1/3">
+                              Indikator
+                            </th>
+                            <th className="py-3 px-4 w-3/5 sm:w-2/3">
+                              Deskripsi
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y-2 divide-slate-200 text-xs">
+                          {/* Row 1: Guru berorientasi pada pengalaman belajar murid */}
+                          <tr className="hover:bg-slate-50/60 transition-colors">
+                            <td className="py-3 px-4 align-top border-r-2 border-slate-300 bg-slate-50/30">
+                              <div className="space-y-1.5">
+                                <div className="flex items-start gap-2">
+                                  <div className="p-1.5 rounded-lg bg-indigo-100 text-indigo-700 shrink-0 mt-0.5">
+                                    <User className="w-4 h-4" />
+                                  </div>
+                                  <div>
+                                    <p className="font-bold text-slate-900 leading-snug">
+                                      Guru berorientasi pada pengalaman belajar murid
+                                    </p>
+                                    <span className="inline-block mt-1 text-[10px] font-extrabold px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                      Peran Guru &bull; Capaian Setelah Supervisi
+                                    </span>
+                                  </div>
+                                </div>
+                                <p className="text-[11px] text-slate-500 leading-relaxed pl-8">
+                                  Bagaimana transformasi peran guru setelah pendampingan klinis? Apakah guru telah berhasil menjadi fasilitator inkuiri aktif yang memuliakan murid?
+                                </p>
+                              </div>
+                            </td>
+                            <td className="py-3 px-4 align-top">
+                              <textarea
+                                rows={4}
+                                disabled={!canEdit}
+                                value={sambungDraft.uji?.matriksAfter?.peranGuru || ''}
+                                onChange={(e) => handleUpdateKesimpulanUjiIndikator('peranGuru', e.target.value)}
+                                placeholder="Tuliskan deskripsi hasil uji peran guru setelah perbaikan (menjadi fasilitator inkuiri aktif, mendampingi murid menemukan konsep)..."
+                                className="w-full p-3 rounded-xl border border-slate-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 text-xs text-slate-800 leading-relaxed resize-y bg-white disabled:bg-slate-50 disabled:text-slate-600 transition-all font-medium"
+                              />
+                            </td>
+                          </tr>
+
+                          {/* Row 2: Pembelajaran menghasilkan murid aktif mengaplikasikan pengetahuan */}
+                          <tr className="hover:bg-slate-50/60 transition-colors">
+                            <td className="py-3 px-4 align-top border-r-2 border-slate-300 bg-slate-50/30">
+                              <div className="space-y-1.5">
+                                <div className="flex items-start gap-2">
+                                  <div className="p-1.5 rounded-lg bg-purple-100 text-purple-700 shrink-0 mt-0.5">
+                                    <Users className="w-4 h-4" />
+                                  </div>
+                                  <div>
+                                    <p className="font-bold text-slate-900 leading-snug">
+                                      Pembelajaran menghasilkan murid aktif mengaplikasikan pengetahuan
+                                    </p>
+                                    <span className="inline-block mt-1 text-[10px] font-extrabold px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200">
+                                      Aktivitas Murid &bull; Capaian Setelah Supervisi
+                                    </span>
+                                  </div>
+                                </div>
+                                <p className="text-[11px] text-slate-500 leading-relaxed pl-8">
+                                  Sejauh mana murid terbukti antusias berpikir kritis, berdiskusi kelompok, menguji hipotesis, dan mempraktikkan materi pembelajaran?
+                                </p>
+                              </div>
+                            </td>
+                            <td className="py-3 px-4 align-top">
+                              <textarea
+                                rows={4}
+                                disabled={!canEdit}
+                                value={sambungDraft.uji?.matriksAfter?.aktivitasMurid || ''}
+                                onChange={(e) => handleUpdateKesimpulanUjiIndikator('aktivitasMurid', e.target.value)}
+                                placeholder="Tuliskan deskripsi hasil uji keaktifan murid dalam mengaplikasikan pengetahuan pada pembelajaran di kelas..."
+                                className="w-full p-3 rounded-xl border border-slate-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 text-xs text-slate-800 leading-relaxed resize-y bg-white disabled:bg-slate-50 disabled:text-slate-600 transition-all font-medium"
+                              />
+                            </td>
+                          </tr>
+
+                          {/* Row 3: Pembelajaran terhubung dengan konteks nyata */}
+                          <tr className="hover:bg-slate-50/60 transition-colors">
+                            <td className="py-3 px-4 align-top border-r-2 border-slate-300 bg-slate-50/30">
+                              <div className="space-y-1.5">
+                                <div className="flex items-start gap-2">
+                                  <div className="p-1.5 rounded-lg bg-emerald-100 text-emerald-700 shrink-0 mt-0.5">
+                                    <Compass className="w-4 h-4" />
+                                  </div>
+                                  <div>
+                                    <p className="font-bold text-slate-900 leading-snug">
+                                      Pembelajaran terhubung dengan konteks nyata
+                                    </p>
+                                    <span className="inline-block mt-1 text-[10px] font-extrabold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                      Konteks Nyata &bull; Capaian Setelah Supervisi
+                                    </span>
+                                  </div>
+                                </div>
+                                <p className="text-[11px] text-slate-500 leading-relaxed pl-8">
+                                  Bagaimana materi ajar dan tugas telah dikaitkan secara nyata dengan kehidupan sehari-hari, lingkungan sekitar murid, atau isu kontekstual?
+                                </p>
+                              </div>
+                            </td>
+                            <td className="py-3 px-4 align-top">
+                              <textarea
+                                rows={4}
+                                disabled={!canEdit}
+                                value={sambungDraft.uji?.matriksAfter?.konteksNyata || ''}
+                                onChange={(e) => handleUpdateKesimpulanUjiIndikator('konteksNyata', e.target.value)}
+                                placeholder="Tuliskan deskripsi hasil uji keterhubungan materi dengan konteks riil kehidupan murid..."
+                                className="w-full p-3 rounded-xl border border-slate-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 text-xs text-slate-800 leading-relaxed resize-y bg-white disabled:bg-slate-50 disabled:text-slate-600 transition-all font-medium"
+                              />
+                            </td>
+                          </tr>
+
+                          {/* Row 4: Pembelajaran membiasakan murid melakukan refleksi */}
+                          <tr className="hover:bg-slate-50/60 transition-colors">
+                            <td className="py-3 px-4 align-top border-r-2 border-slate-300 bg-slate-50/30">
+                              <div className="space-y-1.5">
+                                <div className="flex items-start gap-2">
+                                  <div className="p-1.5 rounded-lg bg-amber-100 text-amber-700 shrink-0 mt-0.5">
+                                    <Sparkles className="w-3.5 h-3.5" />
+                                  </div>
+                                  <div>
+                                    <p className="font-bold text-slate-900 leading-snug">
+                                      Pembelajaran membiasakan murid melakukan refleksi
+                                    </p>
+                                    <span className="inline-block mt-1 text-[10px] font-extrabold px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
+                                      Refleksi Murid &bull; Capaian Setelah Supervisi
+                                    </span>
+                                  </div>
+                                </div>
+                                <p className="text-[11px] text-slate-500 leading-relaxed pl-8">
+                                  Bagaimana pembiasaan refleksi telah membudaya, di mana murid mampu mengevaluasi proses belajarnya dan merumuskan makna pribadi?
+                                </p>
+                              </div>
+                            </td>
+                            <td className="py-3 px-4 align-top">
+                              <textarea
+                                rows={4}
+                                disabled={!canEdit}
+                                value={sambungDraft.uji?.matriksAfter?.refleksiMurid || ''}
+                                onChange={(e) => handleUpdateKesimpulanUjiIndikator('refleksiMurid', e.target.value)}
+                                placeholder="Tuliskan deskripsi hasil uji pembiasaan refleksi murid (menggunakan jurnal refleksi, lembar metakognisi, atau umpan balik terstruktur)..."
+                                className="w-full p-3 rounded-xl border border-slate-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 text-xs text-slate-800 leading-relaxed resize-y bg-white disabled:bg-slate-50 disabled:text-slate-600 transition-all font-medium"
+                              />
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Table Footer info */}
+                    <div className="bg-slate-50 px-5 py-3 border-t-2 border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+                      <div className="flex items-center gap-2 text-slate-500">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span>Data tersimpan otomatis ke Cloud Firebase dan langsung mengisi kolom 'Setelah SAMBUNG (After)' pada Tahap Nyatakan.</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleSaveKesimpulanUji}
+                        disabled={isSaving}
+                        className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer shrink-0 disabled:opacity-50"
+                      >
+                        <Save className="w-4 h-4" />
+                        <span>{isSaving ? 'Menyimpan...' : 'Simpan Kesimpulan Uji'}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* KARTU PREVIEW KOMPARASI BEFORE (SELIDIKI) VS AFTER (UJI) */}
+                  <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-slate-900 font-extrabold text-sm">
+                        <ArrowRightLeft className="w-4 h-4 text-purple-600" />
+                        <span>Korelasi Kesimpulan: Selidiki (Kondisi Awal) vs Uji (Kondisi Akhir)</span>
+                      </div>
+                      <span className="text-[11px] font-bold text-purple-700 bg-purple-100 px-2.5 py-0.5 rounded-full">
+                        Siap diverifikasi di Tahap N (Nyatakan)
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                      {/* Before Box */}
+                      <div className="p-4 rounded-xl bg-white border border-amber-200/90 shadow-2xs space-y-2">
+                        <div className="flex items-center justify-between border-b border-amber-100 pb-2">
+                          <span className="font-extrabold text-amber-800 flex items-center gap-1.5">
+                            <span className="w-5 h-5 rounded-full bg-amber-100 text-amber-900 flex items-center justify-center text-[10px] font-black">S</span>
+                            <span>Kesimpulan Selidiki (Before)</span>
+                          </span>
+                          <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded">Baseline Awal</span>
+                        </div>
+                        <ul className="space-y-1.5 text-[11px] text-slate-600">
+                          <li><strong>Peran Guru:</strong> {sambungDraft.selidiki.matriksBefore?.peranGuru || DEFAULT_MATRIKS_BEFORE.peranGuru}</li>
+                          <li><strong>Aktivitas Murid:</strong> {sambungDraft.selidiki.matriksBefore?.aktivitasMurid || DEFAULT_MATRIKS_BEFORE.aktivitasMurid}</li>
+                          <li><strong>Konteks Nyata:</strong> {sambungDraft.selidiki.matriksBefore?.konteksNyata || DEFAULT_MATRIKS_BEFORE.konteksNyata}</li>
+                          <li><strong>Refleksi Murid:</strong> {sambungDraft.selidiki.matriksBefore?.refleksiMurid || DEFAULT_MATRIKS_BEFORE.refleksiMurid}</li>
+                        </ul>
+                      </div>
+
+                      {/* After Box */}
+                      <div className="p-4 rounded-xl bg-white border border-purple-200/90 shadow-2xs space-y-2">
+                        <div className="flex items-center justify-between border-b border-purple-100 pb-2">
+                          <span className="font-extrabold text-purple-800 flex items-center gap-1.5">
+                            <span className="w-5 h-5 rounded-full bg-purple-100 text-purple-900 flex items-center justify-center text-[10px] font-black">U</span>
+                            <span>Kesimpulan Uji (After)</span>
+                          </span>
+                          <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded">Capaian Teruji</span>
+                        </div>
+                        <ul className="space-y-1.5 text-[11px] text-slate-600">
+                          <li><strong>Peran Guru:</strong> {sambungDraft.uji?.matriksAfter?.peranGuru || DEFAULT_MATRIKS_AFTER.peranGuru}</li>
+                          <li><strong>Aktivitas Murid:</strong> {sambungDraft.uji?.matriksAfter?.aktivitasMurid || DEFAULT_MATRIKS_AFTER.aktivitasMurid}</li>
+                          <li><strong>Konteks Nyata:</strong> {sambungDraft.uji?.matriksAfter?.konteksNyata || DEFAULT_MATRIKS_AFTER.konteksNyata}</li>
+                          <li><strong>Refleksi Murid:</strong> {sambungDraft.uji?.matriksAfter?.refleksiMurid || DEFAULT_MATRIKS_AFTER.refleksiMurid}</li>
+                        </ul>
+                      </div>
                     </div>
                   </div>
                 </div>

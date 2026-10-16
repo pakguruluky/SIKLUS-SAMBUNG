@@ -51,7 +51,9 @@ export function cleanForFirestore<T>(obj: T): T {
     return null as unknown as T;
   }
   if (Array.isArray(obj)) {
-    return obj.map(item => cleanForFirestore(item)) as unknown as T;
+    return obj
+      .filter(item => item !== undefined)
+      .map(item => cleanForFirestore(item)) as unknown as T;
   }
   if (typeof obj === 'object') {
     if (obj instanceof Date) {
@@ -989,26 +991,27 @@ export async function syncAllPendingLocalChangesToFirestore(): Promise<{ usersCo
 // Master boot initialization to ensure Firestore collections exist with full data
 export async function syncAllInitialDataToFirestore() {
   try {
-    // 1. Seed schools
+    // 1. Ensure schools exist in Firestore (seeds only if collection is empty)
     await ensureInitialSchools();
-    // 2. Seed initial users (pengawas, kepsek, guru)
-    for (const u of DEFAULT_USERS) {
-      await setDoc(doc(db, 'users', u.uid), cleanForFirestore(u), { merge: true });
-    }
-    // 3. Sync any local custom users to Firestore
-    const storedUsers = getStoredUsers();
-    for (const u of storedUsers) {
-      await setDoc(doc(db, 'users', u.uid), cleanForFirestore(u), { merge: true });
-    }
-    // 4. Seed supervisions if empty, or sync existing local supervisions
-    const localSupervisions = loadLocalSupervisions();
-    if (localSupervisions && localSupervisions.length > 0) {
-      for (const sup of localSupervisions) {
-        await setDoc(doc(db, 'supervisions', sup.id), cleanForFirestore(sup), { merge: true });
+
+    // 2. Ensure default users exist in Firestore only if not present yet
+    try {
+      const usersSnap = await getDocs(collection(db, 'users'));
+      const existingUserIds = new Set(usersSnap.docs.map(d => d.id));
+      for (const u of DEFAULT_USERS) {
+        if (!existingUserIds.has(u.uid)) {
+          await setDoc(doc(db, 'users', u.uid), cleanForFirestore(u), { merge: true });
+        }
       }
-    } else {
-      await ensureInitialSupervisions();
+    } catch (userErr) {
+      console.warn('Users bootstrap notice:', userErr);
     }
+
+    // 3. Ensure Supervisions exist in Firestore:
+    // If Firestore has data, ensureInitialSupervisions downloads and caches them locally!
+    // If Firestore is empty, it seeds SAMPLE_SUPERVISIONS once to Firestore.
+    // It will NEVER overwrite newer cloud data with older local storage on another device.
+    await ensureInitialSupervisions();
     console.log(`Firebase Firestore synchronized successfully with project: ${firebaseConfig.projectId}`);
   } catch (err) {
     console.warn('Notice during Firestore background sync:', err);

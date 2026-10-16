@@ -55,12 +55,7 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => loadLocalUser());
   const [schools, setSchools] = useState<School[]>(() => loadLocalSchools() || []);
   const [supervisions, setSupervisions] = useState<Supervision[]>(() => {
-    const cached = filterValidSupervisions(loadLocalSupervisions() || []);
-    const cachedIds = new Set(cached.map(s => s.id));
-    const missing = SAMPLE_SUPERVISIONS.filter(s => !cachedIds.has(s.id));
-    const initialList = filterValidSupervisions([...cached, ...missing]);
-    saveLocalSupervisions(initialList);
-    return initialList;
+    return filterValidSupervisions(loadLocalSupervisions() || []);
   });
   // Pastikan ketika memasukan alamat aplikasi langsung ke halaman beranda (landing) walaupun sudah pernah membuka sebelumnya
   const [activeTab, setActiveTab] = useState<string>('landing');

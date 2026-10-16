@@ -7,6 +7,7 @@ import {
 } from '../data/sambungSeed';
 import { generateGerakkanData } from '../data/autoFillData';
 import { SambungPrintModal } from './SambungPrintModal';
+import { SambungPersentaseChart } from './SambungPersentaseChart';
 import { 
   Sparkles, 
   TrendingUp, 
@@ -134,7 +135,7 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
   const [searchQuery, setSearchQuery] = useState<string>('');
   
   // Master navigation tabs for Kesimpulan Siklus SAMBUNG
-  const [activeMainTab, setActiveMainTab] = useState<'alur_7_tahap' | 'matriks_before_after' | 'grafik_dampak' | 'rtl_gerakkan'>('alur_7_tahap');
+  const [activeMainTab, setActiveMainTab] = useState<'grafik_kesimpulan_persentase' | 'alur_7_tahap' | 'matriks_before_after' | 'grafik_dampak' | 'rtl_gerakkan'>('grafik_kesimpulan_persentase');
   
   const [chartViewMode, setChartViewMode] = useState<'bars' | 'trajectory'>('bars');
   const [matrixViewMode, setMatrixViewMode] = useState<'nyatakan' | 'selidiki' | 'uji'>('nyatakan');
@@ -491,6 +492,22 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
         <div className="flex flex-wrap items-center gap-1.5">
           <button
             type="button"
+            onClick={() => setActiveMainTab('grafik_kesimpulan_persentase')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${
+              activeMainTab === 'grafik_kesimpulan_persentase'
+                ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-700 text-white shadow-md'
+                : 'text-slate-700 hover:bg-slate-100'
+            }`}
+          >
+            <BarChart3 className="w-4 h-4 text-emerald-300" />
+            <span>1. Grafik Persentase Before (Selidiki) vs After (Uji)</span>
+            <span className="text-[10px] bg-emerald-400 text-slate-900 px-1.5 py-0.5 rounded font-black uppercase">
+              Grafik Utama
+            </span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setActiveMainTab('alur_7_tahap')}
             className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${
               activeMainTab === 'alur_7_tahap'
@@ -499,10 +516,7 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
             }`}
           >
             <Layers className="w-4 h-4 text-amber-300" />
-            <span>1. Matriks Alur 7 Tahap SAMBUNG (S — G)</span>
-            <span className="text-[10px] bg-amber-400 text-slate-900 px-1.5 py-0.5 rounded font-black uppercase">
-              Instrumen Utama
-            </span>
+            <span>2. Matriks Alur 7 Tahap (S — G)</span>
           </button>
 
           <button
@@ -515,7 +529,7 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
             }`}
           >
             <TrendingUp className="w-4 h-4 text-indigo-300" />
-            <span>2. Matriks Perubahan Before vs After (4 Indikator)</span>
+            <span>3. Matriks Perubahan (4 Indikator)</span>
           </button>
 
           <button
@@ -528,7 +542,7 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
             }`}
           >
             <BarChart3 className="w-4 h-4 text-emerald-300" />
-            <span>3. Grafik &amp; Data Dampak Kuantitatif Murid</span>
+            <span>4. Dampak Kuantitatif Murid</span>
           </button>
 
           <button
@@ -541,7 +555,7 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
             }`}
           >
             <Share2 className="w-4 h-4 text-cyan-300" />
-            <span>4. Rencana Tindak Lanjut &amp; Diseminasi (Gerakkan)</span>
+            <span>5. RTL &amp; Diseminasi (Gerakkan)</span>
           </button>
         </div>
 
@@ -549,6 +563,18 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
           Menampilkan: <strong className="text-indigo-900">{filteredSupervisions.length} Guru</strong>
         </div>
       </div>
+
+      {/* ========================================================================= */}
+      {/* TAB 0: GRAFIK KESIMPULAN PERSENTASE BEFORE (SELIDIKI) VS AFTER (UJI)       */}
+      {/* ========================================================================= */}
+      {activeMainTab === 'grafik_kesimpulan_persentase' && (
+        <SambungPersentaseChart
+          supervisions={filteredSupervisions}
+          selectedSchool={selectedSchool}
+          onOpenTeacher={onOpenSambungTeacher}
+          showTeacherTable={true}
+        />
+      )}
 
       {/* ========================================================================= */}
       {/* TAB 1: MATRIKS KETERHUBUNGAN 7 TAHAP SIKLUS SAMBUNG (S - A - M - B - U - N - G) */}

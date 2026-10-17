@@ -212,17 +212,32 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
           };
         }
 
-        // Always synchronize Nyatakan Before-After from Selidiki & Uji conclusions
-        const beforeSync = cloned.selidiki.matriksBefore;
-        const afterSync = cloned.uji.matriksAfter;
+        // Ensure nyatakan.beforeAfter has the standard 4 aspects with preserved text & buktiKode
+        const curBeforeAfter = cloned.nyatakan?.beforeAfter || [];
+        const defaultBukti = [
+          'BKT-01 (Rekaman Video & Foto Praktik Kelas)',
+          'BKT-02 (LKPD Kelompok & Hasil Kerja Murid)',
+          'BKT-03 (Laporan Studi Kasus & Konteks Nyata)',
+          'BKT-04 (Lembar Refleksi Diri & Exit Ticket)',
+        ];
+        const defaultAspects = [
+          { key: 'peranGuru', label: 'Peran guru', bkt: defaultBukti[0] },
+          { key: 'aktivitasMurid', label: 'Aktivitas murid', bkt: defaultBukti[1] },
+          { key: 'konteksNyata', label: 'Konteks kehidupan nyata', bkt: defaultBukti[2] },
+          { key: 'refleksiMurid', label: 'Refleksi murid', bkt: defaultBukti[3] },
+        ];
+
         cloned.nyatakan = {
           ...cloned.nyatakan,
-          beforeAfter: [
-            { aspek: 'Peran guru', sebelumSambung: beforeSync.peranGuru, setelahSambung: afterSync.peranGuru },
-            { aspek: 'Aktivitas murid', sebelumSambung: beforeSync.aktivitasMurid, setelahSambung: afterSync.aktivitasMurid },
-            { aspek: 'Konteks kehidupan nyata', sebelumSambung: beforeSync.konteksNyata, setelahSambung: afterSync.konteksNyata },
-            { aspek: 'Refleksi murid', sebelumSambung: beforeSync.refleksiMurid, setelahSambung: afterSync.refleksiMurid },
-          ],
+          beforeAfter: defaultAspects.map((asp) => {
+            const existing = curBeforeAfter.find(x => x.aspek.toLowerCase().includes(asp.label.toLowerCase().slice(0, 5)));
+            return {
+              aspek: asp.label,
+              sebelumSambung: existing?.sebelumSambung || (cloned.selidiki?.matriksBefore as any)?.[asp.key] || (DEFAULT_MATRIKS_BEFORE as any)[asp.key],
+              setelahSambung: existing?.setelahSambung || (cloned.uji?.matriksAfter as any)?.[asp.key] || (DEFAULT_MATRIKS_AFTER as any)[asp.key],
+              buktiKode: existing?.buktiKode || asp.bkt,
+            };
+          }),
         };
 
         // Ensure dataDampak has the 4 standard indicators with teacher-specific descriptive assessment data
@@ -5550,23 +5565,23 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                 TAHAP N &bull; NYATAKAN
               </div>
               <h3 className="text-lg font-bold text-slate-900">
-                Before&ndash;After dan Data Dampak
+                Perubahan Pembelajaran (Before&ndash;After)
               </h3>
               <p className="text-xs text-slate-500">
                 Setiap perubahan harus disertai bukti konkret dari pembelajaran guru {currentSupervision.teacherName}.
               </p>
             </div>
 
-            {/* 1. Tabel Kesimpulan Nyatakan: Indikator, Selidiki (Before) dan Uji (After) */}
+            {/* Tabel Perubahan (Before–After) */}
             <div className="space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
                   <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                    <Layers className="w-4 h-4 text-rose-600" />
-                    <span>1. Tabel Kesimpulan Nyatakan: Indikator, Selidiki (Before) dan Uji (After)</span>
+                    <ArrowRightLeft className="w-4 h-4 text-rose-600" />
+                    <span>Tabel Perubahan Pembelajaran (Before&ndash;After)</span>
                   </h4>
                   <p className="text-[11px] text-slate-500">
-                    Menghubungkan secara komparatif data kesimpulan Tahap Selidiki (Before) dan Tahap Uji (After) per indikator pembelajaran untuk {currentSupervision.teacherName}.
+                    Membandingkan kondisi pembelajaran guru <strong>{currentSupervision.teacherName}</strong> sebelum supervisi (Before) dan setelah pendampingan supervisi SAMBUNG (After) pada 4 aspek perubahan, disertai bukti kode artefak pendukung.
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 shrink-0 self-start sm:self-auto">
@@ -5575,27 +5590,32 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                     onClick={() => {
                       const before = sambungDraft.selidiki.matriksBefore || { ...DEFAULT_MATRIKS_BEFORE };
                       const after = sambungDraft.uji.matriksAfter || { ...DEFAULT_MATRIKS_AFTER };
+                      const curBA = sambungDraft.nyatakan?.beforeAfter || [];
+                      const defaultBKT = [
+                        'BKT-01 (Rekaman Video & Foto Praktik Kelas)',
+                        'BKT-02 (LKPD Kelompok & Hasil Kerja Murid)',
+                        'BKT-03 (Laporan Studi Kasus & Konteks Nyata)',
+                        'BKT-04 (Lembar Refleksi Diri & Exit Ticket)',
+                      ];
                       setSambungDraft({
                         ...sambungDraft,
-                        selidiki: { ...sambungDraft.selidiki, matriksBefore: before },
-                        uji: { ...sambungDraft.uji, matriksAfter: after },
                         nyatakan: {
                           ...sambungDraft.nyatakan,
                           beforeAfter: [
-                            { aspek: 'Peran guru', sebelumSambung: before.peranGuru, setelahSambung: after.peranGuru },
-                            { aspek: 'Aktivitas murid', sebelumSambung: before.aktivitasMurid, setelahSambung: after.aktivitasMurid },
-                            { aspek: 'Konteks kehidupan nyata', sebelumSambung: before.konteksNyata, setelahSambung: after.konteksNyata },
-                            { aspek: 'Refleksi murid', sebelumSambung: before.refleksiMurid, setelahSambung: after.refleksiMurid },
+                            { aspek: 'Peran guru', sebelumSambung: before.peranGuru, setelahSambung: after.peranGuru, buktiKode: curBA[0]?.buktiKode || defaultBKT[0] },
+                            { aspek: 'Aktivitas murid', sebelumSambung: before.aktivitasMurid, setelahSambung: after.aktivitasMurid, buktiKode: curBA[1]?.buktiKode || defaultBKT[1] },
+                            { aspek: 'Konteks kehidupan nyata', sebelumSambung: before.konteksNyata, setelahSambung: after.konteksNyata, buktiKode: curBA[2]?.buktiKode || defaultBKT[2] },
+                            { aspek: 'Refleksi murid', sebelumSambung: before.refleksiMurid, setelahSambung: after.refleksiMurid, buktiKode: curBA[3]?.buktiKode || defaultBKT[3] },
                           ],
                         },
                       });
-                      setSaveToast('Data deskripsi Before-After berhasil disinkronkan dari Selidiki & Uji!');
+                      setSaveToast('Deskripsi Before-After berhasil diselaraskan!');
                       setTimeout(() => setSaveToast(null), 3000);
                     }}
-                    className="px-3 py-1.5 rounded-xl border border-indigo-200 bg-indigo-50/60 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                    className="px-3 py-1.5 rounded-xl border border-indigo-200 bg-indigo-50/60 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
                   >
                     <RefreshCw className="w-3.5 h-3.5" />
-                    <span>Sinkronkan Ulang dari Selidiki &amp; Uji</span>
+                    <span>Selaraskan dari Selidiki &amp; Uji</span>
                   </button>
                 </div>
               </div>
@@ -5605,539 +5625,279 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                   <thead>
                     <tr className="bg-slate-100/90 text-slate-800 font-bold border-b border-slate-200 uppercase text-[11px]">
                       <th className="py-3 px-3.5 text-center w-12">No</th>
-                      <th className="py-3 px-3.5 text-left w-56">Indikator Pembelajaran</th>
-                      <th className="py-3 px-3.5 text-left">Selidiki (Before)</th>
-                      <th className="py-3 px-3.5 text-left">Uji (After)</th>
-                      <th className="py-3 px-3.5 text-left w-64">Arah Transformasi yang Terlihat</th>
+                      <th className="py-3 px-3.5 text-left w-52">Aspek Perubahan</th>
+                      <th className="py-3 px-3.5 text-left">Sebelum Supervisi SAMBUNG (Before)</th>
+                      <th className="py-3 px-3.5 text-left">Setelah Supervisi SAMBUNG (After)</th>
+                      <th className="py-3 px-3.5 text-left w-64">Bukti / Kode Artefak Pendukung</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {/* Row 1: Peran Guru */}
-                    <tr className="hover:bg-slate-50/50">
-                      <td className="py-3 px-3.5 text-center font-bold text-slate-400 align-top">1</td>
-                      <td className="py-3 px-3.5 font-bold text-slate-900 align-top bg-slate-50/60">
+                    <tr className="hover:bg-slate-50/50 align-top">
+                      <td className="py-3 px-3.5 text-center font-bold text-slate-400">1</td>
+                      <td className="py-3 px-3.5 font-bold text-slate-900 bg-slate-50/60">
                         <div className="flex items-start gap-2">
                           <User className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
                           <div>
-                            <span className="font-extrabold text-slate-900 block leading-snug">Guru berorientasi pada pengalaman belajar murid</span>
-                            <span className="text-[10px] text-indigo-600 font-bold uppercase tracking-wider">Aspek: Peran Guru</span>
+                            <span className="font-extrabold text-slate-900 block leading-snug">Peran Guru</span>
+                            <span className="text-[10px] text-indigo-600 font-bold uppercase tracking-wider">Aspek 1 &bull; Pola Mengajar</span>
                           </div>
                         </div>
                       </td>
-                      <td className="py-3 px-3.5 align-top">
+                      <td className="py-3 px-3.5">
                         <textarea
                           rows={3}
-                          value={sambungDraft.selidiki.matriksBefore?.peranGuru || DEFAULT_MATRIKS_BEFORE.peranGuru}
+                          value={sambungDraft.nyatakan?.beforeAfter?.[0]?.sebelumSambung || ''}
                           onChange={(e) => {
                             const val = e.target.value;
-                            const curBefore = sambungDraft.selidiki.matriksBefore || { ...DEFAULT_MATRIKS_BEFORE };
+                            const curList = [...(sambungDraft.nyatakan?.beforeAfter || [])];
+                            if (curList[0]) curList[0] = { ...curList[0], sebelumSambung: val };
                             setSambungDraft({
                               ...sambungDraft,
-                              selidiki: { ...sambungDraft.selidiki, matriksBefore: { ...curBefore, peranGuru: val } },
-                              nyatakan: {
-                                ...sambungDraft.nyatakan,
-                                beforeAfter: sambungDraft.nyatakan.beforeAfter.map(item =>
-                                  item.aspek.toLowerCase().includes('peran') ? { ...item, sebelumSambung: val } : item
-                                ),
-                              },
+                              nyatakan: { ...sambungDraft.nyatakan, beforeAfter: curList },
                             });
                           }}
-                          className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-indigo-600 bg-slate-50/30"
-                          placeholder="Deskripsi kondisi awal peran guru..."
+                          className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-indigo-600 bg-slate-50/30 text-slate-800"
+                          placeholder="Deskripsi peran guru sebelum supervisi SAMBUNG..."
                         />
                       </td>
-                      <td className="py-3 px-3.5 align-top">
+                      <td className="py-3 px-3.5">
                         <textarea
                           rows={3}
-                          value={sambungDraft.uji.matriksAfter?.peranGuru || DEFAULT_MATRIKS_AFTER.peranGuru}
+                          value={sambungDraft.nyatakan?.beforeAfter?.[0]?.setelahSambung || ''}
                           onChange={(e) => {
                             const val = e.target.value;
-                            const curAfter = sambungDraft.uji.matriksAfter || { ...DEFAULT_MATRIKS_AFTER };
+                            const curList = [...(sambungDraft.nyatakan?.beforeAfter || [])];
+                            if (curList[0]) curList[0] = { ...curList[0], setelahSambung: val };
                             setSambungDraft({
                               ...sambungDraft,
-                              uji: { ...sambungDraft.uji, matriksAfter: { ...curAfter, peranGuru: val } },
-                              nyatakan: {
-                                ...sambungDraft.nyatakan,
-                                beforeAfter: sambungDraft.nyatakan.beforeAfter.map(item =>
-                                  item.aspek.toLowerCase().includes('peran') ? { ...item, setelahSambung: val } : item
-                                ),
-                              },
+                              nyatakan: { ...sambungDraft.nyatakan, beforeAfter: curList },
                             });
                           }}
                           className="w-full px-2.5 py-1.5 rounded-lg border border-purple-200 text-xs focus:outline-indigo-600 bg-purple-50/20 font-medium text-slate-900"
-                          placeholder="Deskripsi kondisi setelah perbaikan peran guru..."
+                          placeholder="Deskripsi peran guru setelah supervisi SAMBUNG..."
                         />
                       </td>
-                      <td className="py-3 px-3.5 align-top bg-indigo-50/30">
-                        <span className="font-semibold text-indigo-900 block leading-snug">
-                          Dari berfokus pada penyampaian materi menuju pengalaman belajar murid
-                        </span>
-                        <p className="text-[11px] text-slate-500 mt-1">
-                          Guru beralih dari ceramah satu arah menjadi coach inkuiri dan fasilitator.
-                        </p>
+                      <td className="py-3 px-3.5 bg-indigo-50/20">
+                        <input
+                          type="text"
+                          value={sambungDraft.nyatakan?.beforeAfter?.[0]?.buktiKode || ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const curList = [...(sambungDraft.nyatakan?.beforeAfter || [])];
+                            if (curList[0]) curList[0] = { ...curList[0], buktiKode: val };
+                            setSambungDraft({
+                              ...sambungDraft,
+                              nyatakan: { ...sambungDraft.nyatakan, beforeAfter: curList },
+                            });
+                          }}
+                          className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-[11px] focus:outline-indigo-600 bg-white font-medium text-indigo-900"
+                          placeholder="Contoh: BKT-01 (Rekaman Video & Foto Kelas)"
+                        />
+                        <span className="text-[10px] text-slate-400 mt-1 block">Kode bukti fisik pelaksanaan</span>
                       </td>
                     </tr>
 
                     {/* Row 2: Aktivitas Murid */}
-                    <tr className="hover:bg-slate-50/50">
-                      <td className="py-3 px-3.5 text-center font-bold text-slate-400 align-top">2</td>
-                      <td className="py-3 px-3.5 font-bold text-slate-900 align-top bg-slate-50/60">
+                    <tr className="hover:bg-slate-50/50 align-top">
+                      <td className="py-3 px-3.5 text-center font-bold text-slate-400">2</td>
+                      <td className="py-3 px-3.5 font-bold text-slate-900 bg-slate-50/60">
                         <div className="flex items-start gap-2">
                           <Users className="w-4 h-4 text-purple-600 shrink-0 mt-0.5" />
                           <div>
-                            <span className="font-extrabold text-slate-900 block leading-snug">Murid aktif mengaplikasikan pengetahuan</span>
-                            <span className="text-[10px] text-purple-600 font-bold uppercase tracking-wider">Aspek: Aktivitas Murid</span>
+                            <span className="font-extrabold text-slate-900 block leading-snug">Aktivitas Murid</span>
+                            <span className="text-[10px] text-purple-600 font-bold uppercase tracking-wider">Aspek 2 &bull; Keterlibatan Belajar</span>
                           </div>
                         </div>
                       </td>
-                      <td className="py-3 px-3.5 align-top">
+                      <td className="py-3 px-3.5">
                         <textarea
                           rows={3}
-                          value={sambungDraft.selidiki.matriksBefore?.aktivitasMurid || DEFAULT_MATRIKS_BEFORE.aktivitasMurid}
+                          value={sambungDraft.nyatakan?.beforeAfter?.[1]?.sebelumSambung || ''}
                           onChange={(e) => {
                             const val = e.target.value;
-                            const curBefore = sambungDraft.selidiki.matriksBefore || { ...DEFAULT_MATRIKS_BEFORE };
+                            const curList = [...(sambungDraft.nyatakan?.beforeAfter || [])];
+                            if (curList[1]) curList[1] = { ...curList[1], sebelumSambung: val };
                             setSambungDraft({
                               ...sambungDraft,
-                              selidiki: { ...sambungDraft.selidiki, matriksBefore: { ...curBefore, aktivitasMurid: val } },
-                              nyatakan: {
-                                ...sambungDraft.nyatakan,
-                                beforeAfter: sambungDraft.nyatakan.beforeAfter.map(item =>
-                                  item.aspek.toLowerCase().includes('aktivitas') ? { ...item, sebelumSambung: val } : item
-                                ),
-                              },
+                              nyatakan: { ...sambungDraft.nyatakan, beforeAfter: curList },
                             });
                           }}
-                          className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-indigo-600 bg-slate-50/30"
-                          placeholder="Deskripsi kondisi awal aktivitas murid..."
+                          className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-indigo-600 bg-slate-50/30 text-slate-800"
+                          placeholder="Deskripsi aktivitas murid sebelum supervisi SAMBUNG..."
                         />
                       </td>
-                      <td className="py-3 px-3.5 align-top">
+                      <td className="py-3 px-3.5">
                         <textarea
                           rows={3}
-                          value={sambungDraft.uji.matriksAfter?.aktivitasMurid || DEFAULT_MATRIKS_AFTER.aktivitasMurid}
+                          value={sambungDraft.nyatakan?.beforeAfter?.[1]?.setelahSambung || ''}
                           onChange={(e) => {
                             const val = e.target.value;
-                            const curAfter = sambungDraft.uji.matriksAfter || { ...DEFAULT_MATRIKS_AFTER };
+                            const curList = [...(sambungDraft.nyatakan?.beforeAfter || [])];
+                            if (curList[1]) curList[1] = { ...curList[1], setelahSambung: val };
                             setSambungDraft({
                               ...sambungDraft,
-                              uji: { ...sambungDraft.uji, matriksAfter: { ...curAfter, aktivitasMurid: val } },
-                              nyatakan: {
-                                ...sambungDraft.nyatakan,
-                                beforeAfter: sambungDraft.nyatakan.beforeAfter.map(item =>
-                                  item.aspek.toLowerCase().includes('aktivitas') ? { ...item, setelahSambung: val } : item
-                                ),
-                              },
+                              nyatakan: { ...sambungDraft.nyatakan, beforeAfter: curList },
                             });
                           }}
                           className="w-full px-2.5 py-1.5 rounded-lg border border-purple-200 text-xs focus:outline-indigo-600 bg-purple-50/20 font-medium text-slate-900"
-                          placeholder="Deskripsi kondisi setelah perbaikan aktivitas murid..."
+                          placeholder="Deskripsi aktivitas murid setelah supervisi SAMBUNG..."
                         />
                       </td>
-                      <td className="py-3 px-3.5 align-top bg-purple-50/30">
-                        <span className="font-semibold text-purple-900 block leading-snug">
-                          Dari lebih banyak menerima menjadi lebih aktif mengaplikasikan pengetahuan
-                        </span>
-                        <p className="text-[11px] text-slate-500 mt-1">
-                          Murid terlibat aktif dalam eksplorasi mandiri, diskusi kelompok, dan simulasi nyata.
-                        </p>
+                      <td className="py-3 px-3.5 bg-purple-50/20">
+                        <input
+                          type="text"
+                          value={sambungDraft.nyatakan?.beforeAfter?.[1]?.buktiKode || ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const curList = [...(sambungDraft.nyatakan?.beforeAfter || [])];
+                            if (curList[1]) curList[1] = { ...curList[1], buktiKode: val };
+                            setSambungDraft({
+                              ...sambungDraft,
+                              nyatakan: { ...sambungDraft.nyatakan, beforeAfter: curList },
+                            });
+                          }}
+                          className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-[11px] focus:outline-indigo-600 bg-white font-medium text-purple-900"
+                          placeholder="Contoh: BKT-02 (LKPD Kelompok & Laporan Praktik)"
+                        />
+                        <span className="text-[10px] text-slate-400 mt-1 block">Kode bukti fisik pelaksanaan</span>
                       </td>
                     </tr>
 
                     {/* Row 3: Konteks Kehidupan Nyata */}
-                    <tr className="hover:bg-slate-50/50">
-                      <td className="py-3 px-3.5 text-center font-bold text-slate-400 align-top">3</td>
-                      <td className="py-3 px-3.5 font-bold text-slate-900 align-top bg-slate-50/60">
+                    <tr className="hover:bg-slate-50/50 align-top">
+                      <td className="py-3 px-3.5 text-center font-bold text-slate-400">3</td>
+                      <td className="py-3 px-3.5 font-bold text-slate-900 bg-slate-50/60">
                         <div className="flex items-start gap-2">
                           <Compass className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                           <div>
-                            <span className="font-extrabold text-slate-900 block leading-snug">Pembelajaran terhubung dengan konteks kehidupan nyata murid</span>
-                            <span className="text-[10px] text-amber-600 font-bold uppercase tracking-wider">Aspek: Konteks Nyata</span>
+                            <span className="font-extrabold text-slate-900 block leading-snug">Konteks Kehidupan Nyata</span>
+                            <span className="text-[10px] text-amber-600 font-bold uppercase tracking-wider">Aspek 3 &bull; Relevansi Kontekstual</span>
                           </div>
                         </div>
                       </td>
-                      <td className="py-3 px-3.5 align-top">
+                      <td className="py-3 px-3.5">
                         <textarea
                           rows={3}
-                          value={sambungDraft.selidiki.matriksBefore?.konteksNyata || DEFAULT_MATRIKS_BEFORE.konteksNyata}
+                          value={sambungDraft.nyatakan?.beforeAfter?.[2]?.sebelumSambung || ''}
                           onChange={(e) => {
                             const val = e.target.value;
-                            const curBefore = sambungDraft.selidiki.matriksBefore || { ...DEFAULT_MATRIKS_BEFORE };
+                            const curList = [...(sambungDraft.nyatakan?.beforeAfter || [])];
+                            if (curList[2]) curList[2] = { ...curList[2], sebelumSambung: val };
                             setSambungDraft({
                               ...sambungDraft,
-                              selidiki: { ...sambungDraft.selidiki, matriksBefore: { ...curBefore, konteksNyata: val } },
-                              nyatakan: {
-                                ...sambungDraft.nyatakan,
-                                beforeAfter: sambungDraft.nyatakan.beforeAfter.map(item =>
-                                  item.aspek.toLowerCase().includes('konteks') ? { ...item, sebelumSambung: val } : item
-                                ),
-                              },
+                              nyatakan: { ...sambungDraft.nyatakan, beforeAfter: curList },
                             });
                           }}
-                          className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-indigo-600 bg-slate-50/30"
-                          placeholder="Deskripsi kondisi awal konteks nyata..."
+                          className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-indigo-600 bg-slate-50/30 text-slate-800"
+                          placeholder="Deskripsi keterkaitan konteks nyata sebelum supervisi..."
                         />
                       </td>
-                      <td className="py-3 px-3.5 align-top">
+                      <td className="py-3 px-3.5">
                         <textarea
                           rows={3}
-                          value={sambungDraft.uji.matriksAfter?.konteksNyata || DEFAULT_MATRIKS_AFTER.konteksNyata}
+                          value={sambungDraft.nyatakan?.beforeAfter?.[2]?.setelahSambung || ''}
                           onChange={(e) => {
                             const val = e.target.value;
-                            const curAfter = sambungDraft.uji.matriksAfter || { ...DEFAULT_MATRIKS_AFTER };
+                            const curList = [...(sambungDraft.nyatakan?.beforeAfter || [])];
+                            if (curList[2]) curList[2] = { ...curList[2], setelahSambung: val };
                             setSambungDraft({
                               ...sambungDraft,
-                              uji: { ...sambungDraft.uji, matriksAfter: { ...curAfter, konteksNyata: val } },
-                              nyatakan: {
-                                ...sambungDraft.nyatakan,
-                                beforeAfter: sambungDraft.nyatakan.beforeAfter.map(item =>
-                                  item.aspek.toLowerCase().includes('konteks') ? { ...item, setelahSambung: val } : item
-                                ),
-                              },
+                              nyatakan: { ...sambungDraft.nyatakan, beforeAfter: curList },
                             });
                           }}
                           className="w-full px-2.5 py-1.5 rounded-lg border border-purple-200 text-xs focus:outline-indigo-600 bg-purple-50/20 font-medium text-slate-900"
-                          placeholder="Deskripsi kondisi setelah perbaikan konteks nyata..."
+                          placeholder="Deskripsi keterkaitan konteks nyata setelah supervisi..."
                         />
                       </td>
-                      <td className="py-3 px-3.5 align-top bg-amber-50/30">
-                        <span className="font-semibold text-amber-900 block leading-snug">
-                          Dari belum konsisten menjadi mulai dirancang dalam pembelajaran
-                        </span>
-                        <p className="text-[11px] text-slate-500 mt-1">
-                          Materi dihubungkan langsung dengan studi kasus nyata, isu lingkungan, dan kehidupan sehari-hari.
-                        </p>
+                      <td className="py-3 px-3.5 bg-amber-50/20">
+                        <input
+                          type="text"
+                          value={sambungDraft.nyatakan?.beforeAfter?.[2]?.buktiKode || ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const curList = [...(sambungDraft.nyatakan?.beforeAfter || [])];
+                            if (curList[2]) curList[2] = { ...curList[2], buktiKode: val };
+                            setSambungDraft({
+                              ...sambungDraft,
+                              nyatakan: { ...sambungDraft.nyatakan, beforeAfter: curList },
+                            });
+                          }}
+                          className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-[11px] focus:outline-indigo-600 bg-white font-medium text-amber-900"
+                          placeholder="Contoh: BKT-03 (Laporan Studi Kasus Murid)"
+                        />
+                        <span className="text-[10px] text-slate-400 mt-1 block">Kode bukti fisik pelaksanaan</span>
                       </td>
                     </tr>
 
                     {/* Row 4: Refleksi Murid */}
-                    <tr className="hover:bg-slate-50/50">
-                      <td className="py-3 px-3.5 text-center font-bold text-slate-400 align-top">4</td>
-                      <td className="py-3 px-3.5 font-bold text-slate-900 align-top bg-slate-50/60">
+                    <tr className="hover:bg-slate-50/50 align-top">
+                      <td className="py-3 px-3.5 text-center font-bold text-slate-400">4</td>
+                      <td className="py-3 px-3.5 font-bold text-slate-900 bg-slate-50/60">
                         <div className="flex items-start gap-2">
                           <Sparkles className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
                           <div>
-                            <span className="font-extrabold text-slate-900 block leading-snug">Refleksi menjadi bagian rutin dalam proses pembelajaran</span>
-                            <span className="text-[10px] text-blue-600 font-bold uppercase tracking-wider">Aspek: Refleksi Murid</span>
+                            <span className="font-extrabold text-slate-900 block leading-snug">Refleksi Murid</span>
+                            <span className="text-[10px] text-blue-600 font-bold uppercase tracking-wider">Aspek 4 &bull; Budaya Metakognisi</span>
                           </div>
                         </div>
                       </td>
-                      <td className="py-3 px-3.5 align-top">
+                      <td className="py-3 px-3.5">
                         <textarea
                           rows={3}
-                          value={sambungDraft.selidiki.matriksBefore?.refleksiMurid || DEFAULT_MATRIKS_BEFORE.refleksiMurid}
+                          value={sambungDraft.nyatakan?.beforeAfter?.[3]?.sebelumSambung || ''}
                           onChange={(e) => {
                             const val = e.target.value;
-                            const curBefore = sambungDraft.selidiki.matriksBefore || { ...DEFAULT_MATRIKS_BEFORE };
+                            const curList = [...(sambungDraft.nyatakan?.beforeAfter || [])];
+                            if (curList[3]) curList[3] = { ...curList[3], sebelumSambung: val };
                             setSambungDraft({
                               ...sambungDraft,
-                              selidiki: { ...sambungDraft.selidiki, matriksBefore: { ...curBefore, refleksiMurid: val } },
-                              nyatakan: {
-                                ...sambungDraft.nyatakan,
-                                beforeAfter: sambungDraft.nyatakan.beforeAfter.map(item =>
-                                  item.aspek.toLowerCase().includes('refleksi') ? { ...item, sebelumSambung: val } : item
-                                ),
-                              },
+                              nyatakan: { ...sambungDraft.nyatakan, beforeAfter: curList },
                             });
                           }}
-                          className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-indigo-600 bg-slate-50/30"
-                          placeholder="Deskripsi kondisi awal refleksi murid..."
+                          className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-indigo-600 bg-slate-50/30 text-slate-800"
+                          placeholder="Deskripsi rutinitas refleksi sebelum supervisi..."
                         />
                       </td>
-                      <td className="py-3 px-3.5 align-top">
+                      <td className="py-3 px-3.5">
                         <textarea
                           rows={3}
-                          value={sambungDraft.uji.matriksAfter?.refleksiMurid || DEFAULT_MATRIKS_AFTER.refleksiMurid}
+                          value={sambungDraft.nyatakan?.beforeAfter?.[3]?.setelahSambung || ''}
                           onChange={(e) => {
                             const val = e.target.value;
-                            const curAfter = sambungDraft.uji.matriksAfter || { ...DEFAULT_MATRIKS_AFTER };
+                            const curList = [...(sambungDraft.nyatakan?.beforeAfter || [])];
+                            if (curList[3]) curList[3] = { ...curList[3], setelahSambung: val };
                             setSambungDraft({
                               ...sambungDraft,
-                              uji: { ...sambungDraft.uji, matriksAfter: { ...curAfter, refleksiMurid: val } },
-                              nyatakan: {
-                                ...sambungDraft.nyatakan,
-                                beforeAfter: sambungDraft.nyatakan.beforeAfter.map(item =>
-                                  item.aspek.toLowerCase().includes('refleksi') ? { ...item, setelahSambung: val } : item
-                                ),
-                              },
+                              nyatakan: { ...sambungDraft.nyatakan, beforeAfter: curList },
                             });
                           }}
                           className="w-full px-2.5 py-1.5 rounded-lg border border-purple-200 text-xs focus:outline-indigo-600 bg-purple-50/20 font-medium text-slate-900"
-                          placeholder="Deskripsi kondisi setelah perbaikan refleksi murid..."
+                          placeholder="Deskripsi rutinitas refleksi setelah supervisi..."
                         />
                       </td>
-                      <td className="py-3 px-3.5 align-top bg-blue-50/30">
-                        <span className="font-semibold text-blue-900 block leading-snug">
-                          Dari belum rutin menjadi mulai menjadi bagian pembelajaran
-                        </span>
-                        <p className="text-[11px] text-slate-500 mt-1">
-                          Refleksi terbimbing 10-15 menit di setiap sesi melatih kemandirian dan kesadaran proses belajar murid.
-                        </p>
+                      <td className="py-3 px-3.5 bg-blue-50/20">
+                        <input
+                          type="text"
+                          value={sambungDraft.nyatakan?.beforeAfter?.[3]?.buktiKode || ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const curList = [...(sambungDraft.nyatakan?.beforeAfter || [])];
+                            if (curList[3]) curList[3] = { ...curList[3], buktiKode: val };
+                            setSambungDraft({
+                              ...sambungDraft,
+                              nyatakan: { ...sambungDraft.nyatakan, beforeAfter: curList },
+                            });
+                          }}
+                          className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-[11px] focus:outline-indigo-600 bg-white font-medium text-blue-900"
+                          placeholder="Contoh: BKT-04 (Lembar Refleksi & Exit Ticket)"
+                        />
+                        <span className="text-[10px] text-slate-400 mt-1 block">Kode bukti fisik pelaksanaan</span>
                       </td>
                     </tr>
                   </tbody>
                 </table>
               </div>
-            </div>
-
-            {/* 2. Data Dampak Table */}
-            <div className="space-y-4 pt-2">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-slate-50 via-indigo-50/50 to-slate-50 p-4 rounded-2xl border border-indigo-100">
-                <div>
-                  <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-800 text-[10px] font-extrabold uppercase tracking-wider mb-1">
-                    <TrendingUp className="w-3 h-3 text-indigo-600" />
-                    <span>Terhubung Hasil Supervisi Pengawas</span>
-                  </div>
-                  <h4 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-                    <span>2. Data Dampak Pembelajaran Murid (Indikator Kuantitatif &amp; Makna)</span>
-                  </h4>
-                  <p className="text-xs text-slate-600 mt-0.5">
-                    Informasi deskriptif dan capaian kuantitatif untuk <strong>{currentSupervision.teacherName}</strong> ({currentSupervision.subject} &bull; {currentSupervision.schoolName}) yang diselaraskan dengan hasil telaah perangkat dan observasi kelas.
-                  </p>
-                  
-                  {/* Status Penilaian Guru Badge */}
-                  <div className="flex flex-wrap items-center gap-2 mt-2 text-[11px]">
-                    <span className="px-2.5 py-0.5 rounded-lg bg-white border border-slate-200 text-slate-700 font-bold shadow-2xs">
-                      Materi: <strong className="text-indigo-900">{currentSupervision.lessonTitle || 'Materi Pokok Pembelajaran'}</strong>
-                    </span>
-                    <span className="px-2.5 py-0.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold">
-                      Skor Telaah Modul: <strong>{currentSupervision.perangkatAjar?.telaahSummary?.finalScore ?? '-'}/100</strong> ({currentSupervision.perangkatAjar?.telaahSummary?.predicate || 'Belum Dinilai'})
-                    </span>
-                    <span className="px-2.5 py-0.5 rounded-lg bg-teal-50 border border-teal-200 text-teal-800 font-bold">
-                      Skor Observasi Kelas: <strong>{currentSupervision.observasiKelas?.score ?? '-'}/100</strong> ({currentSupervision.observasiKelas?.predicate || 'Belum Diobservasi'})
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const updated = getTeacherDescriptiveDataDampak(
-                        currentSupervision.teacherName,
-                        currentSupervision.subject,
-                        currentSupervision.schoolName,
-                        currentSupervision.lessonTitle,
-                        currentSupervision.perangkatAjar?.telaahSummary?.predicate,
-                        currentSupervision.observasiKelas?.predicate
-                      );
-                      setSambungDraft({
-                        ...sambungDraft,
-                        nyatakan: {
-                          ...sambungDraft.nyatakan,
-                          dataDampak: updated,
-                        },
-                      });
-                      setSaveToast(`Informasi deskriptif berhasil diselaraskan dengan penilaian ${currentSupervision.teacherName}!`);
-                      setTimeout(() => setSaveToast(null), 3000);
-                    }}
-                    className="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer"
-                  >
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>Sinkronkan Deskripsi Sesuai Penilaian Guru</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSambungDraft({
-                        ...sambungDraft,
-                        nyatakan: {
-                          ...sambungDraft.nyatakan,
-                          dataDampak: DEFAULT_DATA_DAMPAK.map(d => ({ ...d })),
-                        },
-                      });
-                      setSaveToast('Indikator standar data dampak berhasil dipulihkan!');
-                      setTimeout(() => setSaveToast(null), 3000);
-                    }}
-                    className="px-2.5 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 font-semibold text-xs text-center transition-colors cursor-pointer"
-                  >
-                    Pulihkan Standar
-                  </button>
-                </div>
-              </div>
-
-              {/* TABEL DATA DAMPAK DENGAN INFORMASI DESKRIPTIF PENILAIAN */}
-              <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-xs">
-                <table className="w-full text-xs border-collapse min-w-[850px]">
-                  <thead>
-                    <tr className="bg-slate-100/80 text-slate-800 font-bold border-b border-slate-200 text-xs">
-                      <th className="py-3 px-4 text-left w-64">Indikator &amp; Bukti Kegiatan</th>
-                      <th className="py-3 px-3 text-center w-28">Kondisi Awal</th>
-                      <th className="py-3 px-3 text-center w-36">Setelah SAMBUNG</th>
-                      <th className="py-3 px-4 text-left">Makna &amp; Uraian Deskriptif Hasil Penilaian Pengawas</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {sambungDraft.nyatakan.dataDampak.map((row, idx) => {
-                      const valAwal = parseFloat((row.awal || '').replace(/[^0-9.]/g, '')) || 0;
-                      const valAkhir = parseFloat((row.akhir || '').replace(/[^0-9.]/g, '')) || 0;
-                      const delta = valAkhir - valAwal;
-
-                      const dimensionLabels = [
-                        'Dimensi Orientasi & Pengalaman Belajar',
-                        'Dimensi Kemandirian & Pengaplikasian HOTS',
-                        'Dimensi Relevansi Konteks Kehidupan Riil',
-                        'Dimensi Metakognisi & Rutinitas Refleksi'
-                      ];
-
-                      return (
-                        <tr key={idx} className="hover:bg-slate-50/60 transition-colors align-top">
-                          {/* Indikator & Bukti Kegiatan */}
-                          <td className="py-4 px-4 bg-slate-50/40 border-r border-slate-100">
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-2">
-                                <span className="w-5 h-5 rounded-md bg-indigo-100 text-indigo-700 text-xs font-black flex items-center justify-center shrink-0">
-                                  {idx + 1}
-                                </span>
-                                <input
-                                  type="text"
-                                  value={row.indikator}
-                                  onChange={(e) => {
-                                    const list = [...sambungDraft.nyatakan.dataDampak];
-                                    list[idx].indikator = e.target.value;
-                                    setSambungDraft({
-                                      ...sambungDraft,
-                                      nyatakan: { ...sambungDraft.nyatakan, dataDampak: list },
-                                    });
-                                  }}
-                                  className="w-full px-2 py-1 rounded-lg border border-transparent hover:border-slate-300 focus:border-indigo-600 focus:bg-white focus:outline-hidden text-xs bg-transparent font-extrabold text-slate-900 leading-snug"
-                                />
-                              </div>
-
-                              <span className="inline-block text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200/60">
-                                {dimensionLabels[idx] || 'Dimensi Mutu Pembelajaran'}
-                              </span>
-
-                              {/* Bukti Dokumen/Kegiatan Input */}
-                              <div className="pt-1">
-                                <span className="text-[10px] font-semibold text-slate-500 block mb-0.5">
-                                  Bukti Pendukung / Artefak:
-                                </span>
-                                <input
-                                  type="text"
-                                  value={row.buktiKegiatan || ''}
-                                  placeholder="Contoh: Modul Ajar, Foto PhET, Lembar Refleksi U2..."
-                                  onChange={(e) => {
-                                    const list = [...sambungDraft.nyatakan.dataDampak];
-                                    list[idx].buktiKegiatan = e.target.value;
-                                    setSambungDraft({
-                                      ...sambungDraft,
-                                      nyatakan: { ...sambungDraft.nyatakan, dataDampak: list },
-                                    });
-                                  }}
-                                  className="w-full px-2 py-1 text-[11px] text-slate-700 bg-white border border-slate-200 rounded-lg focus:border-indigo-500 focus:outline-none"
-                                />
-                              </div>
-                            </div>
-                          </td>
-
-                          {/* Kondisi Awal */}
-                          <td className="py-4 px-3 text-center">
-                            <div className="space-y-1">
-                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                                Sebelum
-                              </span>
-                              <div className="inline-block px-3 py-1.5 rounded-xl border border-slate-200 bg-white font-extrabold text-slate-800 text-xs shadow-2xs">
-                                <input
-                                  type="text"
-                                  value={row.awal}
-                                  onChange={(e) => {
-                                    const list = [...sambungDraft.nyatakan.dataDampak];
-                                    list[idx].awal = e.target.value;
-                                    setSambungDraft({
-                                      ...sambungDraft,
-                                      nyatakan: { ...sambungDraft.nyatakan, dataDampak: list },
-                                    });
-                                  }}
-                                  className="w-12 text-center font-black text-slate-800 focus:outline-none bg-transparent"
-                                />
-                              </div>
-                            </div>
-                          </td>
-
-                          {/* Setelah SAMBUNG */}
-                          <td className="py-4 px-3 text-center">
-                            <div className="space-y-1">
-                              <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">
-                                Sesudah
-                              </span>
-                              <div className="inline-block px-3 py-1.5 rounded-xl border border-emerald-300 bg-emerald-50/80 font-extrabold text-emerald-800 text-xs shadow-2xs">
-                                <input
-                                  type="text"
-                                  value={row.akhir}
-                                  onChange={(e) => {
-                                    const list = [...sambungDraft.nyatakan.dataDampak];
-                                    list[idx].akhir = e.target.value;
-                                    setSambungDraft({
-                                      ...sambungDraft,
-                                      nyatakan: { ...sambungDraft.nyatakan, dataDampak: list },
-                                    });
-                                  }}
-                                  className="w-12 text-center font-black text-emerald-800 focus:outline-none bg-transparent"
-                                />
-                              </div>
-                              <span className="inline-block px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-black border border-emerald-200 mt-0.5">
-                                +{delta}%
-                              </span>
-                            </div>
-                          </td>
-
-                          {/* Makna & Uraian Deskriptif Hasil Penilaian Pengawas */}
-                          <td className="py-4 px-4 space-y-2">
-                            {/* Ringkasan Makna */}
-                            <div>
-                              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide block mb-1">
-                                Ringkasan Makna Perubahan:
-                              </span>
-                              <div className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs text-slate-800 shadow-2xs">
-                                <input
-                                  type="text"
-                                  value={row.makna || ''}
-                                  onChange={(e) => {
-                                    const list = [...sambungDraft.nyatakan.dataDampak];
-                                    list[idx].makna = e.target.value;
-                                    setSambungDraft({
-                                      ...sambungDraft,
-                                      nyatakan: { ...sambungDraft.nyatakan, dataDampak: list },
-                                    });
-                                  }}
-                                  placeholder="Ringkasan makna perubahan singkat..."
-                                  className="w-full text-xs font-semibold text-slate-800 focus:outline-none bg-transparent"
-                                />
-                              </div>
-                            </div>
-
-                            {/* Uraian Deskriptif Spesifik Berdasarkan Penilaian Guru */}
-                            <div>
-                              <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-wide block mb-1">
-                                Uraian Deskriptif Hasil Penilaian Supervisi ({currentSupervision.teacherName}):
-                              </span>
-                              <textarea
-                                value={row.deskripsiPenilaian || ''}
-                                rows={3}
-                                onChange={(e) => {
-                                  const list = [...sambungDraft.nyatakan.dataDampak];
-                                  list[idx].deskripsiPenilaian = e.target.value;
-                                  setSambungDraft({
-                                    ...sambungDraft,
-                                    nyatakan: { ...sambungDraft.nyatakan, dataDampak: list },
-                                  });
-                                }}
-                                placeholder={`Tuliskan uraian deskriptif bagaimana ${currentSupervision.teacherName} bertransformasi pada indikator ini sesuai hasil supervisi telaah modul dan observasi kelas...`}
-                                className="w-full text-xs text-slate-800 bg-indigo-50/40 border border-indigo-200/80 rounded-xl p-2.5 focus:border-indigo-600 focus:bg-white focus:outline-none transition-all resize-y leading-relaxed"
-                              />
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-              <p className="text-[11px] text-slate-400 italic mt-1">
-                *Data deskriptif di atas terhubung langsung dengan penilaian telaah modul ajar dan observasi tatap muka pengawas sekolah untuk {currentSupervision.teacherName}.
-              </p>
             </div>
           </div>
         </fieldset>

@@ -1078,22 +1078,22 @@ export const SambungPrintModal: React.FC<SambungPrintModalProps> = ({
                 N
               </span>
               <div>
-                <h3 className="font-bold text-sm">Before&ndash;After dan Data Dampak</h3>
+                <h3 className="font-bold text-sm">Perubahan Pembelajaran (Before&ndash;After)</h3>
                 <p className="text-[10px] text-indigo-200">NYATAKAN — setiap perubahan harus disertai bukti</p>
               </div>
             </div>
 
             <h4 className="font-bold text-xs text-slate-800 mb-1">
-              1. Tabel Kesimpulan Nyatakan: Indikator, Selidiki (Before) dan Uji (After)
+              Tabel Perubahan Pembelajaran (Before&ndash;After)
             </h4>
-            <table className="w-full border-collapse border border-slate-300 text-[11px] mb-4">
+            <table className="w-full border-collapse border border-slate-300 text-[11px] mb-2">
               <thead>
                 <tr className="bg-slate-100 text-slate-800 font-bold">
                   <th className="border border-slate-300 px-2 py-1.5 w-8 text-center">No</th>
-                  <th className="border border-slate-300 px-2 py-1.5 w-48 text-left">Indikator Pembelajaran</th>
-                  <th className="border border-slate-300 px-2 py-1.5 text-left">Selidiki (Before)</th>
-                  <th className="border border-slate-300 px-2 py-1.5 text-left">Uji (After)</th>
-                  <th className="border border-slate-300 px-2 py-1.5 text-left w-48">Arah Transformasi yang Terlihat</th>
+                  <th className="border border-slate-300 px-2 py-1.5 w-44 text-left">Aspek Perubahan</th>
+                  <th className="border border-slate-300 px-2 py-1.5 text-left">Sebelum SAMBUNG (Before)</th>
+                  <th className="border border-slate-300 px-2 py-1.5 text-left">Setelah SAMBUNG (After)</th>
+                  <th className="border border-slate-300 px-2 py-1.5 text-left w-48">Bukti / Kode Artefak</th>
                 </tr>
               </thead>
               <tbody>
@@ -1101,118 +1101,72 @@ export const SambungPrintModal: React.FC<SambungPrintModalProps> = ({
                 <tr>
                   <td className="border border-slate-300 px-2 py-1.5 text-center font-semibold">1</td>
                   <td className="border border-slate-300 px-2 py-1.5 font-bold text-slate-800 bg-slate-50/40">
-                    Guru berorientasi pada pengalaman belajar murid
-                    <span className="block text-[9px] text-indigo-700 font-normal">Aspek: Peran Guru</span>
+                    Peran Guru
+                    <span className="block text-[9px] text-indigo-700 font-normal">Pola &amp; Orientasi Mengajar</span>
                   </td>
                   <td className="border border-slate-300 px-2 py-1.5 text-slate-600">
-                    {sambung.selidiki.matriksBefore?.peranGuru || DEFAULT_MATRIKS_BEFORE.peranGuru}
+                    {sambung.nyatakan.beforeAfter?.[0]?.sebelumSambung || sambung.selidiki.matriksBefore?.peranGuru || DEFAULT_MATRIKS_BEFORE.peranGuru}
                   </td>
                   <td className="border border-slate-300 px-2 py-1.5 text-slate-900 font-medium">
-                    {sambung.uji.matriksAfter?.peranGuru || DEFAULT_MATRIKS_AFTER.peranGuru}
+                    {sambung.nyatakan.beforeAfter?.[0]?.setelahSambung || sambung.uji.matriksAfter?.peranGuru || DEFAULT_MATRIKS_AFTER.peranGuru}
                   </td>
                   <td className="border border-slate-300 px-2 py-1.5 text-indigo-900 text-[10px]">
-                    Dari ceramah materi menuju perancang pengalaman belajar aktif murid
+                    {sambung.nyatakan.beforeAfter?.[0]?.buktiKode || 'BKT-01 (Rekaman Video & Foto Kelas)'}
                   </td>
                 </tr>
                 {/* Row 2 */}
                 <tr>
                   <td className="border border-slate-300 px-2 py-1.5 text-center font-semibold">2</td>
                   <td className="border border-slate-300 px-2 py-1.5 font-bold text-slate-800 bg-slate-50/40">
-                    Murid aktif mengaplikasikan pengetahuan
-                    <span className="block text-[9px] text-purple-700 font-normal">Aspek: Aktivitas Murid</span>
+                    Aktivitas Murid
+                    <span className="block text-[9px] text-purple-700 font-normal">Keterlibatan &amp; Aplikasi Belajar</span>
                   </td>
                   <td className="border border-slate-300 px-2 py-1.5 text-slate-600">
-                    {sambung.selidiki.matriksBefore?.aktivitasMurid || DEFAULT_MATRIKS_BEFORE.aktivitasMurid}
+                    {sambung.nyatakan.beforeAfter?.[1]?.sebelumSambung || sambung.selidiki.matriksBefore?.aktivitasMurid || DEFAULT_MATRIKS_BEFORE.aktivitasMurid}
                   </td>
                   <td className="border border-slate-300 px-2 py-1.5 text-slate-900 font-medium">
-                    {sambung.uji.matriksAfter?.aktivitasMurid || DEFAULT_MATRIKS_AFTER.aktivitasMurid}
+                    {sambung.nyatakan.beforeAfter?.[1]?.setelahSambung || sambung.uji.matriksAfter?.aktivitasMurid || DEFAULT_MATRIKS_AFTER.aktivitasMurid}
                   </td>
                   <td className="border border-slate-300 px-2 py-1.5 text-purple-900 text-[10px]">
-                    Dari penerima pasif menuju aktif mengaplikasikan pengetahuan
+                    {sambung.nyatakan.beforeAfter?.[1]?.buktiKode || 'BKT-02 (LKPD Kelompok & Laporan Praktik)'}
                   </td>
                 </tr>
                 {/* Row 3 */}
                 <tr>
                   <td className="border border-slate-300 px-2 py-1.5 text-center font-semibold">3</td>
                   <td className="border border-slate-300 px-2 py-1.5 font-bold text-slate-800 bg-slate-50/40">
-                    Pembelajaran terhubung dengan konteks kehidupan nyata murid
-                    <span className="block text-[9px] text-amber-700 font-normal">Aspek: Konteks Nyata</span>
+                    Konteks Kehidupan Nyata
+                    <span className="block text-[9px] text-amber-700 font-normal">Relevansi Situasi &amp; Lingkungan Riil</span>
                   </td>
                   <td className="border border-slate-300 px-2 py-1.5 text-slate-600">
-                    {sambung.selidiki.matriksBefore?.konteksNyata || DEFAULT_MATRIKS_BEFORE.konteksNyata}
+                    {sambung.nyatakan.beforeAfter?.[2]?.sebelumSambung || sambung.selidiki.matriksBefore?.konteksNyata || DEFAULT_MATRIKS_BEFORE.konteksNyata}
                   </td>
                   <td className="border border-slate-300 px-2 py-1.5 text-slate-900 font-medium">
-                    {sambung.uji.matriksAfter?.konteksNyata || DEFAULT_MATRIKS_AFTER.konteksNyata}
+                    {sambung.nyatakan.beforeAfter?.[2]?.setelahSambung || sambung.uji.matriksAfter?.konteksNyata || DEFAULT_MATRIKS_AFTER.konteksNyata}
                   </td>
                   <td className="border border-slate-300 px-2 py-1.5 text-amber-900 text-[10px]">
-                    Dari belum konsisten menjadi mulai dirancang terhubung situasi riil
+                    {sambung.nyatakan.beforeAfter?.[2]?.buktiKode || 'BKT-03 (Laporan Studi Kasus Murid)'}
                   </td>
                 </tr>
                 {/* Row 4 */}
                 <tr>
                   <td className="border border-slate-300 px-2 py-1.5 text-center font-semibold">4</td>
                   <td className="border border-slate-300 px-2 py-1.5 font-bold text-slate-800 bg-slate-50/40">
-                    Refleksi menjadi bagian rutin dalam proses pembelajaran
-                    <span className="block text-[9px] text-blue-700 font-normal">Aspek: Refleksi Murid</span>
+                    Refleksi Murid
+                    <span className="block text-[9px] text-blue-700 font-normal">Rutinitas Metakognisi &amp; Evaluasi Diri</span>
                   </td>
                   <td className="border border-slate-300 px-2 py-1.5 text-slate-600">
-                    {sambung.selidiki.matriksBefore?.refleksiMurid || DEFAULT_MATRIKS_BEFORE.refleksiMurid}
+                    {sambung.nyatakan.beforeAfter?.[3]?.sebelumSambung || sambung.selidiki.matriksBefore?.refleksiMurid || DEFAULT_MATRIKS_BEFORE.refleksiMurid}
                   </td>
                   <td className="border border-slate-300 px-2 py-1.5 text-slate-900 font-medium">
-                    {sambung.uji.matriksAfter?.refleksiMurid || DEFAULT_MATRIKS_AFTER.refleksiMurid}
+                    {sambung.nyatakan.beforeAfter?.[3]?.setelahSambung || sambung.uji.matriksAfter?.refleksiMurid || DEFAULT_MATRIKS_AFTER.refleksiMurid}
                   </td>
                   <td className="border border-slate-300 px-2 py-1.5 text-blue-900 text-[10px]">
-                    Dari belum rutin menjadi bagian integral pembelajaran harian
+                    {sambung.nyatakan.beforeAfter?.[3]?.buktiKode || 'BKT-04 (Lembar Refleksi & Exit Ticket)'}
                   </td>
                 </tr>
               </tbody>
             </table>
-
-            <h4 className="font-bold text-xs text-slate-800 mb-2">2. Data Dampak Pembelajaran Murid (Tabel Rekapitulasi)</h4>
-
-            <table className="w-full border-collapse border border-slate-300 text-[11px]">
-              <thead>
-                <tr className="bg-slate-100 text-slate-800 font-bold">
-                  <th className="border border-slate-300 px-2 py-1.5 text-left w-48">Indikator</th>
-                  <th className="border border-slate-300 px-2 py-1.5 w-20 text-center">Awal</th>
-                  <th className="border border-slate-300 px-2 py-1.5 w-24 text-center">Setelah SAMBUNG</th>
-                  <th className="border border-slate-300 px-2 py-1.5 text-left">Makna &amp; Informasi Deskriptif Penilaian Guru</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sambung.nyatakan.dataDampak.map((row, idx) => (
-                  <tr key={idx}>
-                    <td className="border border-slate-300 px-2 py-1.5 font-medium text-slate-800 align-top">
-                      <div className="font-bold text-slate-900">{row.indikator}</div>
-                      {row.buktiKegiatan && (
-                        <div className="text-[10px] text-slate-500 mt-1 italic">
-                          Bukti: {row.buktiKegiatan}
-                        </div>
-                      )}
-                    </td>
-                    <td className="border border-slate-300 px-2 py-1.5 text-center text-slate-600 font-semibold align-top">{row.awal}</td>
-                    <td className="border border-slate-300 px-2 py-1.5 text-center font-bold text-emerald-800 bg-emerald-50/30 align-top">
-                      <div>{row.akhir}</div>
-                      {row.selisih && (
-                        <span className="text-[9px] text-emerald-700 font-bold">{row.selisih}</span>
-                      )}
-                    </td>
-                    <td className="border border-slate-300 px-2 py-1.5 text-slate-700 align-top space-y-1">
-                      <div className="font-bold text-slate-900">{row.makna || '-'}</div>
-                      {row.deskripsiPenilaian && (
-                        <div className="text-[10px] text-slate-700 bg-slate-50 p-1.5 rounded border border-slate-200 mt-1 leading-relaxed">
-                          <strong className="text-indigo-900">Deskripsi Penilaian Pengawas: </strong>
-                          {row.deskripsiPenilaian}
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <p className="text-[10px] text-slate-500 italic mt-1">
-              Gunakan data nyata. Jika data tertentu tidak tersedia, tulis sebagai keterbatasan, jangan diisi angka perkiraan.
-            </p>
           </div>
 
           {/* G — GERAKKAN: RENCANA TINDAK LANJUT DARI HASIL NYATAKAN & PENGIMBASAN */}

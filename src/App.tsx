@@ -55,7 +55,13 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => loadLocalUser());
   const [schools, setSchools] = useState<School[]>(() => loadLocalSchools() || []);
   const [supervisions, setSupervisions] = useState<Supervision[]>(() => {
-    return filterValidSupervisions(loadLocalSupervisions() || []);
+    const loaded = loadLocalSupervisions();
+    const map = new Map<string, Supervision>();
+    SAMPLE_SUPERVISIONS.forEach(s => map.set(s.id, s));
+    if (loaded && loaded.length > 0) {
+      loaded.forEach(s => map.set(s.id, s));
+    }
+    return filterValidSupervisions(Array.from(map.values()));
   });
   // Pastikan ketika memasukan alamat aplikasi langsung ke halaman beranda (landing) walaupun sudah pernah membuka sebelumnya
   const [activeTab, setActiveTab] = useState<string>('landing');
@@ -280,6 +286,7 @@ export default function App() {
                 onOpenSambung={handleOpenSambung}
                 onOpenStorageModal={() => setIsLocalStorageModalOpen(true)}
                 onNavigateKesimpulan={() => setActiveTab('kesimpulan-sambung')}
+                onUpdateSupervision={handleUpdateSupervision}
               />
             )}
 
@@ -297,9 +304,13 @@ export default function App() {
               <KesimpulanSemuaGuruDashboard
                 supervisions={visibleSupervisions}
                 currentUser={currentUser}
+                schools={schools}
                 onOpenSambungTeacher={(supervisionId) => {
                   handleOpenSambung(supervisionId);
                 }}
+                onOpenForm={handleOpenForm}
+                onOpenPrint={handleOpenPrint}
+                onUpdateSupervision={handleUpdateSupervision}
               />
             )}
 

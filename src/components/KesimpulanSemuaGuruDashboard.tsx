@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Supervision, UserProfile, SambungKesimpulanAlurSambung, SambungRtlNyatakanItem, SambungPengimbasanItem } from '../types';
+import { Supervision, UserProfile, School, SambungKesimpulanAlurSambung, SambungRtlNyatakanItem, SambungPengimbasanItem } from '../types';
 import { 
   DEFAULT_DATA_DAMPAK, 
   DEFAULT_MATRIKS_BEFORE, 
@@ -15,7 +15,7 @@ import {
   User, 
   Compass, 
   Layers, 
-  School, 
+  School as SchoolIcon, 
   Search, 
   ExternalLink, 
   CheckCircle2, 
@@ -36,13 +36,19 @@ import {
   ShieldCheck,
   Calendar,
   CheckCircle,
-  HelpCircle
+  HelpCircle,
+  Pencil
 } from 'lucide-react';
+import { EditGuruSupervisiModal } from './forms/EditGuruSupervisiModal';
 
 interface KesimpulanSemuaGuruDashboardProps {
   supervisions: Supervision[];
   currentUser: UserProfile;
+  schools?: School[];
   onOpenSambungTeacher?: (supervisionId: string) => void;
+  onOpenForm?: (supervision: Supervision, stage: 'perangkat' | 'pra' | 'observasi' | 'pasca' | 'evaluasi') => void;
+  onOpenPrint?: (supervision: Supervision) => void;
+  onUpdateSupervision?: (updated: Supervision) => void;
 }
 
 const getPredicateTag = (s: Supervision): string | null => {
@@ -125,7 +131,11 @@ const getTeacherPengimbasan = (s: Supervision): SambungPengimbasanItem[] => {
 export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboardProps> = ({
   supervisions,
   currentUser,
+  schools = [],
   onOpenSambungTeacher,
+  onOpenForm,
+  onOpenPrint,
+  onUpdateSupervision,
 }) => {
   const isKepsek = currentUser.role === 'kepsek';
   const isGuru = currentUser.role === 'guru';
@@ -140,9 +150,10 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
   const [chartViewMode, setChartViewMode] = useState<'bars' | 'trajectory'>('bars');
   const [matrixViewMode, setMatrixViewMode] = useState<'nyatakan' | 'selidiki' | 'uji'>('nyatakan');
 
-  // Detail Modal & Print States
+  // Detail Modal, Edit Teacher & Print States
   const [detailModalTeacher, setDetailModalTeacher] = useState<Supervision | null>(null);
   const [printSupervision, setPrintSupervision] = useState<Supervision | null>(null);
+  const [editingTeacher, setEditingTeacher] = useState<Supervision | null>(null);
 
   // Extract unique schools dynamically from supervisions
   const schoolOptions = useMemo(() => {
@@ -386,7 +397,7 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
                 {dynamicStats.totalTeachers} Guru
               </span>
               <span className="text-[10px] text-emerald-300 font-medium flex items-center gap-1 mt-0.5">
-                <School className="w-3 h-3" />
+                <SchoolIcon className="w-3 h-3" />
                 <span>{dynamicStats.uniqueSchoolsCount} Satuan Pendidikan</span>
               </span>
             </div>
@@ -737,7 +748,7 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
                               {sup.subject}
                             </span>
                             <span className="text-[10px] text-slate-600 flex items-center gap-1 font-medium">
-                              <School className="w-3 h-3 text-slate-400 shrink-0" />
+                              <SchoolIcon className="w-3 h-3 text-slate-400 shrink-0" />
                               <span>{sup.schoolName}</span>
                             </span>
                             <div className="flex flex-wrap gap-1 pt-0.5 text-[9px]">
@@ -751,6 +762,17 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
                                   Obs: {oScore}
                                 </span>
                               )}
+                            </div>
+                            <div className="pt-1">
+                              <button
+                                type="button"
+                                onClick={() => setEditingTeacher(sup)}
+                                className="px-2 py-0.5 rounded-md bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white border border-indigo-200 text-[10px] font-bold transition-colors flex items-center gap-1 shadow-2xs"
+                                title={`Edit data guru ${sup.teacherName}`}
+                              >
+                                <Pencil className="w-2.5 h-2.5" />
+                                <span>Edit Guru</span>
+                              </button>
                             </div>
                           </td>
 
@@ -1163,11 +1185,20 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
                         </td>
 
                         {/* Aksi Button */}
-                        <td className="py-4 px-3 text-center align-middle">
+                        <td className="py-4 px-3 text-center align-middle space-y-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setEditingTeacher(sup)}
+                            className="px-2.5 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white border border-indigo-200 font-bold text-xs flex items-center justify-center gap-1 shadow-2xs transition-colors w-full cursor-pointer"
+                            title={`Edit data guru & hasil supervisi ${sup.teacherName}`}
+                          >
+                            <Pencil className="w-3 h-3" />
+                            <span>Edit Guru</span>
+                          </button>
                           <button
                             type="button"
                             onClick={() => setDetailModalTeacher(sup)}
-                            className="px-2.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-1 shadow-2xs transition-colors w-full cursor-pointer"
+                            className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs flex items-center justify-center gap-1 shadow-2xs transition-colors w-full cursor-pointer"
                           >
                             <span>Detail Alur</span>
                             <Eye className="w-3 h-3" />
@@ -1412,8 +1443,16 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
+                          onClick={() => setEditingTeacher(sup)}
+                          className="px-2.5 py-1 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg border border-indigo-200 flex items-center gap-1"
+                        >
+                          <Pencil className="w-3 h-3 text-indigo-600" />
+                          <span>Edit Guru</span>
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => setDetailModalTeacher(sup)}
-                          className="px-2.5 py-1 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg border border-indigo-200"
+                          className="px-2.5 py-1 text-xs font-bold text-slate-700 bg-white hover:bg-slate-100 rounded-lg border border-slate-300"
                         >
                           Lihat Alur SAMBUNG
                         </button>
@@ -1694,6 +1733,28 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
           isOpen={!!printSupervision}
           onClose={() => setPrintSupervision(null)}
           supervision={printSupervision}
+        />
+      )}
+
+      {/* ========================================================================= */}
+      {/* EDIT GURU SUPERVISI MODAL                                                  */}
+      {/* ========================================================================= */}
+      {editingTeacher && (
+        <EditGuruSupervisiModal
+          isOpen={true}
+          onClose={() => setEditingTeacher(null)}
+          supervision={editingTeacher}
+          schools={schools}
+          currentUser={currentUser}
+          onSaved={(updated) => {
+            if (onUpdateSupervision) {
+              onUpdateSupervision(updated);
+            }
+            setEditingTeacher(null);
+          }}
+          onOpenStageForm={onOpenForm}
+          onOpenSambung={onOpenSambungTeacher}
+          onOpenPrint={onOpenPrint}
         />
       )}
     </div>

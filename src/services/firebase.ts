@@ -238,6 +238,216 @@ export const DEFAULT_USERS: UserProfile[] = [
     phone: '081377665544',
     approvalStatus: 'approved',
     createdAt: '2025-01-01T00:00:00.000Z'
+  },
+  {
+    uid: 'teacher-hilmia',
+    username: 'hilmia',
+    password: 'pakkus',
+    email: 'hilmia@siklus-sambung.sch.id',
+    displayName: 'Hilmia Fitriyani, S.Pd.',
+    role: 'guru',
+    schoolId: 'sch-sman4',
+    schoolName: 'SMAN 4 Bogor',
+    subject: 'Ekonomi',
+    nip: '19851120 200902 2 008',
+    phone: '081388776655',
+    approvalStatus: 'approved',
+    createdAt: '2025-01-01T00:00:00.000Z'
+  },
+  {
+    uid: 'teacher-ivany',
+    username: 'ivany',
+    password: 'pakkus',
+    email: 'ivany@siklus-sambung.sch.id',
+    displayName: 'Ivany Ratna Ekandini, S.Pd.',
+    role: 'guru',
+    schoolId: 'sch-rimba-madya',
+    schoolName: 'SMAS Rimba Madya',
+    subject: 'Bahasa Indonesia',
+    nip: '19890412 201402 2 003',
+    phone: '081234567890',
+    approvalStatus: 'approved',
+    createdAt: '2025-01-01T00:00:00.000Z'
+  },
+  {
+    uid: 'teacher-alline',
+    username: 'alline',
+    password: 'pakkus',
+    email: 'alline@siklus-sambung.sch.id',
+    displayName: 'Alline Novianti, S.Pd.',
+    role: 'guru',
+    schoolId: 'sch-sman2',
+    schoolName: 'SMAN 2 Bogor',
+    subject: 'Kimia',
+    nip: '19860715 201001 2 011',
+    phone: '081298765432',
+    approvalStatus: 'approved',
+    createdAt: '2025-01-01T00:00:00.000Z'
+  },
+  {
+    uid: 'teacher-mega',
+    username: 'mega',
+    password: 'pakkus',
+    email: 'mega@siklus-sambung.sch.id',
+    displayName: 'Mega Nur Alfira, S.Pd.',
+    role: 'guru',
+    schoolId: 'sch-sman2',
+    schoolName: 'SMAN 2 Bogor',
+    subject: 'Sejarah',
+    nip: '19910318 201503 2 006',
+    phone: '081356789012',
+    approvalStatus: 'approved',
+    createdAt: '2025-01-01T00:00:00.000Z'
+  },
+  {
+    uid: 'teacher-iqbal',
+    username: 'iqbal',
+    password: 'pakkus',
+    email: 'iqbal@siklus-sambung.sch.id',
+    displayName: 'Iqbal Aziz Andrianto',
+    role: 'guru',
+    schoolId: 'sch-pgri-1',
+    schoolName: 'SMAS PGRI 1',
+    subject: 'Sejarah',
+    nip: '19920824 201901 1 005',
+    phone: '081323456789',
+    approvalStatus: 'approved',
+    createdAt: '2025-01-01T00:00:00.000Z'
+  },
+  {
+    uid: 'teacher-sani',
+    username: 'sani',
+    password: 'pakkus',
+    email: 'sani@siklus-sambung.sch.id',
+    displayName: 'Sani Ramadhanti Noor, S.E.',
+    role: 'guru',
+    schoolId: 'sch-ummul-quro',
+    schoolName: 'SMAS IT Ummul Quro',
+    subject: 'Ekonomi',
+    nip: '19880914 201201 2 004',
+    phone: '081278901234',
+    approvalStatus: 'approved',
+    createdAt: '2025-01-01T00:00:00.000Z'
+  },
+  {
+    uid: 'teacher-kirana',
+    username: 'kirana',
+    password: 'pakkus',
+    email: 'kirana@siklus-sambung.sch.id',
+    displayName: 'Kirana Mahardhika, S.Pd, Gr.',
+    role: 'guru',
+    schoolId: 'sch-ummul-quro',
+    schoolName: 'SMAS IT Ummul Quro',
+    subject: 'Fisika',
+    nip: '19930217 201801 2 009',
+    phone: '081289012345',
+    approvalStatus: 'approved',
+    createdAt: '2025-01-01T00:00:00.000Z'
+  },
+  {
+    uid: 'teacher-atik',
+    username: 'atik',
+    password: 'pakkus',
+    email: 'atik@siklus-sambung.sch.id',
+    displayName: 'Atik Dwi Larasati, S.Pd.',
+    role: 'guru',
+    schoolId: 'sch-rimba-madya',
+    schoolName: 'SMAS Rimba Madya',
+    subject: 'Ekonomi',
+    nip: '19870622 201101 2 012',
+    phone: '081390123456',
+    approvalStatus: 'approved',
+    createdAt: '2025-01-01T00:00:00.000Z'
+  },
+  {
+    uid: 'teacher-sihana',
+    username: 'sihana',
+    password: 'pakkus',
+    email: 'sihana@siklus-sambung.sch.id',
+    displayName: 'Sihana, S.Pd.Gr.',
+    role: 'guru',
+    schoolId: 'sch-yphb',
+    schoolName: 'SMAS YPHB',
+    subject: 'Penjasorkes',
+    nip: '19830509 200604 1 008',
+    phone: '081212345678',
+    approvalStatus: 'approved',
+    createdAt: '2025-01-01T00:00:00.000Z'
+  },
+  {
+    uid: 'teacher-salma',
+    username: 'salma',
+    password: 'pakkus',
+    email: 'salma@siklus-sambung.sch.id',
+    displayName: 'Siti Salma, S.Pd',
+    role: 'guru',
+    schoolId: 'sch-yphb',
+    schoolName: 'SMAS YPHB',
+    subject: 'Fisika',
+    nip: '19901205 201403 2 007',
+    phone: '081223456789',
+    approvalStatus: 'approved',
+    createdAt: '2025-01-01T00:00:00.000Z'
+  },
+  {
+    uid: 'teacher-widya',
+    username: 'widya',
+    password: 'pakkus',
+    email: 'widya@siklus-sambung.sch.id',
+    displayName: 'Widya Anjani, S.Pd.',
+    role: 'guru',
+    schoolId: 'sch-bhakti-insani',
+    schoolName: 'SMAS Bhakti Insani',
+    subject: 'Ekonomi',
+    nip: '19940830 202012 2 010',
+    phone: '081334567890',
+    approvalStatus: 'approved',
+    createdAt: '2025-01-01T00:00:00.000Z'
+  },
+  {
+    uid: 'teacher-yazid',
+    username: 'yazid',
+    password: 'pakkus',
+    email: 'yazid@siklus-sambung.sch.id',
+    displayName: 'Yazid Ali Hamdi',
+    role: 'guru',
+    schoolId: 'sch-yasih',
+    schoolName: 'SMAS Yasih',
+    subject: 'PKn',
+    nip: '19891111 201502 1 003',
+    phone: '081345678901',
+    approvalStatus: 'approved',
+    createdAt: '2025-01-01T00:00:00.000Z'
+  },
+  {
+    uid: 'teacher-lutfiana',
+    username: 'lutfiana',
+    password: 'pakkus',
+    email: 'lutfiana@siklus-sambung.sch.id',
+    displayName: 'Lutfiana Faridh Fadillah',
+    role: 'guru',
+    schoolId: 'sch-muhammadiyah',
+    schoolName: 'SMAS Muhammadiyah',
+    subject: 'Kimia',
+    nip: '19950125 202104 2 006',
+    phone: '081256789012',
+    approvalStatus: 'approved',
+    createdAt: '2025-01-01T00:00:00.000Z'
+  },
+  {
+    uid: 'teacher-saulina',
+    username: 'saulina',
+    password: 'pakkus',
+    email: 'saulina@siklus-sambung.sch.id',
+    displayName: 'Saulina Siregar, S.Sos',
+    role: 'guru',
+    schoolId: 'sch-ananda',
+    schoolName: 'SMAS Ananda',
+    subject: 'Ekonomi',
+    nip: '19860314 201003 2 005',
+    phone: '081267890123',
+    approvalStatus: 'approved',
+    createdAt: '2025-01-01T00:00:00.000Z'
   }
 ];
 
@@ -520,7 +730,11 @@ const LOCAL_USERS_KEY = 'siklus_sambung_custom_users';
 function getStoredUsers(): UserProfile[] {
   try {
     const val = localStorage.getItem(LOCAL_USERS_KEY);
-    return val ? JSON.parse(val) : DEFAULT_USERS;
+    const parsed: UserProfile[] = val ? JSON.parse(val) : [];
+    const map = new Map<string, UserProfile>();
+    DEFAULT_USERS.forEach(u => map.set(u.uid, u));
+    parsed.forEach(u => map.set(u.uid, u));
+    return Array.from(map.values());
   } catch {
     return DEFAULT_USERS;
   }
@@ -827,6 +1041,12 @@ export async function fetchSupervisions(userProfile?: UserProfile | null): Promi
     } else {
       results = await ensureInitialSupervisions();
     }
+
+    // Merge with SAMPLE_SUPERVISIONS to guarantee all 15 supervised teachers are always available
+    const map = new Map<string, Supervision>();
+    SAMPLE_SUPERVISIONS.forEach(s => map.set(s.id, s));
+    results.forEach(s => map.set(s.id, s));
+    results = Array.from(map.values());
 
     // Role-based filtering
     if (userProfile?.role === 'guru') {

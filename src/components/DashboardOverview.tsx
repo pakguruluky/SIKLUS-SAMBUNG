@@ -20,8 +20,19 @@ import {
   PieChart,
   PlusCircle,
   BookOpen,
-  HardDrive
+  HardDrive,
+  Pencil,
+  Search,
+  LayoutGrid,
+  Table as TableIcon,
+  ExternalLink,
+  Printer,
+  GraduationCap,
+  MoreVertical,
+  X,
+  FileText
 } from 'lucide-react';
+import { EditGuruSupervisiModal } from './forms/EditGuruSupervisiModal';
 import { KesimpulanSemuaGuruDashboard } from './KesimpulanSemuaGuruDashboard';
 import { 
   Chart as ChartJS, 
@@ -65,6 +76,7 @@ interface DashboardOverviewProps {
   onOpenSambung?: (supervisionId?: string) => void;
   onOpenStorageModal?: () => void;
   onNavigateKesimpulan?: () => void;
+  onUpdateSupervision?: (updated: Supervision) => void;
   users?: UserProfile[];
 }
 
@@ -76,10 +88,12 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   onNavigateSchools,
   onNewSupervision,
   onOpenForm,
+  onOpenPrint,
   onApproveTeacher,
   onOpenSambung,
   onOpenStorageModal,
   onNavigateKesimpulan,
+  onUpdateSupervision,
   users = [],
 }) => {
   const getPredicateTag = (s: Supervision): string | null => {
@@ -102,11 +116,18 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   const isKepsek = currentUser.role === 'kepsek';
   const isGuru = currentUser.role === 'guru';
 
-  // Active view tab: Kesimpulan Semua Guru (default) or Analitik Mutu Supervisi
-  const [dashboardTab, setDashboardTab] = useState<'kesimpulan' | 'analitik'>('kesimpulan');
+  // Active view tab: Data Seluruh Guru Supervisi (default), Kesimpulan Semua Guru, or Analitik Mutu Supervisi
+  const [dashboardTab, setDashboardTab] = useState<'guru_supervisi' | 'kesimpulan' | 'analitik'>('guru_supervisi');
 
-  // Selected school filter for charts (Admin can filter specific school or All)
+  // Filter & Search states for Data Seluruh Guru
   const [selectedSchoolFilter, setSelectedSchoolFilter] = useState<string>('all');
+  const [teacherSearch, setTeacherSearch] = useState('');
+  const [filterSchool, setFilterSchool] = useState<string>('all');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterPredicate, setFilterPredicate] = useState<string>('all');
+  const [teacherViewMode, setTeacherViewMode] = useState<'table' | 'card'>('table');
+  const [editingTeacher, setEditingTeacher] = useState<Supervision | null>(null);
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
 
   // Teacher approval state tracker
   const [approvedTeachersLocal, setApprovedTeachersLocal] = useState<Record<string, boolean>>({
@@ -548,6 +569,54 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
     });
   };
 
+  // Unique schools for teacher filters
+  const uniqueSchoolsList = useMemo(() => {
+    const map = new Map<string, string>();
+    schools.forEach(s => map.set(s.id, s.name));
+    mySupervisions.forEach(s => {
+      if (s.schoolId && s.schoolName) {
+        map.set(s.schoolId, s.schoolName);
+      }
+    });
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  }, [schools, mySupervisions]);
+
+  // Filtered teachers list for Data Seluruh Guru view
+  const filteredTeacherList = useMemo(() => {
+    return mySupervisions.filter(s => {
+      // School filter
+      if (filterSchool !== 'all') {
+        const schMatch = s.schoolId === filterSchool || s.schoolName.toLowerCase().trim() === filterSchool.toLowerCase().trim();
+        if (!schMatch) return false;
+      }
+      // Status filter
+      if (filterStatus !== 'all' && s.status !== filterStatus) {
+        return false;
+      }
+      // Predicate filter
+      if (filterPredicate !== 'all') {
+        const tag = getPredicateTag(s) || '';
+        if (filterPredicate === 'SB' && !tag.includes('SB')) return false;
+        if (filterPredicate === 'B' && !tag.includes('B')) return false;
+        if (filterPredicate === 'C' && !tag.includes('C')) return false;
+      }
+      // Search query
+      if (teacherSearch.trim()) {
+        const q = teacherSearch.toLowerCase().trim();
+        const matchName = s.teacherName.toLowerCase().includes(q);
+        const matchSubject = s.subject.toLowerCase().includes(q);
+        const matchSchool = s.schoolName.toLowerCase().includes(q);
+        const matchTopic = (s.lessonTitle || '').toLowerCase().includes(q);
+        const matchNip = (s.teacherNip || '').toLowerCase().includes(q);
+        const matchGrade = (s.classGrade || '').toLowerCase().includes(q);
+        if (!matchName && !matchSubject && !matchSchool && !matchTopic && !matchNip && !matchGrade) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [mySupervisions, filterSchool, filterStatus, filterPredicate, teacherSearch]);
+
   return (
     <div className="space-y-6">
       {/* Welcome Banner */}
@@ -616,12 +685,30 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
         </div>
       </div>
 
-      {/* DASHBOARD VIEW SWITCHER (Kesimpulan Semua Guru vs Analitik Mutu) */}
+      {/* DASHBOARD VIEW SWITCHER (Data Seluruh Guru vs Kesimpulan Siklus vs Analitik Mutu) */}
       <div className="bg-white rounded-2xl p-2 border border-slate-200 shadow-xs flex flex-wrap items-center gap-2">
         <button
           type="button"
+          onClick={() => setDashboardTab('guru_supervisi')}
+          className={`flex-1 min-w-[220px] py-3 px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all ${
+            dashboardTab === 'guru_supervisi'
+              ? 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-md'
+              : 'bg-slate-50 hover:bg-slate-100 text-slate-700'
+          }`}
+        >
+          <GraduationCap className={`w-4 h-4 ${dashboardTab === 'guru_supervisi' ? 'text-amber-300' : 'text-indigo-600'}`} />
+          <span>Data Seluruh Guru Supervisi</span>
+          <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold ${
+            dashboardTab === 'guru_supervisi' ? 'bg-white/20 text-white' : 'bg-indigo-100 text-indigo-800'
+          }`}>
+            {mySupervisions.length} Guru Binaan
+          </span>
+        </button>
+
+        <button
+          type="button"
           onClick={() => setDashboardTab('kesimpulan')}
-          className={`flex-1 min-w-[260px] py-3 px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2.5 transition-all ${
+          className={`flex-1 min-w-[220px] py-3 px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all ${
             dashboardTab === 'kesimpulan'
               ? 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-md'
               : 'bg-slate-50 hover:bg-slate-100 text-slate-700'
@@ -639,14 +726,14 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
         <button
           type="button"
           onClick={() => setDashboardTab('analitik')}
-          className={`flex-1 min-w-[260px] py-3 px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2.5 transition-all ${
+          className={`flex-1 min-w-[220px] py-3 px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all ${
             dashboardTab === 'analitik'
               ? 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-md'
               : 'bg-slate-50 hover:bg-slate-100 text-slate-700'
           }`}
         >
           <BarChart3 className="w-4 h-4" />
-          <span>Ringkasan Supervisi &amp; Analitik Mutu Sekolah</span>
+          <span>Analitik Mutu Supervisi</span>
           <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold ${
             dashboardTab === 'analitik' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
           }`}>
@@ -655,16 +742,563 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
         </button>
       </div>
 
-      {/* VIEW 1: DASHBOARD KESIMPULAN DARI SEMUA GURU */}
+      {/* VIEW 1: DATA SELURUH GURU YANG TELAH DISUPERVISI & MENU EDIT */}
+      {dashboardTab === 'guru_supervisi' && (
+        <div className="space-y-6">
+          {/* Header & Controls Card */}
+          <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-xs space-y-5">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 uppercase tracking-wider flex items-center gap-1.5">
+                    <GraduationCap className="w-3.5 h-3.5" />
+                    <span>Rekapitulasi Supervisi Akademik Guru</span>
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800">
+                    {filteredTeacherList.length} dari {mySupervisions.length} Guru
+                  </span>
+                </div>
+                <h2 className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight">
+                  Data Seluruh Guru yang Telah Disupervisi
+                </h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Rekapitulasi lengkap guru binaan, capaian telaah modul ajar, observasi kelas, dan menu edit masing-masing guru.
+                </p>
+              </div>
+
+              {/* View mode toggle & Mulai supervisi */}
+              <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+                <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => setTeacherViewMode('table')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      teacherViewMode === 'table'
+                        ? 'bg-white text-indigo-700 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <TableIcon className="w-3.5 h-3.5" />
+                    <span>Tabel</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTeacherViewMode('card')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      teacherViewMode === 'card'
+                        ? 'bg-white text-indigo-700 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <LayoutGrid className="w-3.5 h-3.5" />
+                    <span>Kartu</span>
+                  </button>
+                </div>
+
+                {!isGuru && (
+                  <button
+                    type="button"
+                    onClick={onNewSupervision}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5"
+                  >
+                    <PlusCircle className="w-3.5 h-3.5" />
+                    <span>+ Supervisi Baru</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Quick Metrics Bar */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-slate-100">
+              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Total Terdata</p>
+                <p className="text-xl font-black text-slate-900 mt-0.5">{mySupervisions.length} Guru</p>
+              </div>
+              <div className="p-3 rounded-2xl bg-emerald-50/60 border border-emerald-100">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">Selesai Penuh</p>
+                <p className="text-xl font-black text-emerald-800 mt-0.5">{completedSupervisions} Guru</p>
+              </div>
+              <div className="p-3 rounded-2xl bg-amber-50/60 border border-amber-100">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700">Dalam Observasi</p>
+                <p className="text-xl font-black text-amber-800 mt-0.5">{inProgressSupervisions} Guru</p>
+              </div>
+              <div className="p-3 rounded-2xl bg-indigo-50/60 border border-indigo-100">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-700">Rata-rata Skor</p>
+                <p className="text-xl font-black text-indigo-800 mt-0.5">{avgObsScore}% <span className="text-[11px] font-medium text-slate-500">/ {avgTelaahScore}</span></p>
+              </div>
+            </div>
+
+            {/* Filters Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-3 border-t border-slate-100">
+              {/* Search */}
+              <div className="relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Cari guru, NIP, mapel, materi..."
+                  value={teacherSearch}
+                  onChange={(e) => setTeacherSearch(e.target.value)}
+                  className="w-full pl-9 pr-8 py-2 text-xs rounded-xl border border-slate-200 focus:outline-indigo-600 focus:ring-1 focus:ring-indigo-600 bg-slate-50/50"
+                />
+                {teacherSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setTeacherSearch('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* School Filter */}
+              <div>
+                <select
+                  value={filterSchool}
+                  onChange={(e) => setFilterSchool(e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-indigo-600 bg-white font-medium text-slate-700"
+                >
+                  <option value="all">Semua Satuan Pendidikan ({schools.length} SMA)</option>
+                  {uniqueSchoolsList.map(s => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Status Filter */}
+              <div>
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-indigo-600 bg-white font-medium text-slate-700"
+                >
+                  <option value="all">Semua Status Supervisi</option>
+                  <option value="completed">Selesai Penuh (Completed)</option>
+                  <option value="in_progress">Dalam Proses Observasi</option>
+                  <option value="draft">Draf / Pengajuan Berkas</option>
+                </select>
+              </div>
+
+              {/* Predicate Filter */}
+              <div>
+                <select
+                  value={filterPredicate}
+                  onChange={(e) => setFilterPredicate(e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-indigo-600 bg-white font-medium text-slate-700"
+                >
+                  <option value="all">Semua Predikat Capaian</option>
+                  <option value="SB">Sangat Baik / Amat Baik (SB / A)</option>
+                  <option value="B">Baik (B)</option>
+                  <option value="C">Cukup (C)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* TABLE VIEW */}
+          {teacherViewMode === 'table' && (
+            <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs min-w-[920px]">
+                  <thead className="bg-slate-50 text-slate-700 font-bold uppercase text-[10px] tracking-wider border-b border-slate-200">
+                    <tr>
+                      <th className="py-3.5 px-3 text-center w-10">No</th>
+                      <th className="py-3.5 px-4">Nama Guru &amp; NIP</th>
+                      <th className="py-3.5 px-4">Satuan Pendidikan</th>
+                      <th className="py-3.5 px-4">Mapel &amp; Fase/Kelas</th>
+                      <th className="py-3.5 px-4">Topik Pembelajaran</th>
+                      <th className="py-3.5 px-4 text-center">Telaah RPP</th>
+                      <th className="py-3.5 px-4 text-center">Observasi</th>
+                      <th className="py-3.5 px-4 text-center">Status</th>
+                      <th className="py-3.5 px-4 text-center w-48">Menu Edit Guru</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredTeacherList.length === 0 ? (
+                      <tr>
+                        <td colSpan={9} className="py-12 text-center text-slate-400">
+                          Tidak ditemukan data guru yang sesuai kriteria pencarian / filter.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredTeacherList.map((sup, idx) => {
+                        const tag = getPredicateTag(sup);
+                        const modulUrl = sup.perangkatAjar?.driveLinks?.modulAjarUrl;
+                        const isMenuOpen = activeMenuId === sup.id;
+
+                        return (
+                          <tr key={sup.id} className="hover:bg-slate-50/70 transition-colors">
+                            <td className="py-3.5 px-3 text-center font-bold text-slate-400">
+                              {idx + 1}
+                            </td>
+
+                            <td className="py-3.5 px-4">
+                              <div className="flex items-start gap-2.5">
+                                <div className="w-8 h-8 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-700 font-black text-xs shrink-0 mt-0.5">
+                                  {sup.teacherName.charAt(0)}
+                                </div>
+                                <div>
+                                  <div className="flex items-center gap-1.5">
+                                    <p className="font-bold text-slate-900">{sup.teacherName}</p>
+                                    {tag && (
+                                      <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                        {tag}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-[11px] text-slate-400 font-mono mt-0.5">
+                                    NIP: {sup.teacherNip || '-'}
+                                  </p>
+                                </div>
+                              </div>
+                            </td>
+
+                            <td className="py-3.5 px-4">
+                              <span className="font-semibold text-slate-800 block">{sup.schoolName}</span>
+                              <span className="text-[10px] text-slate-400">Kota Bogor</span>
+                            </td>
+
+                            <td className="py-3.5 px-4">
+                              <span className="font-bold text-indigo-700 block">{sup.subject}</span>
+                              <span className="text-[11px] text-slate-500">{sup.classGrade}</span>
+                            </td>
+
+                            <td className="py-3.5 px-4 max-w-[200px]">
+                              <p className="text-slate-700 text-[11px] line-clamp-2 leading-relaxed" title={sup.lessonTitle}>
+                                {sup.lessonTitle || '-'}
+                              </p>
+                            </td>
+
+                            <td className="py-3.5 px-4 text-center">
+                              <div className="inline-flex flex-col items-center">
+                                <span className="font-black text-indigo-600 text-xs">
+                                  {sup.perangkatAjar?.telaahSummary?.finalScore
+                                    ? `${sup.perangkatAjar.telaahSummary.finalScore.toFixed(1)}`
+                                    : '-'}
+                                </span>
+                                {sup.perangkatAjar?.telaahSummary?.predicate && (
+                                  <span className="text-[9px] font-bold text-slate-500">
+                                    {sup.perangkatAjar.telaahSummary.predicate}
+                                  </span>
+                                )}
+                                {modulUrl && (
+                                  <a
+                                    href={modulUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-[10px] text-indigo-600 hover:text-indigo-800 flex items-center gap-0.5 mt-0.5 font-medium"
+                                  >
+                                    <ExternalLink className="w-2.5 h-2.5" />
+                                    <span>Modul</span>
+                                  </a>
+                                )}
+                              </div>
+                            </td>
+
+                            <td className="py-3.5 px-4 text-center">
+                              <div className="inline-flex flex-col items-center">
+                                <span className="font-black text-emerald-600 text-xs">
+                                  {sup.observasiKelas?.score ? `${sup.observasiKelas.score}%` : '-'}
+                                </span>
+                                {sup.observasiKelas?.predicate && (
+                                  <span className="text-[9px] font-bold text-slate-500">
+                                    {sup.observasiKelas.predicate}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+
+                            <td className="py-3.5 px-4 text-center">
+                              <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                                sup.status === 'completed'
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : sup.status === 'in_progress'
+                                  ? 'bg-amber-100 text-amber-800'
+                                  : 'bg-indigo-100 text-indigo-800'
+                              }`}>
+                                {sup.status === 'completed'
+                                  ? 'Selesai'
+                                  : sup.status === 'in_progress'
+                                  ? 'Observasi'
+                                  : 'Draf'}
+                              </span>
+                            </td>
+
+                            <td className="py-3.5 px-4 text-center">
+                              <div className="relative inline-flex items-center gap-1.5">
+                                {/* Main Edit Button */}
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingTeacher(sup)}
+                                  className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition-all shadow-xs flex items-center gap-1.5 shrink-0"
+                                  title={`Edit profil, mapel, materi, dan skor supervisi ${sup.teacherName}`}
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                  <span>Edit Guru</span>
+                                </button>
+
+                                {/* Dropdown menu for more options */}
+                                <button
+                                  type="button"
+                                  onClick={() => setActiveMenuId(isMenuOpen ? null : sup.id)}
+                                  className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-colors"
+                                  title="Menu opsi dan tahapan supervisi lainnya"
+                                >
+                                  <MoreVertical className="w-3.5 h-3.5" />
+                                </button>
+
+                                {isMenuOpen && (
+                                  <>
+                                    <div
+                                      className="fixed inset-0 z-30"
+                                      onClick={() => setActiveMenuId(null)}
+                                    />
+                                    <div className="absolute right-0 top-full mt-1.5 z-40 bg-white rounded-2xl shadow-xl border border-slate-200 py-1.5 w-56 text-left animate-in fade-in zoom-in-95 duration-100">
+                                      <div className="px-3 py-1.5 border-b border-slate-100">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                          Pilihan Menu Edit Guru
+                                        </p>
+                                        <p className="text-xs font-bold text-slate-900 truncate">
+                                          {sup.teacherName}
+                                        </p>
+                                      </div>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setActiveMenuId(null);
+                                          setEditingTeacher(sup);
+                                        }}
+                                        className="w-full px-3 py-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-50 flex items-center gap-2"
+                                      >
+                                        <Pencil className="w-3.5 h-3.5 text-indigo-600" />
+                                        <span>Edit Profil &amp; Supervisi</span>
+                                      </button>
+
+                                      {onOpenForm && (
+                                        <>
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setActiveMenuId(null);
+                                              onOpenForm(sup, 'perangkat');
+                                            }}
+                                            className="w-full px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                                          >
+                                            <FileText className="w-3.5 h-3.5 text-slate-400" />
+                                            <span>Edit Telaah RPP (22 Aspek)</span>
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setActiveMenuId(null);
+                                              onOpenForm(sup, 'pra');
+                                            }}
+                                            className="w-full px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                                          >
+                                            <FileText className="w-3.5 h-3.5 text-slate-400" />
+                                            <span>Edit Pra-Observasi (8 Aspek)</span>
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setActiveMenuId(null);
+                                              onOpenForm(sup, 'observasi');
+                                            }}
+                                            className="w-full px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                                          >
+                                            <FileText className="w-3.5 h-3.5 text-slate-400" />
+                                            <span>Edit Observasi Kelas (24 Aspek)</span>
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setActiveMenuId(null);
+                                              onOpenForm(sup, 'pasca');
+                                            }}
+                                            className="w-full px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                                          >
+                                            <FileText className="w-3.5 h-3.5 text-slate-400" />
+                                            <span>Edit Pasca-Observasi &amp; RTL</span>
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setActiveMenuId(null);
+                                              onOpenForm(sup, 'evaluasi');
+                                            }}
+                                            className="w-full px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                                          >
+                                            <FileText className="w-3.5 h-3.5 text-slate-400" />
+                                            <span>Edit Evaluasi 1 Tahun</span>
+                                          </button>
+                                        </>
+                                      )}
+
+                                      <div className="border-t border-slate-100 my-1" />
+
+                                      {onOpenSambung && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setActiveMenuId(null);
+                                            onOpenSambung(sup.id);
+                                          }}
+                                          className="w-full px-3 py-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-50 flex items-center gap-2"
+                                        >
+                                          <BookOpen className="w-3.5 h-3.5 text-indigo-600" />
+                                          <span>Buka Siklus SAMBUNG</span>
+                                        </button>
+                                      )}
+
+                                      {onOpenPrint && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setActiveMenuId(null);
+                                            onOpenPrint(sup);
+                                          }}
+                                          className="w-full px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                                        >
+                                          <Printer className="w-3.5 h-3.5 text-slate-400" />
+                                          <span>Cetak Laporan Supervisi</span>
+                                        </button>
+                                      )}
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* CARD VIEW */}
+          {teacherViewMode === 'card' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredTeacherList.map((sup) => {
+                const tag = getPredicateTag(sup);
+                return (
+                  <div key={sup.id} className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs hover:shadow-md transition-all flex flex-col justify-between space-y-4">
+                    <div>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-700 font-black text-sm">
+                            {sup.teacherName.charAt(0)}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <h3 className="font-bold text-slate-900 text-sm leading-tight">{sup.teacherName}</h3>
+                              {tag && (
+                                <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                  {tag}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-slate-500">{sup.subject} &bull; {sup.classGrade}</p>
+                          </div>
+                        </div>
+
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
+                          sup.status === 'completed'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : sup.status === 'in_progress'
+                            ? 'bg-amber-100 text-amber-800'
+                            : 'bg-indigo-100 text-indigo-800'
+                        }`}>
+                          {sup.status === 'completed' ? 'Selesai' : sup.status === 'in_progress' ? 'Observasi' : 'Draf'}
+                        </span>
+                      </div>
+
+                      <div className="mt-3 pt-3 border-t border-slate-100 space-y-1.5 text-xs">
+                        <p className="text-slate-600 font-medium">
+                          🏫 <span className="font-semibold">{sup.schoolName}</span>
+                        </p>
+                        {sup.lessonTitle && (
+                          <p className="text-slate-500 text-[11px] line-clamp-2">
+                            📖 {sup.lessonTitle}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Score Boxes */}
+                      <div className="grid grid-cols-2 gap-2 mt-3 pt-2">
+                        <div className="p-2.5 rounded-xl bg-indigo-50/70 border border-indigo-100">
+                          <span className="text-[10px] font-bold text-indigo-800 block">Telaah RPP</span>
+                          <span className="text-base font-black text-indigo-600">
+                            {sup.perangkatAjar?.telaahSummary?.finalScore ? sup.perangkatAjar.telaahSummary.finalScore.toFixed(1) : '-'}
+                          </span>
+                        </div>
+                        <div className="p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-100">
+                          <span className="text-[10px] font-bold text-emerald-800 block">Observasi</span>
+                          <span className="text-base font-black text-emerald-600">
+                            {sup.observasiKelas?.score ? `${sup.observasiKelas.score}%` : '-'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Action buttons */}
+                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setEditingTeacher(sup)}
+                        className="flex-1 py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition-colors shadow-xs flex items-center justify-center gap-1.5"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                        <span>Edit Guru</span>
+                      </button>
+
+                      {onOpenSambung && (
+                        <button
+                          type="button"
+                          onClick={() => onOpenSambung(sup.id)}
+                          className="p-2 rounded-xl bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 border border-slate-200 transition-colors"
+                          title="Buka Portofolio SAMBUNG"
+                        >
+                          <BookOpen className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+
+                      {onOpenPrint && (
+                        <button
+                          type="button"
+                          onClick={() => onOpenPrint(sup)}
+                          className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-colors"
+                          title="Cetak Berkas"
+                        >
+                          <Printer className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* VIEW 2: DASHBOARD KESIMPULAN DARI SEMUA GURU */}
       {dashboardTab === 'kesimpulan' && (
         <KesimpulanSemuaGuruDashboard
           supervisions={supervisions}
           currentUser={currentUser}
+          schools={schools}
           onOpenSambungTeacher={onOpenSambung}
+          onOpenForm={onOpenForm}
+          onOpenPrint={onOpenPrint}
+          onUpdateSupervision={onUpdateSupervision}
         />
       )}
 
-      {/* VIEW 2: ANALITIK KINERJA SUPERVISI & REKAP */}
+      {/* VIEW 3: ANALITIK KINERJA SUPERVISI & REKAP */}
       {dashboardTab === 'analitik' && (
         <div className="space-y-6">
       {/* SPECIAL GURU VIEW: Individual Status & Revision Notice */}
@@ -1014,8 +1648,8 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                 </span>
               </div>
 
-              <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden text-xs max-h-56 overflow-y-auto">
-                {supervisions.slice(0, 4).map((sup) => {
+              <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden text-xs max-h-72 overflow-y-auto">
+                {supervisions.map((sup) => {
                   const isApproved = approvedTeachersLocal[sup.teacherId] ?? true;
                   return (
                     <div key={sup.id} className="p-3 hover:bg-slate-50 flex items-center justify-between gap-3">
@@ -1091,7 +1725,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs min-w-[640px]">
+            <table className="w-full text-left text-xs min-w-[700px]">
               <thead className="bg-slate-50 text-slate-600 font-semibold uppercase border-b border-slate-100">
                 <tr>
                   <th className="py-3 px-4">Nama Guru &amp; Mapel</th>
@@ -1101,10 +1735,11 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                   <th className="py-3 px-4 text-center">Revisi Perangkat</th>
                   <th className="py-3 px-4 text-center">Observasi</th>
                   <th className="py-3 px-4 text-center">Status</th>
+                  <th className="py-3 px-4 text-center">Menu Edit</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {supervisions.slice(0, 5).map((sup) => {
+                {mySupervisions.map((sup) => {
                   const revisiDone = Boolean(sup.perangkatAjar?.revisi?.modulAjarRevisiUrl);
                   return (
                     <tr key={sup.id} className="hover:bg-slate-50/60 transition-colors">
@@ -1161,6 +1796,17 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                           {sup.status === 'completed' ? 'Selesai' : sup.status === 'in_progress' ? 'Proses Observasi' : 'Draf/Pengajuan'}
                         </span>
                       </td>
+                      <td className="py-3 px-4 text-center">
+                        <button
+                          type="button"
+                          onClick={() => setEditingTeacher(sup)}
+                          className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition-colors inline-flex items-center gap-1 shadow-2xs"
+                          title={`Edit data guru & hasil supervisi ${sup.teacherName}`}
+                        >
+                          <Pencil className="w-3 h-3" />
+                          <span>Edit</span>
+                        </button>
+                      </td>
                     </tr>
                   );
                 })}
@@ -1170,6 +1816,26 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
         </div>
       )}
         </div>
+      )}
+
+      {/* Modal Edit Data Guru & Supervisi */}
+      {editingTeacher && (
+        <EditGuruSupervisiModal
+          isOpen={true}
+          onClose={() => setEditingTeacher(null)}
+          supervision={editingTeacher}
+          schools={schools}
+          currentUser={currentUser}
+          onSaved={(updated) => {
+            if (onUpdateSupervision) {
+              onUpdateSupervision(updated);
+            }
+            setEditingTeacher(null);
+          }}
+          onOpenStageForm={onOpenForm}
+          onOpenSambung={onOpenSambung}
+          onOpenPrint={onOpenPrint}
+        />
       )}
     </div>
   );

@@ -666,39 +666,11 @@ export function applyAutoFillToSupervision(
   // 5. Hubungkan berkesinambungan ke Tahap M (MAKNAI): Coaching & Refleksi Pasca Observasi 10 Pertanyaan
   const maknaiData = generateTeacherMaknaiData(supervision);
 
-  const updatedSambung = {
-    ...existingSambung,
-    selidiki: {
-      tanggal: existingSambung?.selidiki?.tanggal || new Date().toISOString().split('T')[0],
-      items: existingSambung?.selidiki?.items || [],
-      catatanPrioritas: existingSambung?.selidiki?.catatanPrioritas || `Prioritas pembinaan guru ${teacherName} pada mata pelajaran ${subject} adalah optimalisasi diferensiasi proses dan penguatan asesmen otentik kontekstual.`,
-      matriksBefore: beforeMatriks,
-    },
-    arahkan: {
-      ...(existingSambung?.arahkan || {}),
-      ...amatiData,
-    },
-    maknai: {
-      ...(existingSambung?.maknai || {}),
-      ...maknaiData,
-    },
-    nyatakan: {
-      beforeAfter: [
-        { aspek: 'Peran guru', sebelumSambung: beforeMatriks.peranGuru, setelahSambung: afterMatriks.peranGuru },
-        { aspek: 'Aktivitas murid', sebelumSambung: beforeMatriks.aktivitasMurid, setelahSambung: afterMatriks.aktivitasMurid },
-        { aspek: 'Konteks kehidupan nyata', sebelumSambung: beforeMatriks.konteksNyata, setelahSambung: afterMatriks.konteksNyata },
-        { aspek: 'Refleksi murid', sebelumSambung: beforeMatriks.refleksiMurid, setelahSambung: afterMatriks.refleksiMurid },
-      ],
-      dataDampak: updatedDataDampak,
-    },
-    lastUpdated: new Date().toISOString(),
-  };
-
-  const updatedSupervision: Supervision = {
+  // Draf objek sementara supervisi untuk membangkitkan B, U, G secara kohesif
+  const intermediateSup: Supervision = {
     ...supervision,
     teacherName,
     subject,
-    status: supervision.status === 'draft' ? 'in_progress' : supervision.status,
     perangkatAjar: {
       ...supervision.perangkatAjar,
       driveLinks: {
@@ -746,7 +718,166 @@ export function applyAutoFillToSupervision(
       },
       completedAt: new Date().toISOString(),
     },
-    sambung: updatedSambung as any,
+  };
+
+  // 6. Hubungkan ke Tahap B (BERDAYAKAN): RPP Perbaikan Deep Learning & Telaah Ulang 22 Aspek
+  const berdayakanData = generateBerdayakanTelaahPerbaikanData(intermediateSup);
+
+  // 7. Hubungkan ke Tahap U (UJI): Pembuktian Pra, Observasi 25 Aspek, Pasca, Angket & Kesimpulan Transformasi
+  const ujiData = generateUjiData(intermediateSup);
+
+  const finalAfterMatriks = ujiData.kesimpulanUji
+    ? {
+        peranGuru: ujiData.kesimpulanUji.peranGuru,
+        aktivitasMurid: ujiData.kesimpulanUji.aktivitasMurid,
+        konteksNyata: ujiData.kesimpulanUji.konteksNyata,
+        refleksiMurid: ujiData.kesimpulanUji.refleksiMurid,
+      }
+    : afterMatriks;
+
+  // 8. Hubungkan ke Tahap G (GERAKKAN): RTL Nyatakan dari temuan uji & Kesimpulan Alur SAMBUNG
+  const intermediateWithUji: Supervision = {
+    ...intermediateSup,
+    sambung: {
+      selidiki: {
+        tanggal: existingSambung?.selidiki?.tanggal || new Date().toISOString().split('T')[0],
+        items: existingSambung?.selidiki?.items || [],
+        catatanPrioritas: `Prioritas pembinaan guru ${teacherName} pada mata pelajaran ${subject} adalah optimalisasi diferensiasi proses dan penguatan asesmen otentik kontekstual.`,
+        matriksBefore: beforeMatriks,
+      },
+      arahkan: { ...(existingSambung?.arahkan || {}), ...amatiData },
+      maknai: { ...(existingSambung?.maknai || {}), ...maknaiData },
+      berdayakan: { ...(existingSambung?.berdayakan || {}), ...berdayakanData },
+      uji: ujiData,
+      nyatakan: {
+        beforeAfter: [
+          { aspek: 'Peran guru', sebelumSambung: beforeMatriks.peranGuru, setelahSambung: finalAfterMatriks.peranGuru },
+          { aspek: 'Aktivitas murid', sebelumSambung: beforeMatriks.aktivitasMurid, setelahSambung: finalAfterMatriks.aktivitasMurid },
+          { aspek: 'Konteks kehidupan nyata', sebelumSambung: beforeMatriks.konteksNyata, setelahSambung: finalAfterMatriks.konteksNyata },
+          { aspek: 'Refleksi murid', sebelumSambung: beforeMatriks.refleksiMurid, setelahSambung: finalAfterMatriks.refleksiMurid },
+        ],
+        dataDampak: updatedDataDampak,
+      },
+      gerakkan: {
+        tindakLanjut: [],
+        pengimbasan: [],
+      },
+    },
+  };
+
+  const gerakkanData = generateGerakkanData(intermediateWithUji);
+
+  const updatedSambung: SambungData = {
+    selidiki: {
+      tanggal: existingSambung?.selidiki?.tanggal || new Date().toISOString().split('T')[0],
+      items: existingSambung?.selidiki?.items || [],
+      catatanPrioritas: `Prioritas pembinaan guru ${teacherName} pada mata pelajaran ${subject} adalah optimalisasi diferensiasi proses dan penguatan asesmen otentik kontekstual.`,
+      matriksBefore: beforeMatriks,
+    },
+    arahkan: {
+      ...(existingSambung?.arahkan || {}),
+      ...amatiData,
+    },
+    maknai: {
+      ...(existingSambung?.maknai || {}),
+      ...maknaiData,
+    },
+    berdayakan: {
+      ...(existingSambung?.berdayakan || {}),
+      ...berdayakanData,
+    },
+    uji: {
+      ...(existingSambung?.uji || {}),
+      ...ujiData,
+    },
+    nyatakan: {
+      beforeAfter: [
+        { aspek: 'Peran guru', sebelumSambung: beforeMatriks.peranGuru, setelahSambung: finalAfterMatriks.peranGuru },
+        { aspek: 'Aktivitas murid', sebelumSambung: beforeMatriks.aktivitasMurid, setelahSambung: finalAfterMatriks.aktivitasMurid },
+        { aspek: 'Konteks kehidupan nyata', sebelumSambung: beforeMatriks.konteksNyata, setelahSambung: finalAfterMatriks.konteksNyata },
+        { aspek: 'Refleksi murid', sebelumSambung: beforeMatriks.refleksiMurid, setelahSambung: finalAfterMatriks.refleksiMurid },
+      ],
+      dataDampak: updatedDataDampak,
+    },
+    gerakkan: {
+      ...(existingSambung?.gerakkan || {}),
+      ...gerakkanData,
+    },
+    lastUpdated: new Date().toISOString(),
+  };
+
+  const updatedSupervision: Supervision = {
+    ...intermediateSup,
+    status: supervision.status === 'draft' ? 'in_progress' : supervision.status,
+    pascaObservasi: {
+      q1_kesan: maknaiData.pertanyaanList?.q1 || '',
+      q2_sesuai_rencana: maknaiData.pertanyaanList?.q2 || '',
+      q3_hal_memuaskan: maknaiData.pertanyaanList?.q3 || '',
+      q4_hal_kurang: maknaiData.pertanyaanList?.q6 || '',
+      q5_ketercapaian_tujuan: maknaiData.pertanyaanList?.q4 || '',
+      q6_kesulitan_siswa: maknaiData.pertanyaanList?.q5 || '',
+      q7_alternatif_solusi: maknaiData.pertanyaanList?.q7 || '',
+      q8_rencana_tindak_lanjut: maknaiData.pertanyaanList?.q10 || '',
+      q9_pengembangan_diri: maknaiData.pertanyaanList?.q9 || '',
+      generalImpression: maknaiData.kesanUmum || '',
+      recommendations: maknaiData.saranMasukan || '',
+      completedAt: new Date().toISOString(),
+    },
+    perangkatAjarPerbaikan: {
+      driveLinks: {
+        cpTpAtpUrl: supervision.perangkatAjar?.driveLinks?.cpTpAtpUrl || '',
+        modulAjarUrl: berdayakanData.rppPerbaikanUrl,
+        bahanAjarUrl: supervision.perangkatAjar?.driveLinks?.bahanAjarUrl,
+        asesmenUrl: supervision.perangkatAjar?.driveLinks?.asesmenUrl,
+      },
+      submittedAt: new Date().toISOString(),
+      telaahScores: berdayakanData.telaahScores,
+      telaahComments: berdayakanData.telaahComments,
+      telaahSummary: berdayakanData.telaahSummary,
+      feedback: berdayakanData.feedback,
+      catatanRevisiGuru: berdayakanData.catatanRefleksiGuru,
+      reviewedAt: new Date().toISOString(),
+      reviewedBy: berdayakanData.namaPenelaah,
+    },
+    praObservasiPerbaikan: {
+      interviewDurationMinutes: 35,
+      q1_kd_indikator: ujiData.praObservasi?.q1 || '',
+      q2_metode: ujiData.praObservasi?.q2 || '',
+      q3_alat_bahan: ujiData.praObservasi?.q3 || '',
+      q4_tahapan: ujiData.praObservasi?.q4 || '',
+      q5_persiapan: ujiData.praObservasi?.q5 || '',
+      q6_materi_sulit: ujiData.praObservasi?.q6 || '',
+      q7_target_kompetensi: ujiData.praObservasi?.q7 || '',
+      q8_perhatian_khusus: ujiData.praObservasi?.q8 || '',
+      supervisorNotes: ujiData.praObservasi?.supervisorNotes || '',
+      completedAt: new Date().toISOString(),
+    },
+    observasiKelasPerbaikan: {
+      items: ujiData.observasiPelaksanaan?.items || {},
+      totalAspek: 25,
+      totalYa: 25,
+      totalSkor: ujiData.observasiPelaksanaan?.totalSkor || 50,
+      score: ujiData.observasiPelaksanaan?.persentaseCapaian || 100,
+      predicate: ujiData.observasiPelaksanaan?.predicate || 'Sangat Baik',
+      feedbackNotes: `${ujiData.observasiPelaksanaan?.feedback.kelebihan}\n\nHal yang perlu diperbaiki: ${ujiData.observasiPelaksanaan?.feedback.perbaikan}\n\nRekomendasi: ${ujiData.observasiPelaksanaan?.feedback.rekomendasi}`,
+      feedback: ujiData.observasiPelaksanaan?.feedback,
+      completedAt: ujiData.observasiPelaksanaan?.completedAt || new Date().toISOString(),
+    },
+    pascaObservasiPerbaikan: {
+      q1_kesan: ujiData.pascaObservasi?.pertanyaanList.q1 || '',
+      q2_sesuai_rencana: ujiData.pascaObservasi?.pertanyaanList.q2 || '',
+      q3_hal_memuaskan: ujiData.pascaObservasi?.pertanyaanList.q3 || '',
+      q4_hal_kurang: ujiData.pascaObservasi?.pertanyaanList.q4 || '',
+      q5_ketercapaian_tujuan: ujiData.pascaObservasi?.pertanyaanList.q5 || '',
+      q6_kesulitan_siswa: ujiData.pascaObservasi?.pertanyaanList.q6 || '',
+      q7_alternatif_solusi: ujiData.pascaObservasi?.pertanyaanList.q7 || '',
+      q8_rencana_tindak_lanjut: ujiData.pascaObservasi?.pertanyaanList.q8 || '',
+      q9_pengembangan_diri: ujiData.pascaObservasi?.pertanyaanList.q9 || '',
+      generalImpression: ujiData.pascaObservasi?.kesanUmum || '',
+      recommendations: ujiData.pascaObservasi?.saranMasukan || '',
+      completedAt: ujiData.pascaObservasi?.completedAt || new Date().toISOString(),
+    },
+    sambung: updatedSambung,
     updatedAt: new Date().toISOString(),
   };
 

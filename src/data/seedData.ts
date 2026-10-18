@@ -6,7 +6,7 @@ import {
   createDefaultSambungForTeacher,
   DEFAULT_MATRIKS_BEFORE
 } from './sambungSeed';
-import { generateTeacherMaknaiData, generateAmatiData, generateBerdayakanTelaahPerbaikanData, generateUjiData, getTeacherAutoFillData } from './autoFillData';
+import { generateTeacherMaknaiData, generateAmatiData, generateBerdayakanTelaahPerbaikanData, generateUjiData, generateGerakkanData, getTeacherAutoFillData } from './autoFillData';
 
 export const SAMPLE_SUPERVISIONS: Supervision[] = [
   {
@@ -1612,6 +1612,38 @@ SAMPLE_SUPERVISIONS.forEach((sup) => {
           return item;
         });
       }
+    }
+
+    // Pastikan seluruh guru binaan memiliki instrumen Gerakkan (RTL Nyatakan & Kesimpulan Alur SAMBUNG S-A-M-B-U-N-G) lengkap
+    if (!sup.sambung.gerakkan?.rtlNyatakan || !sup.sambung.gerakkan?.kesimpulanAlurSambung) {
+      const gerakkanData = generateGerakkanData(sup);
+      sup.sambung.gerakkan = {
+        ...sup.sambung.gerakkan,
+        ...gerakkanData,
+        rtlNyatakan: (sup.sambung.gerakkan?.rtlNyatakan && sup.sambung.gerakkan.rtlNyatakan.length > 0)
+          ? sup.sambung.gerakkan.rtlNyatakan
+          : gerakkanData.rtlNyatakan,
+        kesimpulanAlurSambung: sup.sambung.gerakkan?.kesimpulanAlurSambung || gerakkanData.kesimpulanAlurSambung,
+      };
+    }
+
+    // Selaraskan pascaObservasi dengan 10 butir pertanyaan MAKNAI
+    if (sup.sambung.maknai?.pertanyaanList) {
+      const p = sup.sambung.maknai.pertanyaanList;
+      sup.pascaObservasi = {
+        ...sup.pascaObservasi,
+        q1_kesan: p.q1 || sup.pascaObservasi?.q1_kesan || '',
+        q2_sesuai_rencana: p.q2 || sup.pascaObservasi?.q2_sesuai_rencana || '',
+        q3_hal_memuaskan: p.q3 || sup.pascaObservasi?.q3_hal_memuaskan || '',
+        q4_hal_kurang: p.q6 || sup.pascaObservasi?.q4_hal_kurang || '',
+        q5_ketercapaian_tujuan: p.q4 || sup.pascaObservasi?.q5_ketercapaian_tujuan || '',
+        q6_kesulitan_siswa: p.q5 || sup.pascaObservasi?.q6_kesulitan_siswa || '',
+        q7_alternatif_solusi: p.q7 || sup.pascaObservasi?.q7_alternatif_solusi || '',
+        q8_rencana_tindak_lanjut: p.q10 || sup.pascaObservasi?.q8_rencana_tindak_lanjut || '',
+        q9_pengembangan_diri: p.q9 || sup.pascaObservasi?.q9_pengembangan_diri || '',
+        generalImpression: sup.sambung.maknai.kesanUmum || sup.pascaObservasi?.generalImpression || '',
+        recommendations: sup.sambung.maknai.saranMasukan || sup.pascaObservasi?.recommendations || '',
+      };
     }
   }
 });

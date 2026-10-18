@@ -667,10 +667,10 @@ export const EditGuruSupervisiModal: React.FC<EditGuruSupervisiModalProps> = ({
                     >
                       <div>
                         <p className="text-xs font-bold text-slate-900 group-hover:text-indigo-700">
-                          3. Form Observasi Tatap Muka
+                          3. Form Observasi Pelaksanaan Pembelajaran
                         </p>
                         <p className="text-[11px] text-slate-500 mt-0.5">
-                          24 Aspek observasi kelas (Pendahuluan, Inti, Penutup)
+                          25 Aspek observasi kelas (9 Kategori Resmi Sesuai PDF)
                         </p>
                       </div>
                       <ExternalLink className="w-4 h-4 text-slate-400 group-hover:text-indigo-600" />
@@ -686,10 +686,10 @@ export const EditGuruSupervisiModal: React.FC<EditGuruSupervisiModalProps> = ({
                     >
                       <div>
                         <p className="text-xs font-bold text-slate-900 group-hover:text-indigo-700">
-                          4. Form Pasca-Observasi &amp; RTL
+                          4. Form Pasca-Observasi &amp; Refleksi MAKNAI
                         </p>
                         <p className="text-[11px] text-slate-500 mt-0.5">
-                          Refleksi hasil mengajar dan rencana tindak lanjut
+                          10 Butir pertanyaan coaching reflektif &amp; kesepakatan TIRTA
                         </p>
                       </div>
                       <ExternalLink className="w-4 h-4 text-slate-400 group-hover:text-indigo-600" />

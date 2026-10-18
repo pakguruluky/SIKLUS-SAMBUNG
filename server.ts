@@ -12,7 +12,18 @@ const __dirname = path.dirname(__filename);
 
 async function startServer() {
   const app = express();
-  const PORT = process.env.PORT || 3000;
+  
+  // Parse CLI args for --port and --host
+  const portArgIdx = process.argv.indexOf('--port');
+  const cliPort = portArgIdx !== -1 && process.argv[portArgIdx + 1] ? Number(process.argv[portArgIdx + 1]) : null;
+  const hostArgIdx = process.argv.indexOf('--host');
+  const cliHost = hostArgIdx !== -1 && process.argv[hostArgIdx + 1] ? process.argv[hostArgIdx + 1] : '0.0.0.0';
+
+  // In AI Studio / Cloud Run, PORT may be set to 8080 (which is reserved for Nginx).
+  // The app dev server MUST always run on port 3000 to accept upstream proxying.
+  const rawPort = process.env.PORT;
+  const PORT = Number(cliPort || process.env.DEFAULT_APP_PORT || (rawPort && rawPort !== '8080' ? rawPort : 3000));
+  const HOST = cliHost || '0.0.0.0';
   const isProd = process.env.NODE_ENV === 'production';
 
   app.use(express.json({ limit: '10mb' }));
@@ -232,9 +243,19 @@ Format output WAJIB format JSON murni tanpa markdown wrapper:
     });
   }
 
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+  const server = app.listen(PORT, HOST, () => {
+    console.log(`Server running on http://${HOST}:${PORT} (mode: ${isProd ? 'production' : 'development'})`);
   });
+
+  const shutdown = () => {
+    console.log('Shutting down server gracefully...');
+    server.close(() => {
+      process.exit(0);
+    });
+  };
+
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
 }
 
 startServer();

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Supervision } from '../types';
-import { TELAAH_ITEMS, OBSERVASI_ITEMS, PRA_OBSERVASI_QUESTIONS, PASCA_OBSERVASI_QUESTIONS, EVALUASI_TAHUNAN_COMPONENTS } from '../data/instrumentData';
+import { TELAAH_ITEMS, OBSERVASI_ITEMS, PRA_OBSERVASI_QUESTIONS, PASCA_OBSERVASI_QUESTIONS, MAKNAI_COACHING_QUESTIONS, EVALUASI_TAHUNAN_COMPONENTS } from '../data/instrumentData';
 import { X, Printer, ArrowLeft, CheckCircle2, FileText } from 'lucide-react';
 
 interface ReportPrintViewProps {
@@ -306,19 +306,40 @@ export const ReportPrintView: React.FC<ReportPrintViewProps> = ({
 
             {/* C. Pasca Observasi */}
             <div>
-              <h5 className="font-bold text-xs text-slate-900 mb-1">C. Refleksi &amp; Dialog Pasca-Observasi</h5>
-              <div className="space-y-1 text-[11px] bg-slate-50 p-3 rounded border border-slate-300">
-                <p><strong>1. Kesan Guru:</strong> {pasca?.q1_kesan || '-'}</p>
-                <p><strong>2. Kesesuaian Rencana:</strong> {pasca?.q2_sesuai_rencana || '-'}</p>
-                <p><strong>3. Hal yang Memuaskan:</strong> {pasca?.q3_hal_memuaskan || '-'}</p>
-                <p><strong>4. Hal yang Perlu Dibenahi:</strong> {pasca?.q4_hal_kurang || '-'}</p>
-                <p><strong>5. Ketercapaian Tujuan Murid:</strong> {pasca?.q5_ketercapaian_tujuan || '-'}</p>
-                <p><strong>6. Kesulitan Belajar Murid:</strong> {pasca?.q6_kesulitan_siswa || '-'}</p>
-                <p><strong>7. Alternatif Pemecahan:</strong> {pasca?.q7_alternatif_solusi || '-'}</p>
-                <p><strong>8. Rencana Tindak Lanjut (RTL):</strong> {pasca?.q8_rencana_tindak_lanjut || '-'}</p>
-                <p><strong>9. Kebutuhan Pengembangan Diri:</strong> {pasca?.q9_pengembangan_diri || '-'}</p>
-                <p className="mt-1"><strong>Kesan Umum Supervisor:</strong> {pasca?.generalImpression || '-'}</p>
-                <p><strong>Saran-Masukan:</strong> {pasca?.recommendations || '-'}</p>
+              <h5 className="font-bold text-xs text-slate-900 mb-1">
+                C. Refleksi &amp; Dialog Pasca-Observasi MAKNAI (10 Butir Instrumen Resmi)
+              </h5>
+              <div className="space-y-2 text-[11px] bg-slate-50 p-3 rounded border border-slate-300">
+                {MAKNAI_COACHING_QUESTIONS.map((item) => {
+                  const pList = supervision.sambung?.maknai?.pertanyaanList;
+                  let answer = pList ? pList[item.id] : undefined;
+                  if (!answer) {
+                    if (item.id === 'q1') answer = pasca?.q1_kesan;
+                    else if (item.id === 'q2') answer = pasca?.q2_sesuai_rencana;
+                    else if (item.id === 'q3') answer = pasca?.q3_hal_memuaskan;
+                    else if (item.id === 'q4') answer = pasca?.q5_ketercapaian_tujuan;
+                    else if (item.id === 'q5') answer = pasca?.q6_kesulitan_siswa;
+                    else if (item.id === 'q6') answer = pasca?.q4_hal_kurang;
+                    else if (item.id === 'q7') answer = pasca?.q7_alternatif_solusi;
+                    else if (item.id === 'q8') answer = pasca?.q7_alternatif_solusi;
+                    else if (item.id === 'q9') answer = pasca?.q9_pengembangan_diri;
+                    else if (item.id === 'q10') answer = pasca?.q8_rencana_tindak_lanjut;
+                  }
+                  return (
+                    <div key={item.id} className="pb-1 border-b border-slate-200 last:border-0">
+                      <p className="font-bold text-slate-800">
+                        {item.no}. {item.pertanyaan}
+                      </p>
+                      <p className="text-slate-700 italic pl-3 mt-0.5">
+                        {answer || '-'}
+                      </p>
+                    </div>
+                  );
+                })}
+                <div className="mt-2 pt-2 border-t border-slate-300 space-y-1">
+                  <p><strong>Kesan Umum Pengawas Pembina:</strong> {supervision.sambung?.maknai?.kesanUmum || pasca?.generalImpression || '-'}</p>
+                  <p><strong>Saran-Masukan Pengawas Pembina:</strong> {supervision.sambung?.maknai?.saranMasukan || pasca?.recommendations || '-'}</p>
+                </div>
               </div>
             </div>
           </div>

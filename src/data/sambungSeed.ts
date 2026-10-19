@@ -778,6 +778,191 @@ export function getTeacherDescriptiveDataDampak(
 }
 
 /**
+ * Creates completely empty SambungData for newly added supervisions.
+ * All stages (Selidiki, Amati, Maknai, Berdayakan, Uji, Nyatakan, Gerakkan) are blank / belum terisi.
+ */
+export function createEmptySambungData(
+  teacherName = '',
+  schoolName = '',
+  subject = ''
+): SambungData {
+  return {
+    selidiki: {
+      tanggal: new Date().toISOString().split('T')[0],
+      items: ASPEK_SELIDIKI_DEFAULT.map((aspek, idx) => ({
+        id: idx + 1,
+        aspek,
+        kondisiAwal: '',
+        bukti: '',
+        kebutuhanPembinaan: '',
+        isPrioritas: false,
+      })),
+      catatanPrioritas: '',
+      matriksBefore: {
+        peranGuru: '',
+        aktivitasMurid: '',
+        konteksNyata: '',
+        refleksiMurid: '',
+      },
+    },
+    arahkan: {
+      fokusIndikatorTerpilih: [],
+      analisisKesimpulanSelidiki: {
+        peranGuru: '',
+        aktivitasMurid: '',
+        konteksNyata: '',
+        refleksiMurid: '',
+      },
+      targetPerbaikan: {
+        peranGuru: '',
+        aktivitasMurid: '',
+        konteksNyata: '',
+        refleksiMurid: '',
+      },
+      alasanFokusPerbaikan: '',
+      periode: 'Semester Ganjil 2025/2026',
+      fokusPerubahan: '',
+      kegiatan: [],
+      tandaTangan: {
+        pengawas: 'Kusnandar, M.Si',
+        kepalaSekolah: '',
+        guru: teacherName,
+        tanggalDisepakati: '',
+      },
+    },
+    maknai: {
+      tanggal: '',
+      pertanyaanList: {
+        q1: '',
+        q2: '',
+        q3: '',
+        q4: '',
+        q5: '',
+        q6: '',
+        q7: '',
+        q8: '',
+        q9: '',
+        q10: '',
+      },
+      kesanUmum: '',
+      saranMasukan: '',
+      coaching: {
+        tujuan: '',
+        realitas: '',
+        opsi: '',
+        komitmen: '',
+      },
+    },
+    berdayakan: {
+      rppPerbaikanUrl: '',
+      rppPerbaikanTitle: '',
+      tanggalTelaah: '',
+      namaPenelaah: '',
+      telaahScores: {},
+      telaahComments: {},
+      feedback: {
+        kelebihan: '',
+        perbaikan: '',
+        rekomendasi: '',
+      },
+      catatanRefleksiGuru: '',
+      siklusList: [],
+    },
+    uji: {
+      praObservasi: {
+        q1: '',
+        q2: '',
+        q3: '',
+        q4: '',
+        q5: '',
+        q6: '',
+        q7: '',
+        q8: '',
+        supervisorNotes: '',
+      },
+      observasiPelaksanaan: {
+        kelas: '',
+        items: {},
+        totalSkor: 0,
+        maxPossibleScore: 50,
+        persentaseCapaian: 0,
+        predicate: 'Perlu Perbaikan',
+        feedback: {
+          kelebihan: '',
+          perbaikan: '',
+          rekomendasi: '',
+        },
+      },
+      pascaObservasi: {
+        pertanyaanList: {
+          q1: '',
+          q2: '',
+          q3: '',
+          q4: '',
+          q5: '',
+          q6: '',
+          q7: '',
+          q8: '',
+          q9: '',
+          q10: '',
+        },
+        kesanUmum: '',
+        saranMasukan: '',
+      },
+      kesimpulanUji: {
+        peranGuru: '',
+        aktivitasMurid: '',
+        konteksNyata: '',
+        refleksiMurid: '',
+      },
+      u1_observasi: {
+        tanggal: '',
+        hariTanggal: '',
+        tahapObservasi: 'awal',
+        kelas: '',
+        indikatorList: INDIKATOR_U1_DEFAULT.map(ind => ({
+          ...ind,
+          score: 1,
+          catatan: '',
+        })),
+        totalSkor: 0,
+        persentaseCapaian: 0,
+        apaYangDialamiMurid: '',
+        kekuatanDanRekomendasi: '',
+      },
+      u2_angketMurid: {
+        kodeMuridKelas: '',
+        tanggal: '',
+        jumlahResponden: 0,
+        items: PERNYATAAN_U2_DEFAULT.map((p, idx) => ({
+          id: idx + 1,
+          pernyataan: p,
+          skorRataRata: 0,
+          persentaseSetuju: 0,
+        })),
+        halPalingBermakna: '',
+        kesulitanMurid: '',
+      },
+      matriksAfter: {
+        peranGuru: '',
+        aktivitasMurid: '',
+        konteksNyata: '',
+        refleksiMurid: '',
+      },
+    },
+    nyatakan: {
+      beforeAfter: [],
+      dataDampak: [],
+    },
+    gerakkan: {
+      tindakLanjut: [],
+      pengimbasan: [],
+      rtlNyatakan: [],
+    },
+  };
+}
+
+/**
  * Creates empty or default template SambungData for any new teacher
  */
 export function createDefaultSambungForTeacher(

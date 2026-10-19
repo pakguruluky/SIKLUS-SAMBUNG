@@ -15,11 +15,13 @@ import {
 } from '../types';
 import { 
   createDefaultSambungForTeacher, 
+  createEmptySambungData,
   DEFAULT_DATA_DAMPAK,
   DEFAULT_MATRIKS_BEFORE,
   DEFAULT_MATRIKS_AFTER,
   getTeacherDescriptiveDataDampak
 } from '../data/sambungSeed';
+import { getSupervisionSambungProgress, StageKey } from '../utils/sambungProgress';
 import { saveSupervision } from '../services/firebase';
 import { analyzeTelaahRppWithAI } from '../services/aiService';
 import { SambungPrintModal } from './SambungPrintModal';
@@ -68,7 +70,8 @@ import {
   CheckSquare,
   Filter,
   Share2,
-  ArrowRightLeft
+  ArrowRightLeft,
+  X
 } from 'lucide-react';
 import { 
   applyAutoFillToSupervision, 
@@ -156,6 +159,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveToast, setSaveToast] = useState<string | null>(null);
+  const [lockedWarning, setLockedWarning] = useState<string | null>(null);
 
   // Active supervision object
   const currentSupervision = useMemo(() => {
@@ -167,6 +171,30 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
   // Local draft of SambungData for immediate responsiveness
   const [sambungDraft, setSambungDraft] = useState<SambungData | null>(null);
 
+  // Real-time sequential stage progression info
+  const sambungProgress = useMemo(() => {
+    if (!currentSupervision) return null;
+    const liveSupervision: Supervision = {
+      ...currentSupervision,
+      sambung: sambungDraft || currentSupervision.sambung,
+    };
+    return getSupervisionSambungProgress(liveSupervision);
+  }, [currentSupervision, sambungDraft]);
+
+  const handleTabClick = (targetTab: TabType) => {
+    if (!sambungProgress) {
+      setActiveTab(targetTab);
+      return;
+    }
+    const check = sambungProgress.canProceedTo(targetTab as StageKey);
+    if (!check.allowed) {
+      setLockedWarning(check.lockedReason || 'Tahap ini masih terkunci.');
+      return;
+    }
+    setLockedWarning(null);
+    setActiveTab(targetTab);
+  };
+
   useEffect(() => {
     if (initialSupervisionId && availableSupervisions.some((s) => s.id === initialSupervisionId)) {
       setSelectedId(initialSupervisionId);
@@ -175,8 +203,18 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
 
   useEffect(() => {
     if (currentSupervision) {
+      const isSeedSupervision = Boolean(currentSupervision.id && currentSupervision.id.startsWith('sup-demo-'));
+      const isNew = Boolean((currentSupervision as any).isNewSupervision);
+
       if (currentSupervision.sambung) {
         const cloned: SambungData = JSON.parse(JSON.stringify(currentSupervision.sambung));
+
+        // If it is a newly added / custom supervision, preserve its blank instruments exactly without injecting demo mock text
+        if (isNew || !isSeedSupervision) {
+          setSambungDraft(cloned);
+          return;
+        }
+
         // Filter out removed beforeAfter aspects
         if (cloned.nyatakan?.beforeAfter) {
           cloned.nyatakan.beforeAfter = cloned.nyatakan.beforeAfter.filter(
@@ -283,20 +321,29 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
         }
         setSambungDraft(cloned);
       } else {
-        const defaultSambung = createDefaultSambungForTeacher(
-          currentSupervision.teacherName,
-          currentSupervision.schoolName,
-          currentSupervision.subject
-        );
-        const maknaiInit = generateTeacherMaknaiData(currentSupervision);
-        defaultSambung.maknai = {
-          ...defaultSambung.maknai,
-          ...maknaiInit,
-        };
-        setSambungDraft(defaultSambung);
+        if (isNew || !isSeedSupervision) {
+          const empty = createEmptySambungData(
+            currentSupervision.teacherName,
+            currentSupervision.schoolName,
+            currentSupervision.subject
+          );
+          setSambungDraft(empty);
+        } else {
+          const defaultSambung = createDefaultSambungForTeacher(
+            currentSupervision.teacherName,
+            currentSupervision.schoolName,
+            currentSupervision.subject
+          );
+          const maknaiInit = generateTeacherMaknaiData(currentSupervision);
+          defaultSambung.maknai = {
+            ...defaultSambung.maknai,
+            ...maknaiInit,
+          };
+          setSambungDraft(defaultSambung);
+        }
       }
     }
-  }, [currentSupervision?.id]);
+  }, [currentSupervision]);
 
   // Debounced auto-save for sambungDraft to Firebase Cloud so edits on any device persist automatically
   useEffect(() => {
@@ -1423,6 +1470,89 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
     },
   ];
 
+  const renderStageGateFooter = (currentStageKey: StageKey, nextStageKey?: StageKey, onCustomSave?: () => void) => {
+    if (!sambungProgress) return null;
+    const currentDetail = sambungProgress.stages[currentStageKey];
+    const nextDetail = nextStageKey ? sambungProgress.stages[nextStageKey] : null;
+
+    return (
+      <div className="mt-8 p-4 sm:p-5 rounded-2xl border-2 transition-all shadow-xs bg-slate-50/80 border-slate-200">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                currentDetail.isComplete 
+                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                  : 'bg-amber-100 text-amber-800 border border-amber-300'
+              }`}>
+                {currentDetail.isComplete ? 'Tahap Ini Lengkap' : 'Progres Belum Lengkap'}
+              </span>
+              <span className="text-xs font-bold text-slate-700">
+                Tahap {currentDetail.letter} &bull; {currentDetail.name} ({currentDetail.progressPercent}% terisi)
+              </span>
+            </div>
+
+            {!currentDetail.isComplete && currentDetail.missingReasons.length > 0 && (
+              <p className="text-xs text-rose-700 font-medium mt-1 flex items-start gap-1.5">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-500" />
+                <span>Syarat Lanjut ke Tahap Berikutnya: {currentDetail.missingReasons[0]}</span>
+              </p>
+            )}
+
+            {currentDetail.isComplete && nextDetail && (
+              <p className="text-xs text-emerald-700 font-medium mt-1 flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+                <span>Seluruh instrumen Tahap {currentDetail.letter} telah lengkap. Anda dapat lanjut ke Tahap {nextDetail.letter} ({nextDetail.name}).</span>
+              </p>
+            )}
+
+            {currentDetail.isComplete && !nextDetail && (
+              <p className="text-xs text-emerald-700 font-medium mt-1 flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+                <span>Seluruh siklus SAMBUNG (7 tahap) telah selesai dan tersimpan di database.</span>
+              </p>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+            {canEdit && (
+              <button
+                type="button"
+                onClick={onCustomSave || handleSave}
+                disabled={isSaving}
+                className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold text-xs shadow-2xs transition-colors flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+              >
+                <Save className="w-3.5 h-3.5 text-slate-500" />
+                <span>{isSaving ? 'Menyimpan...' : 'Simpan Tahap Ini'}</span>
+              </button>
+            )}
+
+            {nextStageKey && nextDetail && (
+              <button
+                type="button"
+                onClick={() => handleTabClick(nextStageKey)}
+                disabled={!currentDetail.isComplete}
+                title={
+                  currentDetail.isComplete
+                    ? `Lanjutkan ke Tahap ${nextDetail.letter} (${nextDetail.name})`
+                    : `Lengkapi Tahap ${currentDetail.letter} terlebih dahulu untuk membuka Tahap ${nextDetail.letter}`
+                }
+                className={`px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-2 shadow-xs ${
+                  currentDetail.isComplete
+                    ? 'bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer shadow-indigo-100'
+                    : 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300'
+                }`}
+              >
+                {!currentDetail.isComplete && <Lock className="w-3.5 h-3.5" />}
+                <span>Lanjut ke Tahap {nextDetail.letter} ({nextDetail.name})</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -1656,41 +1786,187 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
         </div>
       </div>
 
+      {/* REAL-TIME PROGRESS & STATUS HEADER */}
+      {sambungProgress && (
+        <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-xs border border-slate-200">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  Progres Alur Supervisi SAMBUNG
+                </span>
+                <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-black border ${sambungProgress.statusBadge.bgColor} ${sambungProgress.statusBadge.textColor} ${sambungProgress.statusBadge.borderColor}`}>
+                  {sambungProgress.statusBadge.text}
+                </span>
+              </div>
+              <p className="text-xs text-slate-600">
+                Tahap {activeTab}: <span className="font-bold text-slate-900">{TABS_CONFIG.find(t => t.key === activeTab)?.name}</span> &bull; Status: <span className="font-semibold text-indigo-700">{sambungProgress.stages[activeTab as StageKey]?.statusLabel}</span> ({sambungProgress.stages[activeTab as StageKey]?.progressPercent}% terisi)
+              </p>
+            </div>
+
+            {/* Overall Progress Meter */}
+            <div className="flex items-center gap-3 min-w-[220px]">
+              <div className="flex-1">
+                <div className="flex items-center justify-between text-[11px] font-semibold text-slate-600 mb-1">
+                  <span>Penyelesaian 7 Tahap</span>
+                  <span className="font-bold text-indigo-700">{sambungProgress.completedStagesCount}/7 ({sambungProgress.overallPercent}%)</span>
+                </div>
+                <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+                  <div
+                    className={`h-full transition-all duration-500 ${
+                      sambungProgress.overallPercent === 100
+                        ? 'bg-emerald-500'
+                        : sambungProgress.overallPercent > 40
+                        ? 'bg-indigo-600'
+                        : 'bg-blue-500'
+                    }`}
+                    style={{ width: `${sambungProgress.overallPercent}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Sequential Step Gating Breadcrumb */}
+          <div className="mt-3.5 pt-3 border-t border-slate-100 grid grid-cols-7 gap-1.5 sm:gap-2">
+            {TABS_CONFIG.map((t, idx) => {
+              const detail = sambungProgress.stages[t.key as StageKey];
+              const isCur = activeTab === t.key;
+              return (
+                <button
+                  type="button"
+                  key={t.key}
+                  onClick={() => handleTabClick(t.key)}
+                  className={`flex flex-col items-center justify-center p-1.5 sm:p-2 rounded-xl text-center border transition-all ${
+                    isCur
+                      ? 'bg-indigo-50 border-indigo-300 ring-2 ring-indigo-500/20 shadow-2xs'
+                      : detail?.isLocked
+                      ? 'bg-slate-50 border-slate-200 opacity-60 cursor-not-allowed'
+                      : detail?.isComplete
+                      ? 'bg-emerald-50/70 border-emerald-200 hover:bg-emerald-100/60'
+                      : 'bg-white border-slate-200 hover:bg-slate-50'
+                  }`}
+                  title={
+                    detail?.isLocked
+                      ? `Terkunci: Lengkapi Tahap ${TABS_CONFIG[idx - 1]?.key} terlebih dahulu`
+                      : detail?.isComplete
+                      ? `Tahap ${t.key} Selesai Penuh`
+                      : `Tahap ${t.key} (${detail?.statusLabel})`
+                  }
+                >
+                  <div className="flex items-center gap-1 mb-0.5">
+                    <span className="text-xs font-black">{t.letter}</span>
+                    {detail?.isComplete ? (
+                      <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                    ) : detail?.isLocked ? (
+                      <Lock className="w-2.5 h-2.5 text-slate-400 shrink-0" />
+                    ) : (
+                      <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                    )}
+                  </div>
+                  <span className="text-[9px] font-bold text-slate-700 truncate w-full hidden sm:block">
+                    {t.name}
+                  </span>
+                  <span className={`text-[8px] font-semibold mt-0.5 ${
+                    detail?.isComplete ? 'text-emerald-700' : detail?.isLocked ? 'text-slate-400' : 'text-blue-700'
+                  }`}>
+                    {detail?.isLocked ? 'Terkunci' : detail?.isComplete ? '100%' : `${detail?.progressPercent}%`}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* WARNING BANNER JIKA TAHAP TERKUNCI DICOBA DIBUKA */}
+      {lockedWarning && (
+        <div className="p-4 rounded-2xl bg-rose-50 border-2 border-rose-300 text-rose-950 flex items-start justify-between gap-3 shadow-sm">
+          <div className="flex items-start gap-2.5">
+            <div className="p-1.5 bg-rose-200 text-rose-800 rounded-lg shrink-0 mt-0.5">
+              <Lock className="w-4 h-4" />
+            </div>
+            <div>
+              <h4 className="text-xs font-extrabold uppercase tracking-wide text-rose-900">
+                Akses Tahap Supervisi Terkunci (Siklus Berkesinambungan)
+              </h4>
+              <p className="text-xs text-rose-800 mt-0.5 leading-relaxed font-medium">
+                {lockedWarning}
+              </p>
+              <p className="text-[11px] text-rose-600 mt-1">
+                Supervisi strategi SAMBUNG mewajibkan setiap tahap diselesaikan secara berurutan agar transformasi mutu pembelajaran terbukti dan terdokumentasi lengkap.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setLockedWarning(null)}
+            className="p-1 text-rose-500 hover:text-rose-800 rounded-lg hover:bg-rose-100 cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* S - A - M - B - U - N - G TAB NAVIGATION BAR */}
       <div className="bg-white rounded-2xl p-2 shadow-xs border border-slate-200">
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
           {TABS_CONFIG.map((tab) => {
             const isActive = activeTab === tab.key;
+            const stageDetail = sambungProgress?.stages[tab.key as StageKey];
+            const isLocked = Boolean(stageDetail?.isLocked);
+            const isComplete = Boolean(stageDetail?.isComplete);
+
             return (
               <button
                 key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
+                type="button"
+                onClick={() => handleTabClick(tab.key)}
                 className={`flex flex-col items-center justify-center p-2.5 rounded-xl transition-all relative ${
                   isActive
                     ? 'bg-indigo-600 text-white shadow-md'
+                    : isLocked
+                    ? 'bg-slate-50/80 hover:bg-slate-100/70 text-slate-400 opacity-70 cursor-not-allowed'
+                    : isComplete
+                    ? 'bg-emerald-50/60 hover:bg-emerald-100/60 text-slate-700'
                     : 'bg-slate-50 hover:bg-slate-100 text-slate-700'
                 }`}
               >
+                {/* Lock or Check status badge */}
+                {isLocked && (
+                  <span className="absolute top-1.5 right-1.5 p-0.5 rounded-full bg-slate-200 text-slate-600" title="Tahap ini terkunci">
+                    <Lock className="w-2.5 h-2.5" />
+                  </span>
+                )}
+                {isComplete && !isActive && (
+                  <span className="absolute top-1.5 right-1.5 p-0.5 rounded-full bg-emerald-100 text-emerald-700" title="Tahap ini selesai">
+                    <CheckCircle2 className="w-2.5 h-2.5" />
+                  </span>
+                )}
+
                 <div
                   className={`w-7 h-7 rounded-lg flex items-center justify-center font-black text-sm mb-1 ${
-                    isActive ? 'bg-white text-indigo-900' : 'bg-slate-200 text-slate-800'
+                    isActive ? 'bg-white text-indigo-900' : isLocked ? 'bg-slate-100 text-slate-400' : 'bg-slate-200 text-slate-800'
                   }`}
                 >
                   {tab.letter}
                 </div>
-                <span className="text-xs font-bold tracking-tight leading-none">{tab.name}</span>
+                <span className="text-xs font-bold tracking-tight leading-none flex items-center gap-1">
+                  {tab.name}
+                </span>
                 <span
                   className={`text-[9px] mt-0.5 leading-none ${
-                    isActive ? 'text-indigo-100' : 'text-slate-400'
+                    isActive ? 'text-indigo-100' : isLocked ? 'text-slate-400' : 'text-slate-400'
                   }`}
                 >
-                  {tab.key === 'S' && 'Kondisi Awal'}
-                  {tab.key === 'A' && 'Aksi Pembinaan'}
-                  {tab.key === 'M' && 'Coaching'}
-                  {tab.key === 'B' && 'Rancang-Coba'}
-                  {tab.key === 'U' && 'Observasi & Murid'}
-                  {tab.key === 'N' && 'Before-After'}
-                  {tab.key === 'G' && 'Tindak Lanjut'}
+                  {isLocked ? 'Terkunci' : isComplete ? 'Selesai' : (
+                    tab.key === 'S' ? 'Kondisi Awal' :
+                    tab.key === 'A' ? 'Aksi Pembinaan' :
+                    tab.key === 'M' ? 'Coaching' :
+                    tab.key === 'B' ? 'Rancang-Coba' :
+                    tab.key === 'U' ? 'Observasi & Murid' :
+                    tab.key === 'N' ? 'Before-After' : 'Tindak Lanjut'
+                  )}
                 </span>
               </button>
             );
@@ -2840,6 +3116,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
               </fieldset>
             )}
 
+            {renderStageGateFooter('S', 'A')}
           </div>
         )}
 
@@ -3406,6 +3683,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                   <p className="text-[10px] text-indigo-600 font-medium mt-1">{currentSupervision.subject}</p>
                 </div>
               </div>
+              {renderStageGateFooter('A', 'M')}
             </div>
           </fieldset>
         )}
@@ -3616,6 +3894,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                   </div>
                 );
               })()}
+              {renderStageGateFooter('M', 'B')}
             </div>
           </fieldset>
         )}
@@ -4377,6 +4656,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                 </div>
               );
             })()}
+            {renderStageGateFooter('B', 'U')}
           </fieldset>
         )}
 
@@ -5550,7 +5830,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                 </div>
               </fieldset>
             )}
-
+            {renderStageGateFooter('U', 'N')}
           </div>
         )}
 
@@ -5898,6 +6178,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                   </tbody>
                 </table>
               </div>
+              {renderStageGateFooter('N', 'G')}
             </div>
           </div>
         </fieldset>
@@ -6811,6 +7092,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                   </div>
                 </div>
               )}
+              {renderStageGateFooter('G')}
             </div>
           </fieldset>
         )}

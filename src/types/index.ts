@@ -62,6 +62,7 @@ export interface Supervision {
   supervisorRole: Role;
   createdAt: string;
   updatedAt: string;
+  isNewSupervision?: boolean;
 
   // A. Perangkat Ajar & Drive Links
   perangkatAjar: {

@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import { EditGuruSupervisiModal } from './forms/EditGuruSupervisiModal';
 import { KesimpulanSemuaGuruDashboard } from './KesimpulanSemuaGuruDashboard';
+import { getSupervisionSambungProgress } from '../utils/sambungProgress';
 import { 
   Chart as ChartJS, 
   CategoryScale, 
@@ -1442,34 +1443,53 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             </div>
           </div>
 
-          {/* SAMBUNG Banner card for Guru */}
-          <div className="bg-slate-900 text-white p-5 sm:p-6 rounded-2xl border border-slate-800 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3.5">
-              <div className="w-10 h-10 rounded-xl bg-indigo-600/30 border border-indigo-500/40 flex items-center justify-center font-bold text-indigo-400 text-sm shrink-0">
-                <BookOpen className="w-5 h-5 text-indigo-400" />
+          {/* SAMBUNG Banner card for Guru with live stage progress */}
+          {(() => {
+            const myProg = getSupervisionSambungProgress(mySingleSupervision);
+            return (
+              <div className="bg-slate-900 text-white p-5 sm:p-6 rounded-2xl border border-slate-800 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-12 h-12 rounded-xl bg-indigo-600/30 border border-indigo-500/40 flex items-center justify-center font-bold text-indigo-400 text-base shrink-0">
+                    <BookOpen className="w-6 h-6 text-indigo-400" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-400 block">
+                        Instrumen Strategi SAMBUNG
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                        {myProg.statusBadge.text}
+                      </span>
+                    </div>
+                    <h3 className="font-bold text-sm sm:text-base text-white">
+                      Portofolio Supervisi Klinis 7 Tahap Berkesinambungan
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Tahap Aktif: <strong className="text-indigo-300">Tahap {myProg.currentActiveStage} ({myProg.stages[myProg.currentActiveStage]?.name})</strong> &bull; {myProg.completedStagesCount} dari 7 tahap selesai.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+                  <div className="w-full sm:w-32 text-right hidden sm:block">
+                    <span className="text-[11px] text-slate-400 block mb-1">{myProg.overallPercent}% Tercapai</span>
+                    <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
+                      <div className="h-full bg-indigo-500 transition-all" style={{ width: `${myProg.overallPercent}%` }} />
+                    </div>
+                  </div>
+                  {onOpenSambung && (
+                    <button
+                      onClick={() => onOpenSambung(mySingleSupervision?.id)}
+                      className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition-colors shrink-0 flex items-center gap-2 justify-center shadow-xs cursor-pointer"
+                    >
+                      <BookOpen className="w-4 h-4 text-white" />
+                      <span>Buka Portofolio SAMBUNG</span>
+                    </button>
+                  )}
+                </div>
               </div>
-              <div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-400 block">
-                  Instrumen Strategi SAMBUNG
-                </span>
-                <h3 className="font-bold text-sm sm:text-base text-white">
-                  Portofolio Supervisi Klinis 7 Tahap
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Selidiki, Amati, Maknai, Berdayakan, Uji, Nyatakan, dan Gerakkan.
-                </p>
-              </div>
-            </div>
-            {onOpenSambung && (
-              <button
-                onClick={() => onOpenSambung(mySingleSupervision?.id)}
-                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition-colors shrink-0 flex items-center gap-1.5 self-stretch sm:self-auto justify-center shadow-xs"
-              >
-                <BookOpen className="w-4 h-4 text-white" />
-                <span>Buka Portofolio SAMBUNG</span>
-              </button>
-            )}
-          </div>
+            );
+          })()}
         </div>
       )}
 
@@ -1734,13 +1754,14 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                   <th className="py-3 px-4 text-center">Telaah RPP</th>
                   <th className="py-3 px-4 text-center">Revisi Perangkat</th>
                   <th className="py-3 px-4 text-center">Observasi</th>
-                  <th className="py-3 px-4 text-center">Status</th>
-                  <th className="py-3 px-4 text-center">Menu Edit</th>
+                  <th className="py-3 px-4 text-center">Status &amp; Progres SAMBUNG</th>
+                  <th className="py-3 px-4 text-center">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {mySupervisions.map((sup) => {
                   const revisiDone = Boolean(sup.perangkatAjar?.revisi?.modulAjarRevisiUrl);
+                  const sambungProg = getSupervisionSambungProgress(sup);
                   return (
                     <tr key={sup.id} className="hover:bg-slate-50/60 transition-colors">
                       <td className="py-3 px-4">
@@ -1785,27 +1806,48 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                           {sup.observasiKelas?.score ? `${sup.observasiKelas.score}%` : '-'}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-center">
-                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          sup.status === 'completed'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : sup.status === 'in_progress'
-                            ? 'bg-amber-100 text-amber-800'
-                            : 'bg-indigo-100 text-indigo-800'
-                        }`}>
-                          {sup.status === 'completed' ? 'Selesai' : sup.status === 'in_progress' ? 'Proses Observasi' : 'Draf/Pengajuan'}
-                        </span>
+                      <td className="py-3 px-4 text-center min-w-[170px]">
+                        <div className="flex flex-col items-center gap-1">
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold border ${sambungProg.statusBadge.bgColor} ${sambungProg.statusBadge.textColor} ${sambungProg.statusBadge.borderColor}`}>
+                            {sambungProg.statusBadge.text}
+                          </span>
+                          <div className="w-28 h-1.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+                            <div 
+                              className={`h-full transition-all ${
+                                sambungProg.overallPercent === 100 
+                                  ? 'bg-emerald-500' 
+                                  : sambungProg.overallPercent > 0 
+                                  ? 'bg-indigo-600' 
+                                  : 'bg-blue-300'
+                              }`} 
+                              style={{ width: `${sambungProg.overallPercent}%` }}
+                            />
+                          </div>
+                        </div>
                       </td>
                       <td className="py-3 px-4 text-center">
-                        <button
-                          type="button"
-                          onClick={() => setEditingTeacher(sup)}
-                          className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition-colors inline-flex items-center gap-1 shadow-2xs"
-                          title={`Edit data guru & hasil supervisi ${sup.teacherName}`}
-                        >
-                          <Pencil className="w-3 h-3" />
-                          <span>Edit</span>
-                        </button>
+                        <div className="flex items-center justify-center gap-1.5">
+                          {onOpenSambung && (
+                            <button
+                              type="button"
+                              onClick={() => onOpenSambung(sup.id)}
+                              className="px-2 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold text-xs transition-colors inline-flex items-center gap-1"
+                              title={`Buka siklus SAMBUNG untuk ${sup.teacherName}`}
+                            >
+                              <BookOpen className="w-3 h-3 text-indigo-600" />
+                              <span>SAMBUNG</span>
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setEditingTeacher(sup)}
+                            className="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors inline-flex items-center gap-1 border border-slate-200"
+                            title={`Edit data guru & hasil supervisi ${sup.teacherName}`}
+                          >
+                            <Pencil className="w-3 h-3 text-slate-500" />
+                            <span>Edit</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

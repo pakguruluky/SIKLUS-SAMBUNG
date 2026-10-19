@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Supervision, UserProfile, School } from '../../types';
 import { X, CheckCircle, GraduationCap, Building2, Zap, Sparkles } from 'lucide-react';
 import { saveSupervision } from '../../services/firebase';
+import { createEmptySambungData } from '../../data/sambungSeed';
 
 interface NewSupervisionModalProps {
   isOpen: boolean;
@@ -175,6 +176,9 @@ export const NewSupervisionModal: React.FC<NewSupervisionModalProps> = ({
           finalGrade: 'Amat Baik (A)',
           summaryNotes: '',
         },
+        // Pastikan seluruh instrumen Siklus SAMBUNG (S, A, M, B, U, N, G) kosong (belum terisi)
+        sambung: createEmptySambungData(teacherName, selectedSchool?.name || '', subject),
+        isNewSupervision: true,
       };
 
       const baseSup: Supervision = { id: `sup-${Date.now()}`, ...newSup };

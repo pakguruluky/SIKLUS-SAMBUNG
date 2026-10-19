@@ -22,7 +22,7 @@ import {
   Check
 } from 'lucide-react';
 import { fetchAllUsers, addUserAccount, updateUserAccount, deleteUserAccount, saveSupervision } from '../services/firebase';
-import { createDefaultSambungForTeacher } from '../data/sambungSeed';
+import { createEmptySambungData } from '../data/sambungSeed';
 
 interface UserManagementViewProps {
   currentUser: UserProfile;
@@ -140,7 +140,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
 
       // If user is a teacher, automatically bootstrap an active supervision portfolio
       if (newRole === 'guru') {
-        const defaultSambung = createDefaultSambungForTeacher(
+        const defaultSambung = createEmptySambungData(
           newUser.displayName,
           newUser.schoolName || 'SMAN 4 Bogor',
           newUser.subject || 'Fisika'
@@ -164,6 +164,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
           supervisorRole: 'admin',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
+          isNewSupervision: true,
           sambung: defaultSambung,
           perangkatAjar: {
             driveLinks: {

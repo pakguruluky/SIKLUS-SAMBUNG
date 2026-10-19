@@ -18,6 +18,7 @@ import {
   Printer
 } from 'lucide-react';
 import { saveSupervision, updateUserAccount, fetchAllUsers } from '../../services/firebase';
+import { getSupervisionSambungProgress } from '../../utils/sambungProgress';
 
 interface EditGuruSupervisiModalProps {
   isOpen: boolean;
@@ -716,26 +717,34 @@ export const EditGuruSupervisiModal: React.FC<EditGuruSupervisiModalProps> = ({
                   </>
                 )}
 
-                {onOpenSambung && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onClose();
-                      onOpenSambung(supervision.id);
-                    }}
-                    className="p-3 rounded-2xl border-2 border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-left transition-all flex items-center justify-between group"
-                  >
-                    <div>
-                      <p className="text-xs font-bold text-indigo-900">
-                        🌿 Buka Instrumen SAMBUNG 7 Tahap
-                      </p>
-                      <p className="text-[11px] text-indigo-700 mt-0.5">
-                        Selidiki, Amati, Maknai, Berdayakan, Uji, Nyatakan, Gerakkan
-                      </p>
-                    </div>
-                    <BookOpen className="w-4 h-4 text-indigo-600" />
-                  </button>
-                )}
+                {onOpenSambung && (() => {
+                  const sambungProg = getSupervisionSambungProgress(supervision);
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        onOpenSambung(supervision.id);
+                      }}
+                      className="p-3.5 rounded-2xl border-2 border-indigo-200 bg-gradient-to-r from-indigo-50 to-white hover:bg-indigo-100 text-left transition-all flex items-center justify-between group shadow-2xs"
+                    >
+                      <div className="flex-1 mr-3">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <p className="text-xs font-black text-indigo-950">
+                            🌿 Buka Instrumen SAMBUNG 7 Tahap
+                          </p>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${sambungProg.statusBadge.bgColor} ${sambungProg.statusBadge.textColor} ${sambungProg.statusBadge.borderColor}`}>
+                            {sambungProg.statusBadge.text}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-indigo-800">
+                          Tahap Aktif: <strong>Tahap {sambungProg.currentActiveStage} ({sambungProg.stages[sambungProg.currentActiveStage]?.name})</strong> &bull; {sambungProg.completedStagesCount}/7 Selesai ({sambungProg.overallPercent}%)
+                        </p>
+                      </div>
+                      <BookOpen className="w-5 h-5 text-indigo-600 shrink-0" />
+                    </button>
+                  );
+                })()}
 
                 {onOpenPrint && (
                   <button

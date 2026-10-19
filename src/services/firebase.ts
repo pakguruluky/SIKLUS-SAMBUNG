@@ -36,7 +36,7 @@ import {
 } from './localStorageService';
 import { SAMPLE_SUPERVISIONS } from '../data/seedData';
 import { generateTeacherMaknaiData, generateAmatiData, generateBerdayakanTelaahPerbaikanData, generateUjiData, getTeacherAutoFillData } from '../data/autoFillData';
-import { DEFAULT_MATRIKS_BEFORE, createDefaultSambungForTeacher } from '../data/sambungSeed';
+import { DEFAULT_MATRIKS_BEFORE, createDefaultSambungForTeacher, createEmptySambungData } from '../data/sambungSeed';
 
 // Initialize Firebase with provisioned credentials & ignore undefined fields
 const app = initializeApp(firebaseConfig);
@@ -521,9 +521,20 @@ function normalizeSupervisionData(sup: Supervision): Supervision {
   }
 
   const normalized: Supervision = { ...sup, teacherName, schoolName, subject, lessonTitle };
+  const isSeedSupervision = Boolean(sup.id && sup.id.startsWith('sup-demo-'));
 
   if (!normalized.sambung) {
-    normalized.sambung = createDefaultSambungForTeacher(teacherName, schoolName, subject);
+    if (isSeedSupervision) {
+      normalized.sambung = createDefaultSambungForTeacher(teacherName, schoolName, subject);
+    } else {
+      normalized.sambung = createEmptySambungData(teacherName, schoolName, subject);
+      return normalized;
+    }
+  }
+
+  // If this is a user-created new supervision, preserve all empty instruments as completely blank (belum terisi)
+  if (!isSeedSupervision || (sup as any).isNewSupervision) {
+    return normalized;
   }
 
   if (normalized.sambung) {

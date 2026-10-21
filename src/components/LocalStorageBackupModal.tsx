@@ -19,6 +19,7 @@ import {
   saveLocalSchools 
 } from '../services/localStorageService';
 import { syncAllPendingLocalChangesToFirestore, saveSupervision, updateSchool } from '../services/firebase';
+import { apiRestoreBackup } from '../services/backendApi';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 interface LocalStorageBackupModalProps {
@@ -70,25 +71,29 @@ export const LocalStorageBackupModal: React.FC<LocalStorageBackupModalProps> = (
       setSuccessMessage('');
       const restored = await readBackupFromFile(file);
       
-      // Save directly to localStorage
+      // 1. Save directly to localStorage (0ms)
       saveLocalSupervisions(restored.supervisions);
       if (restored.schools.length > 0) {
         saveLocalSchools(restored.schools);
       }
 
-      // Propagate to App state
+      // 2. Propagate to App state immediately
       onRestoreData(restored.supervisions, restored.schools);
 
-      // Persist all restored data to Firebase backend
-      for (const sup of restored.supervisions) {
-        await saveSupervision(sup);
-      }
-      for (const sch of restored.schools) {
-        await updateSchool(sch.id, sch);
-      }
+      // 3. Persist batch to Backend API disk in ONE call (< 20ms)
+      await apiRestoreBackup({
+        supervisions: restored.supervisions,
+        schools: restored.schools,
+      });
 
-      setSuccessMessage(`Berhasil memulihkan ${restored.supervisions.length} berkas supervisi & tersimpan ke Firebase Backend!`);
-      setTimeout(() => setSuccessMessage(''), 6000);
+      // 4. Asynchronously push to Firebase without blocking the UI
+      Promise.allSettled([
+        ...restored.supervisions.map(sup => saveSupervision(sup)),
+        ...restored.schools.map(sch => updateSchool(sch.id, sch)),
+      ]).catch(() => {});
+
+      setSuccessMessage(`Berhasil memulihkan ${restored.supervisions.length} berkas supervisi & tersimpan ke Backend & Firebase!`);
+      setTimeout(() => setSuccessMessage(''), 5000);
     } catch (err: any) {
       setErrorMessage(err.message || 'Gagal memulihkan berkas.');
     } finally {

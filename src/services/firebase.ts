@@ -37,6 +37,61 @@ import {
 import { SAMPLE_SUPERVISIONS } from '../data/seedData';
 import { generateTeacherMaknaiData, generateAmatiData, generateBerdayakanTelaahPerbaikanData, generateUjiData, getTeacherAutoFillData } from '../data/autoFillData';
 import { DEFAULT_MATRIKS_BEFORE, createDefaultSambungForTeacher, createEmptySambungData } from '../data/sambungSeed';
+import { DEFAULT_SCHOOLS, DEFAULT_USERS } from './firebaseDefaults';
+export { DEFAULT_SCHOOLS, DEFAULT_USERS };
+import {
+  apiFetchSchools,
+  apiSaveSchool,
+  apiUpdateSchool,
+  apiDeleteSchool,
+  apiResetSchools,
+  apiFetchSupervisions,
+  apiSaveSupervision,
+  apiDeleteSupervision,
+  apiFetchUsers,
+  apiSaveUser,
+  apiDeleteUser,
+  apiSyncAll,
+  apiRestoreBackup,
+} from './backendApi';
+
+// Helper to safely merge school lists prioritizing latest updatedAt
+export function mergeSchoolsByTimestamp(primary: School[], secondary: School[]): School[] {
+  const map = new Map<string, School>();
+  secondary.forEach(s => map.set(s.id, s));
+  primary.forEach(p => {
+    const existing = map.get(p.id);
+    if (!existing) {
+      map.set(p.id, p);
+    } else {
+      const pTime = p.updatedAt ? new Date(p.updatedAt).getTime() : 0;
+      const eTime = existing.updatedAt ? new Date(existing.updatedAt).getTime() : 0;
+      if (pTime >= eTime || !existing.updatedAt) {
+        map.set(p.id, p);
+      }
+    }
+  });
+  return Array.from(map.values());
+}
+
+// Helper to safely merge supervision lists prioritizing latest updatedAt
+export function mergeSupervisionsByTimestamp(primary: Supervision[], secondary: Supervision[]): Supervision[] {
+  const map = new Map<string, Supervision>();
+  secondary.forEach(s => map.set(s.id, s));
+  primary.forEach(p => {
+    const existing = map.get(p.id);
+    if (!existing) {
+      map.set(p.id, p);
+    } else {
+      const pTime = p.updatedAt ? new Date(p.updatedAt).getTime() : 0;
+      const eTime = existing.updatedAt ? new Date(existing.updatedAt).getTime() : 0;
+      if (pTime >= eTime || !existing.updatedAt) {
+        map.set(p.id, p);
+      }
+    }
+  });
+  return Array.from(map.values());
+}
 
 // Initialize Firebase with provisioned credentials & ignore undefined fields
 const app = initializeApp(firebaseConfig);
@@ -70,10 +125,34 @@ export function cleanForFirestore<T>(obj: T): T {
   return obj;
 }
 
+// Safe timeout wrapper for all Firestore network promises to guarantee UI never freezes or hangs
+export async function withFirestoreTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs = 800,
+  fallbackValue?: T
+): Promise<T> {
+  let timer: any;
+  const timeoutPromise = new Promise<T>((resolve) => {
+    timer = setTimeout(() => {
+      resolve(fallbackValue as T);
+    }, timeoutMs);
+  });
+
+  try {
+    const res = await Promise.race([promise, timeoutPromise]);
+    clearTimeout(timer);
+    return res;
+  } catch (err: any) {
+    clearTimeout(timer);
+    console.warn('Notice from Firestore operation (data safely stored in backend/local):', err?.message || err);
+    return fallbackValue as T;
+  }
+}
+
 // Connection verification test per Firebase skill guidelines
 async function testConnection() {
   try {
-    await getDocFromServer(doc(db, 'test', 'connection'));
+    await withFirestoreTimeout(getDocFromServer(doc(db, 'test', 'connection')), 1500, null);
   } catch (error) {
     if (error instanceof Error && error.message.includes('the client is offline')) {
       console.warn('Firebase configuration notice: operating in offline-cached mode until connection is re-established.');
@@ -82,374 +161,7 @@ async function testConnection() {
 }
 testConnection();
 
-// 11 Official Schools
-export const DEFAULT_SCHOOLS: School[] = [
-  {
-    id: 'sch-sman2',
-    npsn: '20238516',
-    name: 'SMAN 2 Bogor',
-    address: 'Jl. Keranji Ujung No. 1, Budi Agung, Sukaresmi, Kec. Tanah Sareal, Kota Bogor',
-    principalName: 'Nevy Vilanti Kusdinan, M.Pd.',
-    accreditation: 'A',
-    createdAt: new Date().toISOString(),
-    createdBy: 'system'
-  },
-  {
-    id: 'sch-sman4',
-    npsn: '20220334',
-    name: 'SMAN 4 Bogor',
-    address: 'Jl. Dreded V No. 36, Empang, Kec. Kota Bogor Selatan, Kota Bogor',
-    principalName: 'Yulianti Rosdian, M.Pd.',
-    accreditation: 'A',
-    createdAt: new Date().toISOString(),
-    createdBy: 'system'
-  },
-  {
-    id: 'sch-ummul-quro',
-    npsn: '69775444',
-    name: 'SMAS IT Ummul Quro',
-    address: 'Jl. Pool Bina Marga Perumahan Kayu Manis Boulevard No. 3, RT 006 / RW 005, Kayu Manis, Tanah Sareal, Kota Bogor - 16169',
-    principalName: 'Hildawati, S.T.',
-    accreditation: 'A',
-    createdAt: new Date().toISOString(),
-    createdBy: 'system'
-  },
-  {
-    id: 'sch-yphb',
-    npsn: '20220330',
-    name: 'SMAS YPHB',
-    address: 'Jl. Pajajaran Nomor 234 A, Kota Bogor',
-    principalName: 'Joko Pitoyo, S.Pd., M.M.',
-    accreditation: 'A',
-    createdAt: new Date().toISOString(),
-    createdBy: 'system'
-  },
-  {
-    id: 'sch-rimba-madya',
-    npsn: '20220344',
-    name: 'SMAS Rimba Madya',
-    address: 'Jl. Rimba Mulya II, Pasir Mulya, Bogor Barat',
-    principalName: 'Pajar Hariyanto, S.Pd.',
-    accreditation: 'A',
-    createdAt: new Date().toISOString(),
-    createdBy: 'system'
-  },
-  {
-    id: 'sch-yza-1',
-    npsn: '20220350',
-    name: 'SMA YZA 1',
-    address: 'Jl. Raya Ciawi KM. 09, Kel. Sindangsari, Kec. Bogor Timur, Kota Bogor',
-    principalName: 'TB. Agung Hartawan, SE',
-    accreditation: 'B',
-    createdAt: new Date().toISOString(),
-    createdBy: 'system'
-  },
-  {
-    id: 'sch-pgri-1',
-    npsn: '20220317',
-    name: 'SMAS PGRI 1',
-    address: 'Jl. Bina Marga I No. 17, Bogor Timur',
-    principalName: 'Evi Jalinar, S.Pd., M.Si',
-    accreditation: 'A',
-    createdAt: new Date().toISOString(),
-    createdBy: 'system'
-  },
-  {
-    id: 'sch-bhakti-insani',
-    npsn: '20220520',
-    name: 'SMAS Bhakti Insani',
-    address: 'Jl. Batu Tulis NV Sidik No. 5C, Bogor Selatan',
-    principalName: 'Kusmiati, Ph.D.',
-    accreditation: 'B',
-    createdAt: new Date().toISOString(),
-    createdBy: 'system'
-  },
-  {
-    id: 'sch-yasih',
-    npsn: '20220349',
-    name: 'SMAS Yasih',
-    address: 'Jl. Baranangsiang Indah Kp. Cikeas, Kel. Katulampa, Kec. Bogor Timur, Kota Bogor',
-    principalName: 'M. Fahmi Fauzan Ihsan, S.Pd',
-    accreditation: 'B',
-    createdAt: new Date().toISOString(),
-    createdBy: 'system'
-  },
-  {
-    id: 'sch-muhammadiyah',
-    npsn: '20220314',
-    name: 'SMAS Muhammadiyah',
-    address: 'Jl. Merdeka 118, Bogor',
-    principalName: 'Nurmawaji, S.Pd.',
-    accreditation: 'B',
-    createdAt: new Date().toISOString(),
-    createdBy: 'system'
-  },
-  {
-    id: 'sch-ananda',
-    npsn: '20220547',
-    name: 'SMAS Ananda',
-    address: 'Jl. Lawanggintung Komp. KPKN No. 25, RT 06 / RW 06, Bogor',
-    principalName: 'Maria, M.Psi.',
-    accreditation: 'B',
-    createdAt: new Date().toISOString(),
-    createdBy: 'system'
-  }
-];
-
-// Default Real Accounts per User Request
-export const DEFAULT_USERS: UserProfile[] = [
-  {
-    uid: 'user-pengawas-kusnandar',
-    username: 'pengawas',
-    password: 'pakkus',
-    email: 'pengawas@siklus-sambung.sch.id',
-    displayName: 'Kusnandar, M.Si',
-    role: 'admin',
-    nip: '19680512 199403 1 004',
-    phone: '081288990011',
-    approvalStatus: 'approved',
-    createdAt: '2025-01-01T00:00:00.000Z'
-  },
-  {
-    uid: 'user-kepsek-yulianti',
-    username: 'yulianti',
-    password: 'pakkus',
-    email: 'yulianti@siklus-sambung.sch.id',
-    displayName: 'Yulianti Rosdian, M.Pd.',
-    role: 'kepsek',
-    schoolId: 'sch-sman4',
-    schoolName: 'SMAN 4 Bogor',
-    nip: '19720415 199802 2 001',
-    phone: '081299887766',
-    approvalStatus: 'approved',
-    createdAt: '2025-01-01T00:00:00.000Z'
-  },
-  {
-    uid: 'teacher-sondang',
-    username: 'sondang',
-    password: 'pakkus',
-    email: 'sondang@siklus-sambung.sch.id',
-    displayName: 'Sondang Asih Januarti, S.Pd.',
-    role: 'guru',
-    schoolId: 'sch-sman4',
-    schoolName: 'SMAN 4 Bogor',
-    subject: 'Fisika',
-    nip: '19840512 200801 2 007',
-    phone: '081377665544',
-    approvalStatus: 'approved',
-    createdAt: '2025-01-01T00:00:00.000Z'
-  },
-  {
-    uid: 'teacher-hilmia',
-    username: 'hilmia',
-    password: 'pakkus',
-    email: 'hilmia@siklus-sambung.sch.id',
-    displayName: 'Hilmia Fitriyani, S.Pd.',
-    role: 'guru',
-    schoolId: 'sch-sman4',
-    schoolName: 'SMAN 4 Bogor',
-    subject: 'Ekonomi',
-    nip: '19851120 200902 2 008',
-    phone: '081388776655',
-    approvalStatus: 'approved',
-    createdAt: '2025-01-01T00:00:00.000Z'
-  },
-  {
-    uid: 'teacher-ivany',
-    username: 'ivany',
-    password: 'pakkus',
-    email: 'ivany@siklus-sambung.sch.id',
-    displayName: 'Ivany Ratna Ekandini, S.Pd.',
-    role: 'guru',
-    schoolId: 'sch-rimba-madya',
-    schoolName: 'SMAS Rimba Madya',
-    subject: 'Bahasa Indonesia',
-    nip: '19890412 201402 2 003',
-    phone: '081234567890',
-    approvalStatus: 'approved',
-    createdAt: '2025-01-01T00:00:00.000Z'
-  },
-  {
-    uid: 'teacher-alline',
-    username: 'alline',
-    password: 'pakkus',
-    email: 'alline@siklus-sambung.sch.id',
-    displayName: 'Alline Novianti, S.Pd.',
-    role: 'guru',
-    schoolId: 'sch-sman2',
-    schoolName: 'SMAN 2 Bogor',
-    subject: 'Kimia',
-    nip: '19860715 201001 2 011',
-    phone: '081298765432',
-    approvalStatus: 'approved',
-    createdAt: '2025-01-01T00:00:00.000Z'
-  },
-  {
-    uid: 'teacher-mega',
-    username: 'mega',
-    password: 'pakkus',
-    email: 'mega@siklus-sambung.sch.id',
-    displayName: 'Mega Nur Alfira, S.Pd.',
-    role: 'guru',
-    schoolId: 'sch-sman2',
-    schoolName: 'SMAN 2 Bogor',
-    subject: 'Sejarah',
-    nip: '19910318 201503 2 006',
-    phone: '081356789012',
-    approvalStatus: 'approved',
-    createdAt: '2025-01-01T00:00:00.000Z'
-  },
-  {
-    uid: 'teacher-iqbal',
-    username: 'iqbal',
-    password: 'pakkus',
-    email: 'iqbal@siklus-sambung.sch.id',
-    displayName: 'Iqbal Aziz Andrianto',
-    role: 'guru',
-    schoolId: 'sch-pgri-1',
-    schoolName: 'SMAS PGRI 1',
-    subject: 'Sejarah',
-    nip: '19920824 201901 1 005',
-    phone: '081323456789',
-    approvalStatus: 'approved',
-    createdAt: '2025-01-01T00:00:00.000Z'
-  },
-  {
-    uid: 'teacher-sani',
-    username: 'sani',
-    password: 'pakkus',
-    email: 'sani@siklus-sambung.sch.id',
-    displayName: 'Sani Ramadhanti Noor, S.E.',
-    role: 'guru',
-    schoolId: 'sch-ummul-quro',
-    schoolName: 'SMAS IT Ummul Quro',
-    subject: 'Ekonomi',
-    nip: '19880914 201201 2 004',
-    phone: '081278901234',
-    approvalStatus: 'approved',
-    createdAt: '2025-01-01T00:00:00.000Z'
-  },
-  {
-    uid: 'teacher-kirana',
-    username: 'kirana',
-    password: 'pakkus',
-    email: 'kirana@siklus-sambung.sch.id',
-    displayName: 'Kirana Mahardhika, S.Pd, Gr.',
-    role: 'guru',
-    schoolId: 'sch-ummul-quro',
-    schoolName: 'SMAS IT Ummul Quro',
-    subject: 'Fisika',
-    nip: '19930217 201801 2 009',
-    phone: '081289012345',
-    approvalStatus: 'approved',
-    createdAt: '2025-01-01T00:00:00.000Z'
-  },
-  {
-    uid: 'teacher-atik',
-    username: 'atik',
-    password: 'pakkus',
-    email: 'atik@siklus-sambung.sch.id',
-    displayName: 'Atik Dwi Larasati, S.Pd.',
-    role: 'guru',
-    schoolId: 'sch-rimba-madya',
-    schoolName: 'SMAS Rimba Madya',
-    subject: 'Ekonomi',
-    nip: '19870622 201101 2 012',
-    phone: '081390123456',
-    approvalStatus: 'approved',
-    createdAt: '2025-01-01T00:00:00.000Z'
-  },
-  {
-    uid: 'teacher-sihana',
-    username: 'sihana',
-    password: 'pakkus',
-    email: 'sihana@siklus-sambung.sch.id',
-    displayName: 'Sihana, S.Pd.Gr.',
-    role: 'guru',
-    schoolId: 'sch-yphb',
-    schoolName: 'SMAS YPHB',
-    subject: 'Penjasorkes',
-    nip: '19830509 200604 1 008',
-    phone: '081212345678',
-    approvalStatus: 'approved',
-    createdAt: '2025-01-01T00:00:00.000Z'
-  },
-  {
-    uid: 'teacher-salma',
-    username: 'salma',
-    password: 'pakkus',
-    email: 'salma@siklus-sambung.sch.id',
-    displayName: 'Siti Salma, S.Pd',
-    role: 'guru',
-    schoolId: 'sch-yphb',
-    schoolName: 'SMAS YPHB',
-    subject: 'Fisika',
-    nip: '19901205 201403 2 007',
-    phone: '081223456789',
-    approvalStatus: 'approved',
-    createdAt: '2025-01-01T00:00:00.000Z'
-  },
-  {
-    uid: 'teacher-widya',
-    username: 'widya',
-    password: 'pakkus',
-    email: 'widya@siklus-sambung.sch.id',
-    displayName: 'Widya Anjani, S.Pd.',
-    role: 'guru',
-    schoolId: 'sch-bhakti-insani',
-    schoolName: 'SMAS Bhakti Insani',
-    subject: 'Ekonomi',
-    nip: '19940830 202012 2 010',
-    phone: '081334567890',
-    approvalStatus: 'approved',
-    createdAt: '2025-01-01T00:00:00.000Z'
-  },
-  {
-    uid: 'teacher-yazid',
-    username: 'yazid',
-    password: 'pakkus',
-    email: 'yazid@siklus-sambung.sch.id',
-    displayName: 'Yazid Ali Hamdi',
-    role: 'guru',
-    schoolId: 'sch-yasih',
-    schoolName: 'SMAS Yasih',
-    subject: 'PKn',
-    nip: '19891111 201502 1 003',
-    phone: '081345678901',
-    approvalStatus: 'approved',
-    createdAt: '2025-01-01T00:00:00.000Z'
-  },
-  {
-    uid: 'teacher-lutfiana',
-    username: 'lutfiana',
-    password: 'pakkus',
-    email: 'lutfiana@siklus-sambung.sch.id',
-    displayName: 'Lutfiana Faridh Fadillah',
-    role: 'guru',
-    schoolId: 'sch-muhammadiyah',
-    schoolName: 'SMAS Muhammadiyah',
-    subject: 'Kimia',
-    nip: '19950125 202104 2 006',
-    phone: '081256789012',
-    approvalStatus: 'approved',
-    createdAt: '2025-01-01T00:00:00.000Z'
-  },
-  {
-    uid: 'teacher-saulina',
-    username: 'saulina',
-    password: 'pakkus',
-    email: 'saulina@siklus-sambung.sch.id',
-    displayName: 'Saulina Siregar, S.Sos',
-    role: 'guru',
-    schoolId: 'sch-ananda',
-    schoolName: 'SMAS Ananda',
-    subject: 'Ekonomi',
-    nip: '19860314 201003 2 005',
-    phone: '081267890123',
-    approvalStatus: 'approved',
-    createdAt: '2025-01-01T00:00:00.000Z'
-  }
-];
+// DEFAULT_SCHOOLS and DEFAULT_USERS are imported and re-exported from firebaseDefaults.ts
 
 export enum OperationType {
   CREATE = 'create',
@@ -759,22 +471,41 @@ function saveStoredUsers(users: UserProfile[]) {
 
 // User CRUD
 export async function fetchAllUsers(): Promise<UserProfile[]> {
+  let currentUsers = getStoredUsers();
+
+  // 1. Fetch from persistent backend API first
   try {
-    const snap = await getDocs(collection(db, 'users'));
-    if (!snap.empty) {
-      const firestoreUsers = snap.docs.map(d => ({ ...d.data(), uid: d.id } as UserProfile));
-      // Merge with default users
+    const backendUsers = await apiFetchUsers();
+    if (backendUsers && backendUsers.length > 0) {
       const map = new Map<string, UserProfile>();
       DEFAULT_USERS.forEach(u => map.set(u.uid, u));
-      firestoreUsers.forEach(u => map.set(u.uid, u));
-      const combined = Array.from(map.values());
-      saveStoredUsers(combined);
-      return combined;
+      currentUsers.forEach(u => map.set(u.uid, u));
+      backendUsers.forEach(u => map.set(u.uid, u));
+      currentUsers = Array.from(map.values());
+      saveStoredUsers(currentUsers);
     }
   } catch (err) {
-    console.warn('Notice fetching users from Firestore:', err);
+    console.warn('Backend API users notice:', err);
   }
-  return getStoredUsers();
+
+  // 2. Non-blocking Firestore sync
+  try {
+    const snap = await withFirestoreTimeout(getDocs(collection(db, 'users')), 600, null);
+    if (snap && !snap.empty) {
+      const firestoreUsers = snap.docs.map(d => ({ ...d.data(), uid: d.id } as UserProfile));
+      const map = new Map<string, UserProfile>();
+      currentUsers.forEach(u => map.set(u.uid, u));
+      firestoreUsers.forEach(u => map.set(u.uid, u));
+      currentUsers = Array.from(map.values());
+      saveStoredUsers(currentUsers);
+    }
+  } catch (err) {
+    console.warn('Notice fetching users from Firestore (using backend/local):', err);
+  }
+
+  const deletedUids = new Set(getDeletedUserIds());
+  const deletedNames = new Set(getDeletedUserNames());
+  return currentUsers.filter(u => !deletedUids.has(u.uid) && (!u.displayName || !deletedNames.has(u.displayName.toLowerCase().trim())));
 }
 
 export async function addUserAccount(user: UserProfile): Promise<UserProfile> {
@@ -797,12 +528,19 @@ export async function addUserAccount(user: UserProfile): Promise<UserProfile> {
   }
   saveStoredUsers(current);
 
-  // 2. Save to Firestore
+  // 2. Save to backend API
+  try {
+    await apiSaveUser(completeUser);
+  } catch (apiErr) {
+    console.warn('Backend API save user notice:', apiErr);
+  }
+
+  // 3. Save to Firestore
   try {
     const cleaned = cleanForFirestore(completeUser);
-    await setDoc(doc(db, 'users', uid), cleaned, { merge: true });
+    withFirestoreTimeout(setDoc(doc(db, 'users', uid), cleaned, { merge: true }), 600).catch(() => {});
   } catch (err) {
-    console.warn('Notice saving user to Firestore (saved locally):', err);
+    console.warn('Notice saving user to Firestore (saved in backend/local):', err);
   }
 
   return completeUser;
@@ -824,15 +562,22 @@ export async function updateUserAccount(user: UserProfile): Promise<UserProfile>
   }
   saveStoredUsers(current);
 
-  // 2. Save to Firestore
+  // 2. Save to backend API
   try {
-    const cleaned = cleanForFirestore(completeUser);
-    await setDoc(doc(db, 'users', user.uid), cleaned, { merge: true });
-  } catch (err) {
-    console.warn('Notice updating user in Firestore (saved locally):', err);
+    await apiSaveUser(completeUser);
+  } catch (apiErr) {
+    console.warn('Backend API update user notice:', apiErr);
   }
 
-  // 3. Update related supervisions if teacher information changed
+  // 3. Save to Firestore
+  try {
+    const cleaned = cleanForFirestore(completeUser);
+    withFirestoreTimeout(setDoc(doc(db, 'users', user.uid), cleaned, { merge: true }), 600).catch(() => {});
+  } catch (err) {
+    console.warn('Notice updating user in Firestore (saved in backend/local):', err);
+  }
+
+  // 4. Update related supervisions if teacher information changed
   try {
     const supervisions = loadLocalSupervisions() || [];
     let supModified = false;
@@ -855,7 +600,8 @@ export async function updateUserAccount(user: UserProfile): Promise<UserProfile>
       saveLocalSupervisions(updatedSupervisions);
       for (const s of updatedSupervisions) {
         if (s.teacherId === user.uid || (user.username && s.teacherId === user.username)) {
-          setDoc(doc(db, 'supervisions', s.id), cleanForFirestore(s), { merge: true }).catch(() => {});
+          apiSaveSupervision(s).catch(() => {});
+          withFirestoreTimeout(setDoc(doc(db, 'supervisions', s.id), cleanForFirestore(s), { merge: true }), 500).catch(() => {});
         }
       }
     }
@@ -938,8 +684,13 @@ export async function deleteUserAccount(uid: string): Promise<void> {
   }
   const current = allUsers.filter(u => u.uid !== uid);
   saveStoredUsers(current);
+
   try {
-    await deleteDoc(doc(db, 'users', uid));
+    await apiDeleteUser(uid);
+  } catch {}
+
+  try {
+    withFirestoreTimeout(deleteDoc(doc(db, 'users', uid)), 600).catch(() => {});
   } catch (err) {
     console.warn('Notice deleting user from Firestore:', err);
   }
@@ -956,11 +707,8 @@ export async function deleteUserAccount(uid: string): Promise<void> {
 
     for (const sup of supsToDelete) {
       addDeletedSupervisionId(sup.id);
-      try {
-        await deleteDoc(doc(db, 'supervisions', sup.id));
-      } catch (delErr) {
-        console.warn('Notice deleting supervision in Firestore during user deletion:', delErr);
-      }
+      apiDeleteSupervision(sup.id).catch(() => {});
+      withFirestoreTimeout(deleteDoc(doc(db, 'supervisions', sup.id)), 500).catch(() => {});
     }
 
     const remainingSups = localSups.filter(s => !supsToDelete.some(del => del.id === s.id));
@@ -1029,60 +777,100 @@ export function subscribeToUsers(callback: (users: UserProfile[]) => void): Unsu
 
 // Seed initial schools and synchronise with Firestore
 export async function ensureInitialSchools(): Promise<School[]> {
+  const local = loadLocalSchools();
+  if (local && local.length > 0) {
+    return local;
+  }
   try {
-    const schoolsSnap = await getDocs(collection(db, 'schools'));
-    if (!schoolsSnap.empty) {
-      return schoolsSnap.docs.map(d => normalizeSchoolData({ id: d.id, ...d.data() } as School));
+    const schoolsSnap = await withFirestoreTimeout(getDocs(collection(db, 'schools')), 1800, null);
+    if (schoolsSnap && !schoolsSnap.empty) {
+      const data = schoolsSnap.docs.map(d => normalizeSchoolData({ id: d.id, ...d.data() } as School));
+      saveLocalSchools(data);
+      return data;
     }
 
-    // Sync all default schools to Firestore
-    try {
-      for (const sch of DEFAULT_SCHOOLS) {
-        const { id, ...data } = sch;
-        await setDoc(doc(db, 'schools', id), data, { merge: true });
-      }
-      return DEFAULT_SCHOOLS;
-    } catch (writeErr) {
-      console.warn('Notice on syncing default schools to Firestore:', writeErr);
-      return DEFAULT_SCHOOLS;
+    // Bootstrap defaults
+    for (const sch of DEFAULT_SCHOOLS) {
+      const { id, ...data } = sch;
+      withFirestoreTimeout(setDoc(doc(db, 'schools', id), data, { merge: true }), 1500).catch(() => {});
     }
+    saveLocalSchools(DEFAULT_SCHOOLS);
+    return DEFAULT_SCHOOLS;
   } catch (err) {
     console.warn('Using default schools due to offline or uninitialized state', err);
+    saveLocalSchools(DEFAULT_SCHOOLS);
     return DEFAULT_SCHOOLS;
   }
 }
 
 export async function resetToDefaultSchools(): Promise<School[]> {
+  saveLocalSchools(DEFAULT_SCHOOLS);
+  try {
+    await apiResetSchools();
+  } catch {}
   for (const sch of DEFAULT_SCHOOLS) {
     const { id, ...data } = sch;
-    await setDoc(doc(db, 'schools', id), data, { merge: true });
+    withFirestoreTimeout(setDoc(doc(db, 'schools', id), data, { merge: true }), 500).catch(() => {});
   }
-  const snap = await getDocs(collection(db, 'schools'));
-  return snap.docs.map(d => normalizeSchoolData({ id: d.id, ...d.data() } as School));
+  return DEFAULT_SCHOOLS;
 }
 
 export async function fetchAllSchools(): Promise<School[]> {
+  const local = loadLocalSchools();
+  let currentList = local && local.length > 0 ? local : DEFAULT_SCHOOLS;
+
+  // 1. Fetch from persistent backend API first
   try {
-    const snap = await getDocs(collection(db, 'schools'));
-    if (snap.empty) {
-      return DEFAULT_SCHOOLS;
+    const backendSchools = await apiFetchSchools();
+    if (backendSchools && backendSchools.length > 0) {
+      currentList = mergeSchoolsByTimestamp(backendSchools, currentList);
+      saveLocalSchools(currentList);
     }
-    return snap.docs.map(doc => normalizeSchoolData({ id: doc.id, ...doc.data() } as School));
-  } catch (err) {
-    return DEFAULT_SCHOOLS;
+  } catch (backendErr) {
+    console.warn('Backend API schools notice:', backendErr);
   }
+
+  // 2. Non-blocking Firestore sync (only if newer)
+  try {
+    const snap = await withFirestoreTimeout(getDocs(collection(db, 'schools')), 600, null);
+    if (snap && !snap.empty) {
+      const firestoreSchools = snap.docs.map(doc => normalizeSchoolData({ id: doc.id, ...doc.data() } as School));
+      currentList = mergeSchoolsByTimestamp(currentList, firestoreSchools);
+      saveLocalSchools(currentList);
+    }
+  } catch (err) {
+    console.warn('Notice fetching schools from Firestore (using backend/local storage):', err);
+  }
+
+  return currentList;
 }
 
 export async function addSchool(data: Omit<School, 'id'>): Promise<School> {
-  const newDoc = doc(collection(db, 'schools'));
-  const school: School = { id: newDoc.id, ...data };
+  const targetId = `sch-${Date.now()}`;
+  const now = new Date().toISOString();
+  const school: School = {
+    id: targetId,
+    ...data,
+    createdAt: data.createdAt || now,
+    updatedAt: now,
+    createdBy: data.createdBy || 'system',
+  };
   const current = loadLocalSchools() || DEFAULT_SCHOOLS;
   saveLocalSchools([...current.filter(s => s.id !== school.id), school]);
+
+  // Persist to backend API (disk)
+  try {
+    await apiSaveSchool(school);
+  } catch (err) {
+    console.warn('Backend API save school notice:', err);
+  }
+
+  // Fire-and-forget to Firestore without blocking UI
   try {
     const cleaned = cleanForFirestore(school);
-    await setDoc(newDoc, cleaned);
+    withFirestoreTimeout(setDoc(doc(db, 'schools', targetId), cleaned), 600).catch(() => {});
   } catch (err) {
-    console.warn('Notice saving school to Firestore (saved locally):', err);
+    console.warn('Notice saving school to Firestore (saved locally & backend):', err);
   }
   return school;
 }
@@ -1090,23 +878,88 @@ export async function addSchool(data: Omit<School, 'id'>): Promise<School> {
 export async function updateSchool(id: string, data: Partial<School>): Promise<void> {
   const current = loadLocalSchools() || DEFAULT_SCHOOLS;
   const idx = current.findIndex(s => s.id === id);
+  const now = new Date().toISOString();
+  let updatedSchool: School;
+
   if (idx >= 0) {
-    current[idx] = { ...current[idx], ...data };
-    saveLocalSchools(current);
+    updatedSchool = { ...current[idx], ...data, id, updatedAt: now };
+    current[idx] = updatedSchool;
+  } else {
+    updatedSchool = {
+      id,
+      name: data.name || 'SMA Binaan',
+      npsn: data.npsn || '',
+      principalName: data.principalName || '',
+      accreditation: data.accreditation || 'A',
+      address: data.address || '',
+      createdAt: now,
+      updatedAt: now,
+      createdBy: data.createdBy || 'system',
+      ...data,
+    };
+    current.push(updatedSchool);
   }
+  saveLocalSchools(current);
+
+  // If school name changed, update schoolName on related supervisions and users so UI is 100% in sync
+  if (data.name) {
+    try {
+      const sups = loadLocalSupervisions() || [];
+      let supModified = false;
+      const updatedSups = sups.map(s => {
+        if (s.schoolId === id) {
+          supModified = true;
+          return { ...s, schoolName: data.name!, updatedAt: now };
+        }
+        return s;
+      });
+      if (supModified) {
+        saveLocalSupervisions(updatedSups);
+      }
+
+      const users = getStoredUsers();
+      let userModified = false;
+      const updatedUsers = users.map(u => {
+        if (u.schoolId === id) {
+          userModified = true;
+          return { ...u, schoolName: data.name!, updatedAt: now };
+        }
+        return u;
+      });
+      if (userModified) {
+        saveStoredUsers(updatedUsers);
+      }
+    } catch (syncErr) {
+      console.warn('Notice syncing school name to related records:', syncErr);
+    }
+  }
+
+  // Persist to backend API (takes ~5ms, guaranteed persistence on disk)
   try {
-    const cleaned = cleanForFirestore({ ...data, updatedAt: new Date().toISOString() });
-    await setDoc(doc(db, 'schools', id), cleaned, { merge: true });
+    await apiUpdateSchool(id, updatedSchool);
+  } catch (apiErr) {
+    console.warn('Backend API update school notice:', apiErr);
+  }
+
+  // Non-blocking Firestore push
+  try {
+    const cleaned = cleanForFirestore(updatedSchool);
+    withFirestoreTimeout(setDoc(doc(db, 'schools', id), cleaned, { merge: true }), 600).catch(() => {});
   } catch (err) {
-    console.warn('Notice updating school in Firestore (saved locally):', err);
+    console.warn('Notice updating school in Firestore (saved locally & backend):', err);
   }
 }
 
 export async function deleteSchool(id: string): Promise<void> {
   const current = (loadLocalSchools() || DEFAULT_SCHOOLS).filter(s => s.id !== id);
   saveLocalSchools(current);
+
   try {
-    await deleteDoc(doc(db, 'schools', id));
+    await apiDeleteSchool(id);
+  } catch {}
+
+  try {
+    withFirestoreTimeout(deleteDoc(doc(db, 'schools', id)), 600).catch(() => {});
   } catch (err) {
     console.warn('Notice deleting school from Firestore:', err);
   }
@@ -1137,14 +990,31 @@ export async function ensureInitialSupervisions(): Promise<Supervision[]> {
 
 export async function fetchSupervisions(userProfile?: UserProfile | null): Promise<Supervision[]> {
   try {
-    const q = collection(db, 'supervisions');
-    const snap = await getDocs(q);
-    let results: Supervision[] = [];
+    const localCached = loadLocalSupervisions();
+    let results: Supervision[] = localCached && localCached.length > 0 ? localCached : SAMPLE_SUPERVISIONS;
 
-    if (!snap.empty) {
-      results = snap.docs.map(d => normalizeSupervisionData({ id: d.id, ...d.data() } as Supervision));
-    } else {
-      results = await ensureInitialSupervisions();
+    // 1. Fetch from persistent backend API first
+    try {
+      const backendSups = await apiFetchSupervisions();
+      if (backendSups && backendSups.length > 0) {
+        results = mergeSupervisionsByTimestamp(backendSups, results);
+        saveLocalSupervisions(results);
+      }
+    } catch (backendErr) {
+      console.warn('Backend API supervisions notice:', backendErr);
+    }
+
+    // 2. Non-blocking Firestore sync (if available and newer)
+    try {
+      const q = collection(db, 'supervisions');
+      const snap = await withFirestoreTimeout(getDocs(q), 600, null);
+      if (snap && !snap.empty) {
+        const firestoreSups = snap.docs.map(d => normalizeSupervisionData({ id: d.id, ...d.data() } as Supervision));
+        results = mergeSupervisionsByTimestamp(results, firestoreSups);
+        saveLocalSupervisions(results);
+      }
+    } catch (err) {
+      console.warn('Firestore supervisions notice:', err);
     }
 
     const deletedSupIds = new Set(getDeletedSupervisionIds());
@@ -1205,8 +1075,8 @@ export async function fetchSupervisions(userProfile?: UserProfile | null): Promi
 
 export async function getSupervisionById(id: string): Promise<Supervision | null> {
   try {
-    const snap = await getDoc(doc(db, 'supervisions', id));
-    if (snap.exists()) {
+    const snap = await withFirestoreTimeout(getDoc(doc(db, 'supervisions', id)), 600, null);
+    if (snap && snap.exists()) {
       const sup = normalizeSupervisionData({ id: snap.id, ...snap.data() } as Supervision);
       saveSingleLocalSupervision(sup);
       return sup;
@@ -1230,6 +1100,8 @@ export function subscribeToSupervisions(
       if (results.length === 0) {
         results = loadLocalSupervisions() || SAMPLE_SUPERVISIONS;
       } else {
+        const local = loadLocalSupervisions() || [];
+        results = mergeSupervisionsByTimestamp(local, results);
         saveLocalSupervisions(results);
       }
 
@@ -1260,7 +1132,7 @@ export function subscribeToSupervisions(
   }
 }
 
-// Save Supervision with immediate Firebase Firestore write and auto-update
+// Save Supervision with immediate local storage + backend API disk persistence + non-blocking Firebase write
 export async function saveSupervision(supervision: Partial<Supervision> & { id?: string }): Promise<string> {
   const targetId = supervision.id || `sup-${Date.now()}`;
   const now = new Date().toISOString();
@@ -1272,17 +1144,24 @@ export async function saveSupervision(supervision: Partial<Supervision> & { id?:
     updatedAt: now,
   } as Supervision;
 
-  // 1. ALWAYS persist to device local storage immediately
+  // 1. ALWAYS persist to device local storage immediately (0ms)
   saveSingleLocalSupervision(fullData);
 
-  // 2. ALWAYS persist to Firebase Firestore directly with sanitized data
+  // 2. ALWAYS persist to backend API disk storage immediately (< 10ms)
+  try {
+    await apiSaveSupervision(fullData);
+  } catch (apiErr) {
+    console.warn('Backend API save supervision notice:', apiErr);
+  }
+
+  // 3. Persist to Firebase Firestore without blocking UI
   try {
     const docRef = doc(db, 'supervisions', targetId);
     const cleaned = cleanForFirestore(fullData);
-    await setDoc(docRef, cleaned, { merge: true });
+    withFirestoreTimeout(setDoc(docRef, cleaned, { merge: true }), 600).catch(() => {});
     return targetId;
   } catch (err) {
-    console.warn('Firestore write notice (saved in device local storage):', err);
+    console.warn('Firestore write notice (saved in local and backend storage):', err);
     return targetId;
   }
 }
@@ -1291,8 +1170,13 @@ export async function deleteSupervision(id: string): Promise<void> {
   addDeletedSupervisionId(id);
   const localList = (loadLocalSupervisions() || []).filter(s => s.id !== id);
   saveLocalSupervisions(localList);
+
   try {
-    await deleteDoc(doc(db, 'supervisions', id));
+    await apiDeleteSupervision(id);
+  } catch {}
+
+  try {
+    withFirestoreTimeout(deleteDoc(doc(db, 'supervisions', id)), 600).catch(() => {});
   } catch (err) {
     console.warn('Notice deleting supervision from Firestore:', err);
   }

@@ -4,6 +4,24 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { GoogleGenAI } from '@google/genai';
+import {
+  loadDatabase,
+  getAllSchools,
+  getSchoolById,
+  saveSchool,
+  updateSchoolById,
+  deleteSchoolById,
+  resetSchoolsToDefault,
+  getAllSupervisions,
+  getSupervisionById,
+  saveSupervisionRecord,
+  deleteSupervisionById,
+  getAllUsers,
+  saveUserRecord,
+  deleteUserRecord,
+  bulkSync,
+  restoreBackupData,
+} from './src/server/db';
 
 dotenv.config();
 
@@ -45,6 +63,175 @@ async function startServer() {
   // Health check endpoint
   app.get('/api/health', (_req, res) => {
     res.json({ status: 'ok', hasAiKey: Boolean(aiApiKey) });
+  });
+
+  // Database Bootstrap Endpoint
+  app.get('/api/bootstrap', (_req, res) => {
+    try {
+      const data = loadDatabase();
+      res.json({ success: true, data });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // Schools Endpoints
+  app.get('/api/schools', (_req, res) => {
+    try {
+      const schools = getAllSchools();
+      res.json({ success: true, schools });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.get('/api/schools/:id', (req, res) => {
+    try {
+      const school = getSchoolById(req.params.id);
+      if (!school) return res.status(404).json({ success: false, error: 'Not found' });
+      res.json({ success: true, school });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.post('/api/schools', (req, res) => {
+    try {
+      const school = saveSchool(req.body);
+      res.json({ success: true, school });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.put('/api/schools/:id', (req, res) => {
+    try {
+      const school = updateSchoolById(req.params.id, req.body);
+      res.json({ success: true, school });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.delete('/api/schools/:id', (req, res) => {
+    try {
+      const ok = deleteSchoolById(req.params.id);
+      res.json({ success: ok });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.post('/api/schools/reset', (_req, res) => {
+    try {
+      const schools = resetSchoolsToDefault();
+      res.json({ success: true, schools });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // Supervisions Endpoints
+  app.get('/api/supervisions', (_req, res) => {
+    try {
+      const supervisions = getAllSupervisions();
+      res.json({ success: true, supervisions });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.get('/api/supervisions/:id', (req, res) => {
+    try {
+      const supervision = getSupervisionById(req.params.id);
+      if (!supervision) return res.status(404).json({ success: false, error: 'Not found' });
+      res.json({ success: true, supervision });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.post('/api/supervisions', (req, res) => {
+    try {
+      const supervision = saveSupervisionRecord(req.body);
+      res.json({ success: true, supervision });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.put('/api/supervisions/:id', (req, res) => {
+    try {
+      const supervision = saveSupervisionRecord({ ...req.body, id: req.params.id });
+      res.json({ success: true, supervision });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.delete('/api/supervisions/:id', (req, res) => {
+    try {
+      const ok = deleteSupervisionById(req.params.id);
+      res.json({ success: ok });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // Users Endpoints
+  app.get('/api/users', (_req, res) => {
+    try {
+      const users = getAllUsers();
+      res.json({ success: true, users });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.post('/api/users', (req, res) => {
+    try {
+      const user = saveUserRecord(req.body);
+      res.json({ success: true, user });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.put('/api/users/:uid', (req, res) => {
+    try {
+      const user = saveUserRecord({ ...req.body, uid: req.params.uid });
+      res.json({ success: true, user });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.delete('/api/users/:uid', (req, res) => {
+    try {
+      const ok = deleteUserRecord(req.params.uid);
+      res.json({ success: ok });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // Bulk Sync & Restore Endpoints
+  app.post('/api/sync', (req, res) => {
+    try {
+      const result = bulkSync(req.body);
+      res.json({ success: true, ...result });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.post('/api/restore', (req, res) => {
+    try {
+      const result = restoreBackupData(req.body);
+      res.json({ success: true, ...result });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
   });
 
   // AI-powered Telaah RPP 22 Indikator Analysis Endpoint

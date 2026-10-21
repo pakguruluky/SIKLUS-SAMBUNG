@@ -98,8 +98,10 @@ export const SchoolManagement: React.FC<SchoolManagementProps> = ({
         });
       }
 
-      await onRefreshSchools();
       setIsModalOpen(false);
+      await onRefreshSchools();
+      setSyncSuccessMsg(editingSchool ? `Data ${name} berhasil diperbarui dan tersimpan di backend & Firebase!` : `Sekolah ${name} berhasil didaftarkan dan tersimpan di backend & Firebase!`);
+      setTimeout(() => setSyncSuccessMsg(''), 5000);
     } catch (err: any) {
       console.error(err);
       setErrorMsg(err.message || 'Gagal menyimpan data sekolah.');

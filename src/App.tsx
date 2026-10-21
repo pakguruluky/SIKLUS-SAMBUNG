@@ -88,30 +88,31 @@ export default function App() {
   // Initialize app data and sync to Firestore
   useEffect(() => {
     const initApp = async () => {
-      // 1. Sync all initial schools, default users, and initial supervisions to Firebase Firestore
-      await syncAllInitialDataToFirestore();
-
-      const loadedSchools = await ensureInitialSchools();
-      if (loadedSchools.length > 0) {
-        setSchools(loadedSchools);
-        saveLocalSchools(loadedSchools);
-      } else {
-        const fallbackSchools = await fetchAllSchools();
-        setSchools(fallbackSchools);
-        saveLocalSchools(fallbackSchools);
+      // 1. Fetch schools from persistent backend API / local
+      try {
+        const loadedSchools = await fetchAllSchools();
+        if (loadedSchools && loadedSchools.length > 0) {
+          setSchools(loadedSchools);
+          saveLocalSchools(loadedSchools);
+        }
+      } catch (schErr) {
+        console.warn('Notice loading schools on boot:', schErr);
       }
 
-      // Check persistent supervisions from Firestore
+      // 2. Fetch persistent supervisions from backend API / local
       try {
-        const firestoreSupervisions = await fetchSupervisions(currentUser);
-        if (firestoreSupervisions && firestoreSupervisions.length > 0) {
-          const valid = filterValidSupervisions(firestoreSupervisions);
+        const loadedSupervisions = await fetchSupervisions(currentUser);
+        if (loadedSupervisions && loadedSupervisions.length > 0) {
+          const valid = filterValidSupervisions(loadedSupervisions);
           setSupervisions(valid);
           saveLocalSupervisions(valid);
         }
       } catch (e) {
-        console.warn('Notice fetching supervisions:', e);
+        console.warn('Notice fetching supervisions on boot:', e);
       }
+
+      // 3. Background asynchronous sync without delaying the UI
+      syncAllInitialDataToFirestore().catch(() => {});
     };
 
     initApp();

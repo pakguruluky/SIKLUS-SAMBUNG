@@ -9,6 +9,7 @@ export interface School {
   accreditation: 'A' | 'B' | 'C' | 'Belum Terakreditasi';
   createdAt: string;
   createdBy: string;
+  updatedAt?: string;
 }
 
 export interface UserProfile {

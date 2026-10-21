@@ -29,13 +29,15 @@ interface UserManagementViewProps {
   schools: School[];
   onUserAdded?: () => void;
   onUserUpdated?: (user: UserProfile) => void;
+  onUserDeleted?: (uid: string) => Promise<void> | void;
 }
 
 export const UserManagementView: React.FC<UserManagementViewProps> = ({
   currentUser,
   schools,
   onUserAdded,
-  onUserUpdated
+  onUserUpdated,
+  onUserDeleted
 }) => {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -221,13 +223,13 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
             recommendations: '',
           },
           evaluasiTahunan: {
-            hasilBelajar: { evidence: '', note: '', score: 90 },
-            administrasi: { evidence: '', note: '', score: 90 },
-            pengembanganDiri: { evidence: '', note: '', score: 90 },
-            kedisiplinan: { evidence: '', note: '', score: 90 },
-            rekomendasi: { notes: '', tindakLanjut: '', score: 90 },
-            finalAverageScore: 90,
-            finalGrade: 'Amat Baik (A)',
+            hasilBelajar: { evidence: '', note: '', score: 0 },
+            administrasi: { evidence: '', note: '', score: 0 },
+            pengembanganDiri: { evidence: '', note: '', score: 0 },
+            kedisiplinan: { evidence: '', note: '', score: 0 },
+            rekomendasi: { notes: '', tindakLanjut: '', score: 0 },
+            finalAverageScore: 0,
+            finalGrade: 'Belum Dinilai',
             summaryNotes: '',
           },
         };
@@ -351,13 +353,16 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
       alert('Akun pengawas utama tidak dapat dihapus.');
       return;
     }
-    if (!confirm(`Hapus akun ${user.displayName} (@${user.username})? Tindakan ini akan menghapus akun dari basis data.`)) {
+    if (!confirm(`Hapus akun ${user.displayName} (@${user.username})? Tindakan ini akan menghapus akun dan seluruh data supervisinya dari sistem.`)) {
       return;
     }
     try {
       await deleteUserAccount(user.uid);
       await loadUsers();
-      setToastMessage(`Akun ${user.displayName} berhasil dihapus.`);
+      if (onUserDeleted) {
+        await onUserDeleted(user.uid);
+      }
+      setToastMessage(`Akun ${user.displayName} dan data supervisinya berhasil dihapus.`);
       setTimeout(() => setToastMessage(null), 3000);
     } catch (err) {
       console.error(err);

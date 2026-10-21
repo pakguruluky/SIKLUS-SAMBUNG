@@ -320,7 +320,7 @@ export interface SambungObservasiIndikator {
   id: number;
   indikator: string;
   dimensi: string;
-  score: 1 | 2 | 3 | 4;
+  score: 0 | 1 | 2 | 3 | 4;
   catatan: string;
 }
 

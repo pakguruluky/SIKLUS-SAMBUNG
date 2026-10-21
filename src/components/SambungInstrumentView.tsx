@@ -22,7 +22,7 @@ import {
   getTeacherDescriptiveDataDampak
 } from '../data/sambungSeed';
 import { getSupervisionSambungProgress, StageKey } from '../utils/sambungProgress';
-import { saveSupervision } from '../services/firebase';
+import { saveSupervision, getDeletedUserIds, getDeletedSupervisionIds } from '../services/firebase';
 import { analyzeTelaahRppWithAI } from '../services/aiService';
 import { SambungPrintModal } from './SambungPrintModal';
 import { PerangkatAjarModal } from './forms/PerangkatAjarModal';
@@ -118,21 +118,27 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
 
   // Filter supervisions according to role
   const availableSupervisions = useMemo(() => {
+    const deletedSupIds = new Set(getDeletedSupervisionIds());
+    const deletedUids = new Set(getDeletedUserIds());
+    const cleanSupervisions = supervisions.filter(
+      (s) => !deletedSupIds.has(s.id) && !deletedUids.has(s.teacherId)
+    );
+
     if (currentUser.role === 'guru') {
-      const match = supervisions.filter(
+      const match = cleanSupervisions.filter(
         (s) => s.teacherId === currentUser.uid ||
                s.teacherName.toLowerCase().trim() === currentUser.displayName?.toLowerCase().trim()
       );
       if (match.length > 0) return match;
-      return supervisions.slice(0, 1);
+      return cleanSupervisions.slice(0, 1);
     } else if (currentUser.role === 'kepsek') {
       const userSch = (currentUser.schoolName || '').toLowerCase().trim();
-      return supervisions.filter(
+      return cleanSupervisions.filter(
         (s) => (currentUser.schoolId && s.schoolId === currentUser.schoolId) ||
                (userSch && (s.schoolName.toLowerCase().trim().includes(userSch) || userSch.includes(s.schoolName.toLowerCase().trim())))
       );
     }
-    return supervisions;
+    return cleanSupervisions;
   }, [supervisions, currentUser]);
 
   // Selected supervision
@@ -142,6 +148,13 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
     }
     return availableSupervisions[0]?.id || '';
   });
+
+  // Automatically update selectedId if teacher was deleted or list updated
+  useEffect(() => {
+    if (availableSupervisions.length > 0 && !availableSupervisions.some((s) => s.id === selectedId)) {
+      setSelectedId(availableSupervisions[0].id);
+    }
+  }, [availableSupervisions, selectedId]);
 
   // Current active SAMBUNG letter tab
   const [activeTab, setActiveTab] = useState<TabType>('S');
@@ -1826,56 +1839,6 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
               </div>
             </div>
           </div>
-
-          {/* Sequential Step Gating Breadcrumb */}
-          <div className="mt-3.5 pt-3 border-t border-slate-100 grid grid-cols-7 gap-1.5 sm:gap-2">
-            {TABS_CONFIG.map((t, idx) => {
-              const detail = sambungProgress.stages[t.key as StageKey];
-              const isCur = activeTab === t.key;
-              return (
-                <button
-                  type="button"
-                  key={t.key}
-                  onClick={() => handleTabClick(t.key)}
-                  className={`flex flex-col items-center justify-center p-1.5 sm:p-2 rounded-xl text-center border transition-all ${
-                    isCur
-                      ? 'bg-indigo-50 border-indigo-300 ring-2 ring-indigo-500/20 shadow-2xs'
-                      : detail?.isLocked
-                      ? 'bg-slate-50 border-slate-200 opacity-60 cursor-not-allowed'
-                      : detail?.isComplete
-                      ? 'bg-emerald-50/70 border-emerald-200 hover:bg-emerald-100/60'
-                      : 'bg-white border-slate-200 hover:bg-slate-50'
-                  }`}
-                  title={
-                    detail?.isLocked
-                      ? `Terkunci: Lengkapi Tahap ${TABS_CONFIG[idx - 1]?.key} terlebih dahulu`
-                      : detail?.isComplete
-                      ? `Tahap ${t.key} Selesai Penuh`
-                      : `Tahap ${t.key} (${detail?.statusLabel})`
-                  }
-                >
-                  <div className="flex items-center gap-1 mb-0.5">
-                    <span className="text-xs font-black">{t.letter}</span>
-                    {detail?.isComplete ? (
-                      <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
-                    ) : detail?.isLocked ? (
-                      <Lock className="w-2.5 h-2.5 text-slate-400 shrink-0" />
-                    ) : (
-                      <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-                    )}
-                  </div>
-                  <span className="text-[9px] font-bold text-slate-700 truncate w-full hidden sm:block">
-                    {t.name}
-                  </span>
-                  <span className={`text-[8px] font-semibold mt-0.5 ${
-                    detail?.isComplete ? 'text-emerald-700' : detail?.isLocked ? 'text-slate-400' : 'text-blue-700'
-                  }`}>
-                    {detail?.isLocked ? 'Terkunci' : detail?.isComplete ? '100%' : `${detail?.progressPercent}%`}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
         </div>
       )}
 
@@ -1956,17 +1919,24 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                 </span>
                 <span
                   className={`text-[9px] mt-0.5 leading-none ${
-                    isActive ? 'text-indigo-100' : isLocked ? 'text-slate-400' : 'text-slate-400'
+                    isActive
+                      ? 'text-indigo-100 font-semibold'
+                      : isLocked
+                      ? 'text-slate-400'
+                      : isComplete
+                      ? 'text-emerald-700 font-bold'
+                      : stageDetail && stageDetail.progressPercent > 0
+                      ? 'text-indigo-600 font-bold'
+                      : 'text-slate-400'
                   }`}
                 >
-                  {isLocked ? 'Terkunci' : isComplete ? 'Selesai' : (
-                    tab.key === 'S' ? 'Kondisi Awal' :
-                    tab.key === 'A' ? 'Aksi Pembinaan' :
-                    tab.key === 'M' ? 'Coaching' :
-                    tab.key === 'B' ? 'Rancang-Coba' :
-                    tab.key === 'U' ? 'Observasi & Murid' :
-                    tab.key === 'N' ? 'Before-After' : 'Tindak Lanjut'
-                  )}
+                  {isLocked
+                    ? 'Terkunci'
+                    : isComplete
+                    ? '100% Selesai'
+                    : stageDetail && stageDetail.progressPercent > 0
+                    ? `${stageDetail.progressPercent}% Terisi`
+                    : 'Belum Diisi'}
                 </span>
               </button>
             );

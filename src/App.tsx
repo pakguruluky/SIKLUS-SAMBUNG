@@ -28,7 +28,9 @@ import {
   updateSchool,
   updateUserApprovalStatus,
   syncAllInitialDataToFirestore,
-  subscribeToSupervisions
+  subscribeToSupervisions,
+  getDeletedUserIds,
+  getDeletedSupervisionIds
 } from './services/firebase';
 import { 
   loadLocalSupervisions, 
@@ -220,27 +222,33 @@ export default function App() {
   // 2. Kepala Sekolah: hanya melihat instrumen dan kesimpulan sekolahnya saja tanpa bisa melihat sekolah dan guru lain
   // 3. Guru: hanya melihat instrumen dan kesimpulan akun dia saja
   const visibleSupervisions = React.useMemo(() => {
-    if (!currentUser) return supervisions;
+    const deletedSupIds = new Set(getDeletedSupervisionIds());
+    const deletedUids = new Set(getDeletedUserIds());
+    const cleanSupervisions = supervisions.filter(
+      s => !deletedSupIds.has(s.id) && !deletedUids.has(s.teacherId)
+    );
+
+    if (!currentUser) return cleanSupervisions;
 
     if (currentUser.role === 'guru') {
-      const matched = supervisions.filter(
+      const matched = cleanSupervisions.filter(
         s => s.teacherId === currentUser.uid ||
              s.teacherName.toLowerCase().trim() === currentUser.displayName?.toLowerCase().trim()
       );
-      return matched.length > 0 ? matched : supervisions.slice(0, 1);
+      return matched.length > 0 ? matched : cleanSupervisions.slice(0, 1);
     }
 
     if (currentUser.role === 'kepsek') {
       const userSch = (currentUser.schoolName || '').toLowerCase().trim();
-      const matched = supervisions.filter(
+      const matched = cleanSupervisions.filter(
         s => (currentUser.schoolId && s.schoolId === currentUser.schoolId) ||
              (userSch && (s.schoolName.toLowerCase().trim().includes(userSch) || userSch.includes(s.schoolName.toLowerCase().trim())))
       );
       return matched;
     }
 
-    // Admin / Pengawas sees all
-    return supervisions;
+    // Admin / Pengawas sees all non-deleted
+    return cleanSupervisions;
   }, [supervisions, currentUser]);
 
   const isAdminOrPengawas = currentUser?.role === 'admin' || (currentUser?.role as string) === 'pengawas';
@@ -335,6 +343,10 @@ export default function App() {
                     setCurrentUser(updatedUser);
                     saveLocalUser(updatedUser);
                   }
+                  const updated = await fetchSupervisions();
+                  setSupervisions(filterValidSupervisions(updated));
+                }}
+                onUserDeleted={async () => {
                   const updated = await fetchSupervisions();
                   setSupervisions(filterValidSupervisions(updated));
                 }}

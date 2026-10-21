@@ -922,7 +922,7 @@ export function createEmptySambungData(
         kelas: '',
         indikatorList: INDIKATOR_U1_DEFAULT.map(ind => ({
           ...ind,
-          score: 1,
+          score: 0,
           catatan: '',
         })),
         totalSkor: 0,

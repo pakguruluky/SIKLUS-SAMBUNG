@@ -866,13 +866,82 @@ export async function updateUserAccount(user: UserProfile): Promise<UserProfile>
   return completeUser;
 }
 
+const DELETED_SUPERVISION_IDS_KEY = 'pakkus_deleted_supervisions';
+const DELETED_USER_IDS_KEY = 'pakkus_deleted_users';
+
+export function getDeletedSupervisionIds(): string[] {
+  try {
+    const raw = localStorage.getItem(DELETED_SUPERVISION_IDS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function addDeletedSupervisionId(id: string) {
+  try {
+    const ids = getDeletedSupervisionIds();
+    if (!ids.includes(id)) {
+      ids.push(id);
+      localStorage.setItem(DELETED_SUPERVISION_IDS_KEY, JSON.stringify(ids));
+    }
+  } catch {}
+}
+
+export function getDeletedUserIds(): string[] {
+  try {
+    const raw = localStorage.getItem(DELETED_USER_IDS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function addDeletedUserId(uid: string) {
+  try {
+    const ids = getDeletedUserIds();
+    if (!ids.includes(uid)) {
+      ids.push(uid);
+      localStorage.setItem(DELETED_USER_IDS_KEY, JSON.stringify(ids));
+    }
+  } catch {}
+}
+
 export async function deleteUserAccount(uid: string): Promise<void> {
-  const current = getStoredUsers().filter(u => u.uid !== uid);
+  addDeletedUserId(uid);
+  const allUsers = getStoredUsers();
+  const targetUser = allUsers.find(u => u.uid === uid);
+  const current = allUsers.filter(u => u.uid !== uid);
   saveStoredUsers(current);
   try {
     await deleteDoc(doc(db, 'users', uid));
   } catch (err) {
     console.warn('Notice deleting user from Firestore:', err);
+  }
+
+  // Also cascade delete all supervisions belonging to this deleted user/teacher
+  try {
+    const localSups = loadLocalSupervisions() || [];
+    const targetName = targetUser?.displayName?.toLowerCase().trim();
+    const supsToDelete = localSups.filter(s => 
+      s.teacherId === uid || 
+      (targetName && s.teacherName?.toLowerCase().trim() === targetName) ||
+      (targetUser?.username && s.id.includes(targetUser.username))
+    );
+
+    for (const sup of supsToDelete) {
+      addDeletedSupervisionId(sup.id);
+      try {
+        await deleteDoc(doc(db, 'supervisions', sup.id));
+      } catch (delErr) {
+        console.warn('Notice deleting supervision in Firestore during user deletion:', delErr);
+      }
+    }
+
+    const remainingSups = localSups.filter(s => !supsToDelete.some(del => del.id === s.id));
+    saveLocalSupervisions(remainingSups);
+  } catch (err) {
+    console.warn('Notice cleaning up supervisions for deleted user:', err);
   }
 }
 
@@ -1053,11 +1122,25 @@ export async function fetchSupervisions(userProfile?: UserProfile | null): Promi
       results = await ensureInitialSupervisions();
     }
 
-    // Merge with SAMPLE_SUPERVISIONS to guarantee all 15 supervised teachers are always available
+    const deletedSupIds = new Set(getDeletedSupervisionIds());
+    const deletedUids = new Set(getDeletedUserIds());
+
+    // Merge with SAMPLE_SUPERVISIONS to guarantee initial supervised teachers are available,
+    // excluding any that have been deleted via Kelola Pengguna
     const map = new Map<string, Supervision>();
-    SAMPLE_SUPERVISIONS.forEach(s => map.set(s.id, s));
-    results.forEach(s => map.set(s.id, s));
-    results = Array.from(map.values());
+    SAMPLE_SUPERVISIONS.forEach(s => {
+      if (!deletedSupIds.has(s.id) && !deletedUids.has(s.teacherId)) {
+        map.set(s.id, s);
+      }
+    });
+    results.forEach(s => {
+      if (!deletedSupIds.has(s.id) && !deletedUids.has(s.teacherId)) {
+        map.set(s.id, s);
+      }
+    });
+    results = Array.from(map.values()).filter(
+      s => !deletedSupIds.has(s.id) && !deletedUids.has(s.teacherId)
+    );
 
     // Role-based filtering
     if (userProfile?.role === 'guru') {
@@ -1079,7 +1162,10 @@ export async function fetchSupervisions(userProfile?: UserProfile | null): Promi
   } catch (err) {
     console.warn('Notice fetching supervisions, falling back to device local storage:', err);
     const localCached = loadLocalSupervisions();
-    return localCached && localCached.length > 0 ? localCached : SAMPLE_SUPERVISIONS;
+    const fallback = localCached && localCached.length > 0 ? localCached : SAMPLE_SUPERVISIONS;
+    const deletedSupIds = new Set(getDeletedSupervisionIds());
+    const deletedUids = new Set(getDeletedUserIds());
+    return fallback.filter(s => !deletedSupIds.has(s.id) && !deletedUids.has(s.teacherId));
   }
 }
 
@@ -1168,6 +1254,7 @@ export async function saveSupervision(supervision: Partial<Supervision> & { id?:
 }
 
 export async function deleteSupervision(id: string): Promise<void> {
+  addDeletedSupervisionId(id);
   const localList = (loadLocalSupervisions() || []).filter(s => s.id !== id);
   saveLocalSupervisions(localList);
   try {

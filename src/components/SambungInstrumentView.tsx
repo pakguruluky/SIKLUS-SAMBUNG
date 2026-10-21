@@ -22,7 +22,7 @@ import {
   getTeacherDescriptiveDataDampak
 } from '../data/sambungSeed';
 import { getSupervisionSambungProgress, StageKey } from '../utils/sambungProgress';
-import { saveSupervision, getDeletedUserIds, getDeletedSupervisionIds } from '../services/firebase';
+import { saveSupervision, deleteSupervision, deleteUserAccount, getDeletedUserIds, getDeletedSupervisionIds } from '../services/firebase';
 import { analyzeTelaahRppWithAI } from '../services/aiService';
 import { SambungPrintModal } from './SambungPrintModal';
 import { PerangkatAjarModal } from './forms/PerangkatAjarModal';
@@ -102,6 +102,7 @@ interface SambungInstrumentViewProps {
   currentUser: UserProfile;
   schools: School[];
   onUpdateSupervision: (updated: Supervision) => void;
+  onDeleteSupervision?: (id: string) => Promise<void> | void;
   initialSupervisionId?: string;
 }
 
@@ -112,6 +113,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
   currentUser,
   schools,
   onUpdateSupervision,
+  onDeleteSupervision,
   initialSupervisionId,
 }) => {
   const canEdit = currentUser.role === 'admin' || (currentUser.role as string) === 'pengawas';
@@ -173,6 +175,50 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [saveToast, setSaveToast] = useState<string | null>(null);
   const [lockedWarning, setLockedWarning] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDeleteSupervision = async (target: Supervision) => {
+    if (!canEdit) return;
+    const confirmMsg = `Hapus data supervisi guru "${target.teacherName}" (${target.subject} - ${target.schoolName})?\n\nTindakan ini akan menghapus data supervisi dan seluruh instrumennya secara permanen dari database Firebase.`;
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      setIsDeleting(true);
+
+      // 1. Delete supervision from Firebase Firestore and LocalStorage
+      await deleteSupervision(target.id);
+
+      // 2. Cascade delete teacher account if associated to ensure synchronized users collection
+      if (target.teacherId && !target.teacherId.startsWith('usr-admin') && target.teacherId !== currentUser.uid) {
+        try {
+          await deleteUserAccount(target.teacherId);
+        } catch (uErr) {
+          console.warn('Notice removing teacher user record:', uErr);
+        }
+      }
+
+      // 3. Immediately switch selectedId to remaining teacher
+      const remaining = availableSupervisions.filter(s => s.id !== target.id);
+      if (remaining.length > 0) {
+        setSelectedId(remaining[0].id);
+      } else {
+        setSelectedId('');
+      }
+
+      // 4. Notify parent
+      if (onDeleteSupervision) {
+        await onDeleteSupervision(target.id);
+      }
+
+      setSaveToast(`Supervisi guru ${target.teacherName} berhasil dihapus dari Firebase.`);
+      setTimeout(() => setSaveToast(null), 3500);
+    } catch (err: any) {
+      console.error('Error deleting supervision:', err);
+      alert('Gagal menghapus supervisi: ' + (err.message || ''));
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   // Active supervision object
   const currentSupervision = useMemo(() => {
@@ -1695,29 +1741,50 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                 .map((sup) => {
                   const isSelected = sup.id === selectedId;
                   return (
-                    <button
+                    <div
                       key={sup.id}
+                      role="button"
+                      tabIndex={0}
                       onClick={() => setSelectedId(sup.id)}
-                      className={`px-3 py-2 rounded-xl text-left transition-all shrink-0 border flex items-center gap-3 ${
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedId(sup.id); }}
+                      className={`px-3 py-2 rounded-xl text-left transition-all shrink-0 border flex items-center gap-2.5 cursor-pointer select-none group relative ${
                         isSelected
                           ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
                           : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border-slate-200'
                       }`}
                     >
                       <div
-                        className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold ${
+                        className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${
                           isSelected ? 'bg-white/20 text-white' : 'bg-indigo-100 text-indigo-700'
                         }`}
                       >
                         {sup.teacherName.charAt(0)}
                       </div>
-                      <div>
-                        <p className="text-xs font-bold leading-tight">{sup.teacherName}</p>
-                        <p className={`text-[10px] leading-tight ${isSelected ? 'text-indigo-100' : 'text-slate-500'}`}>
+                      <div className="min-w-0 pr-1">
+                        <p className="text-xs font-bold leading-tight truncate">{sup.teacherName}</p>
+                        <p className={`text-[10px] leading-tight truncate ${isSelected ? 'text-indigo-100' : 'text-slate-500'}`}>
                           {sup.subject} &bull; {sup.schoolName}
                         </p>
                       </div>
-                    </button>
+
+                      {canEdit && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteSupervision(sup);
+                          }}
+                          className={`p-1 rounded-lg transition-all ${
+                            isSelected
+                              ? 'text-white/80 hover:text-white hover:bg-white/20'
+                              : 'text-slate-400 hover:text-rose-600 hover:bg-rose-50'
+                          }`}
+                          title={`Hapus data supervisi guru ${sup.teacherName}`}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
                   );
                 })}
             </div>
@@ -1741,6 +1808,20 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                 <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
                   {currentSupervision.classGrade}
                 </span>
+
+                {/* MENU / TOMBOL HAPUS SUPERVISI DI SAMPING NAMA GURU */}
+                {canEdit && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteSupervision(currentSupervision)}
+                    disabled={isDeleting}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 hover:text-rose-800 border border-rose-200 hover:border-rose-300 rounded-lg transition-all cursor-pointer shadow-2xs hover:shadow-xs disabled:opacity-50 ml-1"
+                    title={`Hapus data supervisi guru ${currentSupervision.teacherName}`}
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                    <span>{isDeleting ? 'Menghapus...' : 'Hapus Guru Supervisi'}</span>
+                  </button>
+                )}
               </div>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 mt-1">
                 <span className="flex items-center gap-1">

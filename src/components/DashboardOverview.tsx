@@ -30,7 +30,8 @@ import {
   GraduationCap,
   MoreVertical,
   X,
-  FileText
+  FileText,
+  Trash2
 } from 'lucide-react';
 import { EditGuruSupervisiModal } from './forms/EditGuruSupervisiModal';
 import { KesimpulanSemuaGuruDashboard } from './KesimpulanSemuaGuruDashboard';
@@ -78,6 +79,7 @@ interface DashboardOverviewProps {
   onOpenStorageModal?: () => void;
   onNavigateKesimpulan?: () => void;
   onUpdateSupervision?: (updated: Supervision) => void;
+  onDeleteSupervision?: (id: string) => Promise<void> | void;
   users?: UserProfile[];
 }
 
@@ -95,6 +97,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   onOpenStorageModal,
   onNavigateKesimpulan,
   onUpdateSupervision,
+  onDeleteSupervision,
   users = [],
 }) => {
   const getPredicateTag = (s: Supervision): string | null => {
@@ -1847,6 +1850,23 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                             <Pencil className="w-3 h-3 text-slate-500" />
                             <span>Edit</span>
                           </button>
+                          {(currentUser.role === 'admin' || (currentUser.role as string) === 'pengawas') && (
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                if (window.confirm(`Hapus data supervisi guru "${sup.teacherName}" (${sup.subject} - ${sup.schoolName})?\n\nTindakan ini akan menghapus data supervisi secara permanen dari Firebase.`)) {
+                                  if (onDeleteSupervision) {
+                                    await onDeleteSupervision(sup.id);
+                                  }
+                                }
+                              }}
+                              className="px-2 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs transition-colors inline-flex items-center gap-1 border border-rose-200"
+                              title={`Hapus data supervisi ${sup.teacherName}`}
+                            >
+                              <Trash2 className="w-3 h-3 text-rose-600" />
+                              <span>Hapus</span>
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

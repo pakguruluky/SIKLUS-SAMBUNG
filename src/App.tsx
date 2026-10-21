@@ -25,6 +25,7 @@ import {
   getUserProfile,
   fetchSupervisions,
   saveSupervision,
+  deleteSupervision,
   updateSchool,
   updateUserApprovalStatus,
   syncAllInitialDataToFirestore,
@@ -295,6 +296,11 @@ export default function App() {
                 onOpenStorageModal={() => setIsLocalStorageModalOpen(true)}
                 onNavigateKesimpulan={() => setActiveTab('kesimpulan-sambung')}
                 onUpdateSupervision={handleUpdateSupervision}
+                onDeleteSupervision={async (deletedId) => {
+                  await deleteSupervision(deletedId);
+                  const updated = await fetchSupervisions();
+                  setSupervisions(filterValidSupervisions(updated));
+                }}
               />
             )}
 
@@ -305,6 +311,10 @@ export default function App() {
                 schools={schools}
                 initialSupervisionId={selectedSambungId}
                 onUpdateSupervision={handleUpdateSupervision}
+                onDeleteSupervision={async (deletedId) => {
+                  const updated = await fetchSupervisions();
+                  setSupervisions(filterValidSupervisions(updated));
+                }}
               />
             )}
 

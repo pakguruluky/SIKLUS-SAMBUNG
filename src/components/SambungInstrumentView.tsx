@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Supervision, 
   UserProfile, 
@@ -22,7 +22,7 @@ import {
   getTeacherDescriptiveDataDampak
 } from '../data/sambungSeed';
 import { getSupervisionSambungProgress, StageKey } from '../utils/sambungProgress';
-import { saveSupervision, deleteSupervision, deleteUserAccount, getDeletedUserIds, getDeletedSupervisionIds } from '../services/firebase';
+import { saveSupervision, deleteSupervision, deleteUserAccount, getDeletedUserIds, getDeletedSupervisionIds, getDeletedUserNames } from '../services/firebase';
 import { analyzeTelaahRppWithAI } from '../services/aiService';
 import { SambungPrintModal } from './SambungPrintModal';
 import { PerangkatAjarModal } from './forms/PerangkatAjarModal';
@@ -116,14 +116,17 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
   onDeleteSupervision,
   initialSupervisionId,
 }) => {
-  const canEdit = currentUser.role === 'admin' || (currentUser.role as string) === 'pengawas';
+  const canEdit = !currentUser || currentUser.role !== 'guru';
 
   // Filter supervisions according to role
   const availableSupervisions = useMemo(() => {
     const deletedSupIds = new Set(getDeletedSupervisionIds());
     const deletedUids = new Set(getDeletedUserIds());
+    const deletedNames = new Set(getDeletedUserNames());
     const cleanSupervisions = supervisions.filter(
-      (s) => !deletedSupIds.has(s.id) && !deletedUids.has(s.teacherId)
+      (s) => !deletedSupIds.has(s.id) && 
+             (!s.teacherId || !deletedUids.has(s.teacherId)) &&
+             (!s.teacherName || !deletedNames.has(s.teacherName.toLowerCase().trim()))
     );
 
     if (currentUser.role === 'guru') {
@@ -229,6 +232,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
 
   // Local draft of SambungData for immediate responsiveness
   const [sambungDraft, setSambungDraft] = useState<SambungData | null>(null);
+  const lastLoadedSupervisionIdRef = useRef<string | null>(null);
 
   // Real-time sequential stage progression info
   const sambungProgress = useMemo(() => {
@@ -262,6 +266,11 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
 
   useEffect(() => {
     if (currentSupervision) {
+      if (lastLoadedSupervisionIdRef.current === currentSupervision.id && sambungDraft) {
+        return;
+      }
+      lastLoadedSupervisionIdRef.current = currentSupervision.id;
+
       const isSeedSupervision = Boolean(currentSupervision.id && currentSupervision.id.startsWith('sup-demo-'));
       const isNew = Boolean((currentSupervision as any).isNewSupervision);
 
@@ -1326,144 +1335,62 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
     setIsSaving(true);
 
     try {
-      // Pastikan data Maknai (10 pertanyaan) dan Amati terisi lengkap sebelum dikirim ke Firebase
-      const maknaiAuto = generateTeacherMaknaiData(currentSupervision);
-      const ensuredMaknai = {
-        ...sambungDraft.maknai,
-        tanggal: sambungDraft.maknai?.tanggal || new Date().toISOString().split('T')[0],
-        pertanyaanList: {
-          ...maknaiAuto.pertanyaanList,
-          ...(sambungDraft.maknai?.pertanyaanList || {}),
-        },
-        kesanUmum: sambungDraft.maknai?.kesanUmum ?? maknaiAuto.kesanUmum,
-        saranMasukan: sambungDraft.maknai?.saranMasukan ?? maknaiAuto.saranMasukan,
-        coaching: {
-          tujuan: sambungDraft.maknai?.coaching?.tujuan || maknaiAuto.coaching?.tujuan || '',
-          realitas: sambungDraft.maknai?.coaching?.realitas || maknaiAuto.coaching?.realitas || '',
-          opsi: sambungDraft.maknai?.coaching?.opsi || maknaiAuto.coaching?.opsi || '',
-          komitmen: sambungDraft.maknai?.coaching?.komitmen || maknaiAuto.coaching?.komitmen || '',
-        },
-      };
-
-      const ensuredArahkan = {
-        ...sambungDraft.arahkan,
-        fokusIndikatorTerpilih: sambungDraft.arahkan?.fokusIndikatorTerpilih && sambungDraft.arahkan.fokusIndikatorTerpilih.length > 0
-          ? sambungDraft.arahkan.fokusIndikatorTerpilih
-          : ['peranGuru', 'aktivitasMurid'],
-      };
-
-      const autoBerdayakan = generateBerdayakanTelaahPerbaikanData(currentSupervision);
-      const ensuredBerdayakan = {
-        ...autoBerdayakan,
-        ...sambungDraft.berdayakan,
-        rppPerbaikanUrl: sambungDraft.berdayakan?.rppPerbaikanUrl || autoBerdayakan.rppPerbaikanUrl,
-        rppPerbaikanTitle: sambungDraft.berdayakan?.rppPerbaikanTitle || autoBerdayakan.rppPerbaikanTitle,
-        tanggalTelaah: sambungDraft.berdayakan?.tanggalTelaah || autoBerdayakan.tanggalTelaah,
-        namaPenelaah: sambungDraft.berdayakan?.namaPenelaah || autoBerdayakan.namaPenelaah,
-        telaahScores: sambungDraft.berdayakan?.telaahScores || autoBerdayakan.telaahScores,
-        telaahComments: {
-          ...autoBerdayakan.telaahComments,
-          ...(sambungDraft.berdayakan?.telaahComments || {}),
-        },
-        telaahSummary: sambungDraft.berdayakan?.telaahSummary || autoBerdayakan.telaahSummary,
-        feedback: {
-          kelebihan: sambungDraft.berdayakan?.feedback?.kelebihan || autoBerdayakan.feedback?.kelebihan || '',
-          perbaikan: sambungDraft.berdayakan?.feedback?.perbaikan || autoBerdayakan.feedback?.perbaikan || '',
-          rekomendasi: sambungDraft.berdayakan?.feedback?.rekomendasi || autoBerdayakan.feedback?.rekomendasi || '',
-        },
-        siklusList: (sambungDraft.berdayakan?.siklusList && sambungDraft.berdayakan.siklusList.length > 0)
-          ? sambungDraft.berdayakan.siklusList
-          : autoBerdayakan.siklusList,
-      };
-
-      const autoUji = generateUjiData(currentSupervision);
-      const ensuredUji = {
-        ...autoUji,
-        ...sambungDraft.uji,
-        praObservasi: sambungDraft.uji?.praObservasi || autoUji.praObservasi,
-        observasiPelaksanaan: sambungDraft.uji?.observasiPelaksanaan || autoUji.observasiPelaksanaan,
-        pascaObservasi: sambungDraft.uji?.pascaObservasi || autoUji.pascaObservasi,
-        kesimpulanUji: sambungDraft.uji?.kesimpulanUji || autoUji.kesimpulanUji,
-        matriksAfter: sambungDraft.uji?.matriksAfter || autoUji.matriksAfter,
-      };
-
       const updatedDraft: SambungData = {
         ...sambungDraft,
-        arahkan: ensuredArahkan,
-        maknai: ensuredMaknai,
-        berdayakan: ensuredBerdayakan,
-        uji: ensuredUji,
         lastUpdated: new Date().toISOString(),
       };
+
+      const ujiObs = updatedDraft.uji?.observasiPelaksanaan;
+      const berdayakan = updatedDraft.berdayakan;
 
       const updatedSupervision: Supervision = {
         ...currentSupervision,
         sambung: updatedDraft,
-        perangkatAjarPerbaikan: {
-          driveLinks: {
-            cpTpAtpUrl: currentSupervision.perangkatAjarPerbaikan?.driveLinks?.cpTpAtpUrl || currentSupervision.perangkatAjar?.driveLinks?.cpTpAtpUrl || 'https://drive.google.com/file/d/1CpTpAtp_Revisi/view',
-            modulAjarUrl: ensuredBerdayakan.rppPerbaikanUrl,
-            bahanAjarUrl: currentSupervision.perangkatAjarPerbaikan?.driveLinks?.bahanAjarUrl || currentSupervision.perangkatAjar?.driveLinks?.bahanAjarUrl,
-            asesmenUrl: currentSupervision.perangkatAjarPerbaikan?.driveLinks?.asesmenUrl || currentSupervision.perangkatAjar?.driveLinks?.asesmenUrl,
+        ...(berdayakan && (berdayakan.rppPerbaikanUrl || berdayakan.telaahSummary) ? {
+          perangkatAjarPerbaikan: {
+            ...currentSupervision.perangkatAjarPerbaikan,
+            driveLinks: {
+              ...currentSupervision.perangkatAjarPerbaikan?.driveLinks,
+              cpTpAtpUrl: currentSupervision.perangkatAjarPerbaikan?.driveLinks?.cpTpAtpUrl || currentSupervision.perangkatAjar?.driveLinks?.cpTpAtpUrl || '',
+              modulAjarUrl: berdayakan.rppPerbaikanUrl || currentSupervision.perangkatAjarPerbaikan?.driveLinks?.modulAjarUrl || '',
+              bahanAjarUrl: currentSupervision.perangkatAjarPerbaikan?.driveLinks?.bahanAjarUrl || currentSupervision.perangkatAjar?.driveLinks?.bahanAjarUrl || '',
+              asesmenUrl: currentSupervision.perangkatAjarPerbaikan?.driveLinks?.asesmenUrl || currentSupervision.perangkatAjar?.driveLinks?.asesmenUrl || '',
+            },
+            submittedAt: currentSupervision.perangkatAjarPerbaikan?.submittedAt || new Date().toISOString(),
+            telaahScores: berdayakan.telaahScores || currentSupervision.perangkatAjarPerbaikan?.telaahScores || {},
+            telaahComments: berdayakan.telaahComments || currentSupervision.perangkatAjarPerbaikan?.telaahComments || {},
+            telaahSummary: berdayakan.telaahSummary || currentSupervision.perangkatAjarPerbaikan?.telaahSummary,
+            feedback: berdayakan.feedback || currentSupervision.perangkatAjarPerbaikan?.feedback,
+            catatanRevisiGuru: berdayakan.catatanRefleksiGuru || currentSupervision.perangkatAjarPerbaikan?.catatanRevisiGuru || '',
+            reviewedAt: new Date().toISOString(),
+            reviewedBy: berdayakan.namaPenelaah || currentSupervision.perangkatAjarPerbaikan?.reviewedBy || '',
           },
-          submittedAt: currentSupervision.perangkatAjarPerbaikan?.submittedAt || new Date().toISOString(),
-          telaahScores: ensuredBerdayakan.telaahScores,
-          telaahComments: ensuredBerdayakan.telaahComments,
-          telaahSummary: ensuredBerdayakan.telaahSummary,
-          feedback: ensuredBerdayakan.feedback,
-          catatanRevisiGuru: ensuredBerdayakan.catatanRefleksiGuru,
-          reviewedAt: new Date().toISOString(),
-          reviewedBy: ensuredBerdayakan.namaPenelaah,
-        },
-        praObservasiPerbaikan: ensuredUji.praObservasi ? {
-          q1_kd_indikator: ensuredUji.praObservasi.q1,
-          q2_metode: ensuredUji.praObservasi.q2,
-          q3_alat_bahan: ensuredUji.praObservasi.q3,
-          q4_tahapan: ensuredUji.praObservasi.q4,
-          q5_persiapan: ensuredUji.praObservasi.q5,
-          q6_materi_sulit: ensuredUji.praObservasi.q6,
-          q7_target_kompetensi: ensuredUji.praObservasi.q7,
-          q8_perhatian_khusus: ensuredUji.praObservasi.q8,
-          supervisorNotes: ensuredUji.praObservasi.supervisorNotes || '',
-          interviewDurationMinutes: 35,
-        } : currentSupervision.praObservasiPerbaikan,
-        observasiKelasPerbaikan: ensuredUji.observasiPelaksanaan ? {
-          items: ensuredUji.observasiPelaksanaan.items,
-          totalYa: 25,
-          totalAspek: 25,
-          totalSkor: ensuredUji.observasiPelaksanaan.totalSkor,
-          score: ensuredUji.observasiPelaksanaan.persentaseCapaian,
-          predicate: ensuredUji.observasiPelaksanaan.predicate,
-          feedbackNotes: `${ensuredUji.observasiPelaksanaan.feedback.kelebihan}\n\nHal yang perlu diperbaiki: ${ensuredUji.observasiPelaksanaan.feedback.perbaikan}\n\nRekomendasi: ${ensuredUji.observasiPelaksanaan.feedback.rekomendasi}`,
-          feedback: ensuredUji.observasiPelaksanaan.feedback,
-          completedAt: ensuredUji.observasiPelaksanaan.completedAt || new Date().toISOString(),
-        } : currentSupervision.observasiKelasPerbaikan,
-        pascaObservasiPerbaikan: ensuredUji.pascaObservasi ? {
-          q1_kesan: ensuredUji.pascaObservasi.pertanyaanList.q1,
-          q2_sesuai_rencana: ensuredUji.pascaObservasi.pertanyaanList.q2,
-          q3_hal_memuaskan: ensuredUji.pascaObservasi.pertanyaanList.q3,
-          q4_hal_kurang: ensuredUji.pascaObservasi.pertanyaanList.q4,
-          q5_ketercapaian_tujuan: ensuredUji.pascaObservasi.pertanyaanList.q5,
-          q6_kesulitan_siswa: ensuredUji.pascaObservasi.pertanyaanList.q6,
-          q7_alternatif_solusi: ensuredUji.pascaObservasi.pertanyaanList.q7,
-          q8_rencana_tindak_lanjut: ensuredUji.pascaObservasi.pertanyaanList.q8,
-          q9_pengembangan_diri: ensuredUji.pascaObservasi.pertanyaanList.q9,
-          generalImpression: ensuredUji.pascaObservasi.kesanUmum,
-          recommendations: ensuredUji.pascaObservasi.saranMasukan,
-          completedAt: ensuredUji.pascaObservasi.completedAt || new Date().toISOString(),
-        } : currentSupervision.pascaObservasiPerbaikan,
+        } : {}),
+        ...(ujiObs && ujiObs.persentaseCapaian !== undefined && ujiObs.persentaseCapaian > 0 ? {
+          observasiKelasPerbaikan: {
+            items: ujiObs.items || currentSupervision.observasiKelasPerbaikan?.items || {},
+            totalYa: ujiObs.totalYa ?? 0,
+            totalAspek: ujiObs.totalAspek ?? 25,
+            totalSkor: ujiObs.totalSkor ?? 0,
+            score: ujiObs.persentaseCapaian ?? 0,
+            predicate: ujiObs.predicate || '',
+            feedback: ujiObs.feedback,
+            feedbackNotes: ujiObs.feedback ? `${ujiObs.feedback.kelebihan}\n\nHal yang perlu diperbaiki: ${ujiObs.feedback.perbaikan}\n\nRekomendasi: ${ujiObs.feedback.rekomendasi}` : '',
+            completedAt: ujiObs.completedAt || new Date().toISOString(),
+          },
+        } : {}),
         updatedAt: new Date().toISOString(),
       };
 
       await saveSupervision(updatedSupervision);
       onUpdateSupervision(updatedSupervision);
       setSambungDraft(updatedDraft);
-      setSaveToast(`Instrumen SAMBUNG (Amati, Maknai, Berdayakan, & Uji) untuk ${currentSupervision.teacherName} berhasil disimpan ke Database Firebase!`);
+      setSaveToast(`Data instrumen & siklus SAMBUNG guru ${currentSupervision.teacherName} berhasil disimpan ke Firebase Cloud!`);
       setTimeout(() => setSaveToast(null), 3500);
-    } catch (err) {
-      console.error(err);
-      setSaveToast('Gagal menyimpan data.');
-      setTimeout(() => setSaveToast(null), 3000);
+    } catch (err: any) {
+      console.error('Error saving supervision:', err);
+      setSaveToast('Gagal menyimpan data ke Firebase: ' + (err.message || ''));
+      setTimeout(() => setSaveToast(null), 3500);
     } finally {
       setIsSaving(false);
     }
@@ -1839,10 +1766,16 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
             <div className="px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-center shrink-0">
               <span className="text-[10px] text-slate-500 block uppercase font-bold">Observasi Kelas</span>
               <span className="text-base font-extrabold text-emerald-600">
-                {sambungDraft.uji?.observasiPelaksanaan?.persentaseCapaian || 100}%
+                {(sambungDraft.uji?.observasiPelaksanaan?.persentaseCapaian !== undefined && sambungDraft.uji?.observasiPelaksanaan?.persentaseCapaian !== null)
+                  ? sambungDraft.uji.observasiPelaksanaan.persentaseCapaian
+                  : (currentSupervision.observasiKelas?.score ?? 0)}%
               </span>
               <span className="text-[10px] text-slate-500 block font-medium">
-                25 Aspek &bull; {sambungDraft.uji?.observasiPelaksanaan?.predicate || 'Sangat Baik'}
+                25 Aspek &bull; {
+                  (sambungDraft.uji?.observasiPelaksanaan?.predicate && sambungDraft.uji.observasiPelaksanaan.predicate !== 'Perlu Perbaikan')
+                    ? sambungDraft.uji.observasiPelaksanaan.predicate
+                    : (currentSupervision.observasiKelas?.predicate ?? ((sambungDraft.uji?.observasiPelaksanaan?.persentaseCapaian || currentSupervision.observasiKelas?.score) ? 'Perlu Perbaikan' : 'Belum Dinilai'))
+                }
               </span>
             </div>
 

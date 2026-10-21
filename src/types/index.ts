@@ -79,7 +79,7 @@ export interface Supervision {
       totalScore: number;
       maxPossibleScore: number;
       finalScore: number; // 0 - 100
-      predicate: 'Sangat Baik' | 'Baik' | 'Cukup' | 'Perlu Perbaikan';
+      predicate: 'Sangat Baik' | 'Baik' | 'Cukup' | 'Perlu Perbaikan' | 'Belum Dinilai';
     };
     feedback: {
       kelebihan: string;
@@ -357,7 +357,9 @@ export interface SambungUjiObservasiPelaksanaan {
   totalSkor: number; // max 50
   maxPossibleScore: number; // 50
   persentaseCapaian: number; // 0-100%
-  predicate: 'Sangat Baik' | 'Baik' | 'Cukup' | 'Perlu Perbaikan';
+  predicate: 'Sangat Baik' | 'Baik' | 'Cukup' | 'Perlu Perbaikan' | 'Belum Dinilai';
+  totalYa?: number;
+  totalAspek?: number;
   kategoriMakna?: string;
   feedback: {
     kelebihan: string;

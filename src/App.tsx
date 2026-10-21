@@ -31,7 +31,8 @@ import {
   syncAllInitialDataToFirestore,
   subscribeToSupervisions,
   getDeletedUserIds,
-  getDeletedSupervisionIds
+  getDeletedSupervisionIds,
+  getDeletedUserNames
 } from './services/firebase';
 import { 
   loadLocalSupervisions, 
@@ -47,8 +48,14 @@ import { onAuthStateChanged } from 'firebase/auth';
 
 const EXCLUDED_SUPERVISION_IDS = new Set(['sup-demo-dewi-awal', 'sup-demo-03', 'sup-demo-08']);
 const filterValidSupervisions = (list: Supervision[]): Supervision[] => {
+  const deletedSupIds = new Set(getDeletedSupervisionIds());
+  const deletedUids = new Set(getDeletedUserIds());
+  const deletedNames = new Set(getDeletedUserNames());
   return list.filter(s => {
     if (EXCLUDED_SUPERVISION_IDS.has(s.id)) return false;
+    if (deletedSupIds.has(s.id)) return false;
+    if (s.teacherId && deletedUids.has(s.teacherId)) return false;
+    if (s.teacherName && deletedNames.has(s.teacherName.toLowerCase().trim())) return false;
     if (s.teacherName && (s.teacherName.toLowerCase().includes('risna') || s.teacherName.toLowerCase().includes('fatma rita'))) return false;
     return true;
   });
@@ -225,8 +232,11 @@ export default function App() {
   const visibleSupervisions = React.useMemo(() => {
     const deletedSupIds = new Set(getDeletedSupervisionIds());
     const deletedUids = new Set(getDeletedUserIds());
+    const deletedNames = new Set(getDeletedUserNames());
     const cleanSupervisions = supervisions.filter(
-      s => !deletedSupIds.has(s.id) && !deletedUids.has(s.teacherId)
+      s => !deletedSupIds.has(s.id) && 
+           (!s.teacherId || !deletedUids.has(s.teacherId)) &&
+           (!s.teacherName || !deletedNames.has(s.teacherName.toLowerCase().trim()))
     );
 
     if (!currentUser) return cleanSupervisions;

@@ -886,7 +886,7 @@ export function createEmptySambungData(
         totalSkor: 0,
         maxPossibleScore: 50,
         persentaseCapaian: 0,
-        predicate: 'Perlu Perbaikan',
+        predicate: 'Belum Dinilai',
         feedback: {
           kelebihan: '',
           perbaikan: '',

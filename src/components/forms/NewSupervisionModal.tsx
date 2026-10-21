@@ -125,7 +125,7 @@ export const NewSupervisionModal: React.FC<NewSupervisionModalProps> = ({
             totalScore: 0,
             maxPossibleScore: 44,
             finalScore: 0,
-            predicate: 'Perlu Perbaikan',
+            predicate: 'Belum Dinilai',
           },
           feedback: {
             kelebihan: '',
@@ -150,7 +150,7 @@ export const NewSupervisionModal: React.FC<NewSupervisionModalProps> = ({
           totalYa: 0,
           totalAspek: 24,
           score: 0,
-          predicate: 'Kurang (D)',
+          predicate: 'Belum Dinilai',
           feedbackNotes: '',
         },
         pascaObservasi: {

@@ -63,7 +63,7 @@ export const EditGuruSupervisiModal: React.FC<EditGuruSupervisiModalProps> = ({
   const [telaahScore, setTelaahScore] = useState<number>(
     supervision.perangkatAjar?.telaahSummary?.finalScore ?? 90
   );
-  const [telaahPredicate, setTelaahPredicate] = useState<'Sangat Baik' | 'Baik' | 'Cukup' | 'Perlu Perbaikan'>(
+  const [telaahPredicate, setTelaahPredicate] = useState<'Sangat Baik' | 'Baik' | 'Cukup' | 'Perlu Perbaikan' | 'Belum Dinilai'>(
     supervision.perangkatAjar?.telaahSummary?.predicate ?? 'Sangat Baik'
   );
   const [telaahRekomendasi, setTelaahRekomendasi] = useState<string>(

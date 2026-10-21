@@ -868,6 +868,7 @@ export async function updateUserAccount(user: UserProfile): Promise<UserProfile>
 
 const DELETED_SUPERVISION_IDS_KEY = 'pakkus_deleted_supervisions';
 const DELETED_USER_IDS_KEY = 'pakkus_deleted_users';
+const DELETED_USER_NAMES_KEY = 'pakkus_deleted_usernames';
 
 export function getDeletedSupervisionIds(): string[] {
   try {
@@ -907,10 +908,34 @@ export function addDeletedUserId(uid: string) {
   } catch {}
 }
 
+export function getDeletedUserNames(): string[] {
+  try {
+    const raw = localStorage.getItem(DELETED_USER_NAMES_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function addDeletedUserName(name: string) {
+  if (!name) return;
+  try {
+    const names = getDeletedUserNames();
+    const clean = name.toLowerCase().trim();
+    if (!names.includes(clean)) {
+      names.push(clean);
+      localStorage.setItem(DELETED_USER_NAMES_KEY, JSON.stringify(names));
+    }
+  } catch {}
+}
+
 export async function deleteUserAccount(uid: string): Promise<void> {
   addDeletedUserId(uid);
   const allUsers = getStoredUsers();
   const targetUser = allUsers.find(u => u.uid === uid);
+  if (targetUser?.displayName) {
+    addDeletedUserName(targetUser.displayName);
+  }
   const current = allUsers.filter(u => u.uid !== uid);
   saveStoredUsers(current);
   try {
@@ -1124,23 +1149,27 @@ export async function fetchSupervisions(userProfile?: UserProfile | null): Promi
 
     const deletedSupIds = new Set(getDeletedSupervisionIds());
     const deletedUids = new Set(getDeletedUserIds());
+    const deletedNames = new Set(getDeletedUserNames());
+
+    const isSupDeleted = (s: Supervision) =>
+      deletedSupIds.has(s.id) ||
+      (s.teacherId && deletedUids.has(s.teacherId)) ||
+      (s.teacherName && deletedNames.has(s.teacherName.toLowerCase().trim()));
 
     // Merge with SAMPLE_SUPERVISIONS to guarantee initial supervised teachers are available,
     // excluding any that have been deleted via Kelola Pengguna
     const map = new Map<string, Supervision>();
     SAMPLE_SUPERVISIONS.forEach(s => {
-      if (!deletedSupIds.has(s.id) && !deletedUids.has(s.teacherId)) {
+      if (!isSupDeleted(s)) {
         map.set(s.id, s);
       }
     });
     results.forEach(s => {
-      if (!deletedSupIds.has(s.id) && !deletedUids.has(s.teacherId)) {
+      if (!isSupDeleted(s)) {
         map.set(s.id, s);
       }
     });
-    results = Array.from(map.values()).filter(
-      s => !deletedSupIds.has(s.id) && !deletedUids.has(s.teacherId)
-    );
+    results = Array.from(map.values()).filter(s => !isSupDeleted(s));
 
     // Role-based filtering
     if (userProfile?.role === 'guru') {
@@ -1165,7 +1194,12 @@ export async function fetchSupervisions(userProfile?: UserProfile | null): Promi
     const fallback = localCached && localCached.length > 0 ? localCached : SAMPLE_SUPERVISIONS;
     const deletedSupIds = new Set(getDeletedSupervisionIds());
     const deletedUids = new Set(getDeletedUserIds());
-    return fallback.filter(s => !deletedSupIds.has(s.id) && !deletedUids.has(s.teacherId));
+    const deletedNames = new Set(getDeletedUserNames());
+    return fallback.filter(
+      s => !deletedSupIds.has(s.id) && 
+           (!s.teacherId || !deletedUids.has(s.teacherId)) &&
+           (!s.teacherName || !deletedNames.has(s.teacherName.toLowerCase().trim()))
+    );
   }
 }
 

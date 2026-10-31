@@ -64,6 +64,8 @@ export interface Supervision {
   createdAt: string;
   updatedAt: string;
   isNewSupervision?: boolean;
+  statusOptimal?: 'optimal' | 'belum_optimal';
+  nilaiAkhirKomprehensif?: number;
 
   // A. Perangkat Ajar & Drive Links
   perangkatAjar: {
@@ -488,6 +490,19 @@ export interface SambungKesimpulanAlurSambung {
   dukunganKepalaSekolah?: string; // Dukungan fasilitas & kebijakan kepala sekolah
 }
 
+export interface SambungCatatanOptimal {
+  status: 'optimal' | 'belum_optimal';
+  nilaiBaseline: number;
+  nilaiAkhir: number;
+  delta: number;
+  predikat: string;
+  aspekOptimal: string[];
+  aspekBelumOptimal: string[];
+  rekomendasiPengawas: string;
+  diverifikasiOleh: string;
+  tanggalPenetapan: string;
+}
+
 export interface SambungData {
   // S - SELIDIKI
   selidiki: {
@@ -539,6 +554,8 @@ export interface SambungData {
     pengimbasan: SambungPengimbasanItem[];
     rtlNyatakan?: SambungRtlNyatakanItem[];
     kesimpulanAlurSambung?: SambungKesimpulanAlurSambung;
+    statusOptimal?: 'optimal' | 'belum_optimal';
+    catatanOptimal?: SambungCatatanOptimal;
   };
   lastUpdated?: string;
 }

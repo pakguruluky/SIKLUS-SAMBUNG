@@ -22,6 +22,12 @@ import {
   getTeacherDescriptiveDataDampak
 } from '../data/sambungSeed';
 import { getSupervisionSambungProgress, StageKey } from '../utils/sambungProgress';
+import { 
+  calculateTelaahSummary as calculateTelaahSummaryUnified, 
+  calculateObservasiSummary as calculateObservasiSummaryUnified,
+  calculateSupervisionComprehensiveScore, 
+  getSchoolOptimalAggregates 
+} from '../utils/sambungCalculations';
 import { saveSupervision, deleteSupervision, deleteUserAccount, getDeletedUserIds, getDeletedSupervisionIds, getDeletedUserNames } from '../services/firebase';
 import { analyzeTelaahRppWithAI } from '../services/aiService';
 import { SambungPrintModal } from './SambungPrintModal';
@@ -165,7 +171,8 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
   const [activeTab, setActiveTab] = useState<TabType>('S');
   const [sSubTab, setSSubTab] = useState<'telaah_rpp' | 'pra_observasi' | 'observasi_kelas' | 'kesimpulan_selidiki'>('telaah_rpp');
   const [uSubTab, setUSubTab] = useState<'pra_observasi' | 'observasi_25' | 'pasca_observasi' | 'kesimpulan_uji'>('pra_observasi');
-  const [gSubTab, setGSubTab] = useState<'rtl_nyatakan' | 'benang_merah' | 'pengimbasan' | 'pengesahan'>('rtl_nyatakan');
+  const [gSubTab, setGSubTab] = useState<'rtl_nyatakan' | 'benang_merah' | 'pengimbasan' | 'pengesahan' | 'status_optimal'>('rtl_nyatakan');
+  const [optimalFilterTab, setOptimalFilterTab] = useState<'all' | 'optimal' | 'belum_optimal'>('all');
   const [isAutoFillingUji, setIsAutoFillingUji] = useState(false);
   const [isAutoFillingGerakkan, setIsAutoFillingGerakkan] = useState(false);
   const [isAnalyzingTelaahAI, setIsAnalyzingTelaahAI] = useState(false);
@@ -484,22 +491,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
 
   // --- Section Helpers for Selidiki Menus ---
   const calculateTelaahSummary = (scores: Record<number, number | 'NA'>) => {
-    let total = 0;
-    let count = 0;
-    TELAAH_ITEMS.forEach((item) => {
-      const scoreVal = scores[item.id];
-      if (typeof scoreVal === 'number') {
-        total += scoreVal;
-        count++;
-      }
-    });
-    const maxScore = count > 0 ? count * 2 : 44;
-    const finalScore = maxScore > 0 ? Math.round((total / maxScore) * 1000) / 10 : 0;
-    let predicate: 'Sangat Baik' | 'Baik' | 'Cukup' | 'Perlu Perbaikan' = 'Perlu Perbaikan';
-    if (finalScore >= 91) predicate = 'Sangat Baik';
-    else if (finalScore >= 81) predicate = 'Baik';
-    else if (finalScore >= 71) predicate = 'Cukup';
-    return { totalScore: total, maxPossibleScore: maxScore, finalScore, predicate };
+    return calculateTelaahSummaryUnified(scores);
   };
 
   const handleUpdateTelaahScore = (itemId: number, score: number | 'NA') => {
@@ -745,30 +737,8 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
   };
 
   // Observasi Kelas helpers
-  const calculateObservasiSummary = (items: Record<string, { status?: 'Ya' | 'Tidak'; score?: number; note: string }>) => {
-    let totalYa = 0;
-    let totalSkor = 0;
-    OBSERVASI_ITEMS.forEach((item) => {
-      const it = items[item.id];
-      if (it) {
-        if (it.status === 'Ya' || (typeof it.score === 'number' && it.score > 0)) {
-          totalYa++;
-        }
-        if (typeof it.score === 'number') {
-          totalSkor += it.score;
-        } else if (it.status === 'Ya') {
-          totalSkor += 2;
-        }
-      }
-    });
-    const totalAspek = 25;
-    const maxScore = 50;
-    const scorePct = Math.round((totalSkor / maxScore) * 1000) / 10;
-    let predicate = 'Kurang';
-    if (scorePct >= 91) predicate = 'Sangat Baik';
-    else if (scorePct >= 81) predicate = 'Baik';
-    else if (scorePct >= 71) predicate = 'Cukup';
-    return { totalYa, totalAspek, totalSkor, score: scorePct, predicate };
+  const calculateObservasiSummary = (items: Record<string, { status?: 'Ya' | 'Tidak'; score?: number; note?: string }>) => {
+    return calculateObservasiSummaryUnified(items);
   };
 
   const handleUpdateObservasiItem = (itemId: string, score: 0 | 1 | 2, note?: string) => {
@@ -1343,9 +1313,24 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
       const ujiObs = updatedDraft.uji?.observasiPelaksanaan;
       const berdayakan = updatedDraft.berdayakan;
 
+      // Calculate comprehensive score and status optimal dynamically
+      const tempSupForCalc: Supervision = {
+        ...currentSupervision,
+        sambung: updatedDraft,
+      };
+      const compResult = calculateSupervisionComprehensiveScore(tempSupForCalc);
+
+      updatedDraft.gerakkan = {
+        ...updatedDraft.gerakkan,
+        statusOptimal: compResult.statusOptimal,
+        catatanOptimal: compResult.catatanOptimal,
+      };
+
       const updatedSupervision: Supervision = {
         ...currentSupervision,
         sambung: updatedDraft,
+        statusOptimal: compResult.statusOptimal,
+        nilaiAkhirKomprehensif: compResult.finalComprehensiveScore,
         ...(berdayakan && (berdayakan.rppPerbaikanUrl || berdayakan.telaahSummary) ? {
           perangkatAjarPerbaikan: {
             ...currentSupervision.perangkatAjarPerbaikan,
@@ -1385,8 +1370,9 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
       await saveSupervision(updatedSupervision);
       onUpdateSupervision(updatedSupervision);
       setSambungDraft(updatedDraft);
-      setSaveToast(`Data instrumen & siklus SAMBUNG guru ${currentSupervision.teacherName} berhasil disimpan ke Firebase Cloud!`);
-      setTimeout(() => setSaveToast(null), 3500);
+      const statusLabel = compResult.statusOptimal === 'optimal' ? 'Sudah Optimal (Tuntas)' : 'Belum Optimal (Perlu Bimbingan)';
+      setSaveToast(`Data supervisi guru ${currentSupervision.teacherName} berhasil disimpan (${statusLabel} • Skor: ${compResult.finalComprehensiveScore}%) ke Backend & Firebase!`);
+      setTimeout(() => setSaveToast(null), 3800);
     } catch (err: any) {
       console.error('Error saving supervision:', err);
       setSaveToast('Gagal menyimpan data ke Firebase: ' + (err.message || ''));
@@ -3934,17 +3920,26 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
 
               const handleScoreChange = (id: number, val: number | 'NA') => {
                 const newScores = { ...currentScores, [id]: val };
+                const summary = calculateTelaahSummaryUnified(newScores);
+                let deskripsi = 'Perencanaan pembelajaran telah memenuhi kriteria secara optimal. Keselarasan tujuan, kegiatan, asesmen, pengalaman belajar, dan prinsip Pembelajaran Mendalam sudah tergambar dengan baik.';
+                if (summary.finalScore < 71) {
+                  deskripsi = 'Perencanaan pembelajaran belum memenuhi sejumlah kriteria penting dan memerlukan penguatan pada komponen dasar maupun keterkaitan antarkomponen.';
+                } else if (summary.finalScore < 81) {
+                  deskripsi = 'Perencanaan pembelajaran telah memiliki komponen dasar, tetapi beberapa aspek penting belum terpenuhi secara optimal, terutama aspek keselarasan, pengalaman belajar, atau asesmen.';
+                } else if (summary.finalScore < 91) {
+                  deskripsi = 'Perencanaan pembelajaran telah memenuhi sebagian besar kriteria, namun masih terdapat beberapa komponen yang perlu diperkuat agar lebih utuh dan selaras.';
+                }
                 setSambungDraft({
                   ...sambungDraft,
                   berdayakan: {
                     ...berdayakan,
                     telaahScores: newScores,
                     telaahSummary: {
-                      totalScore: computedTotalScore,
-                      maxPossibleScore: computedMaxPossibleScore,
-                      finalScore: computedFinalScore,
-                      predicate: computedPredicate,
-                      kategoriDeskripsi: computedDeskripsi,
+                      totalScore: summary.totalScore,
+                      maxPossibleScore: summary.maxPossibleScore,
+                      finalScore: summary.finalScore,
+                      predicate: summary.predicate,
+                      kategoriDeskripsi: deskripsi,
                     },
                   },
                 });
@@ -5015,26 +5010,19 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                           ...existingItems,
                           [id]: { score, note },
                         };
-                        let sumScore = 0;
-                        OBSERVASI_ITEMS.forEach((it) => {
-                          const sc = updatedItems[it.id]?.score !== undefined ? Number(updatedItems[it.id].score) : 2;
-                          sumScore += sc;
-                        });
-                        const pct = parseFloat(((sumScore / 50) * 100).toFixed(1));
-                        let pred: 'Sangat Baik' | 'Baik' | 'Cukup' | 'Perlu Perbaikan' = 'Perlu Perbaikan';
-                        if (pct >= 90) pred = 'Sangat Baik';
-                        else if (pct >= 80) pred = 'Baik';
-                        else if (pct >= 70) pred = 'Cukup';
+                        const sum = calculateObservasiSummaryUnified(updatedItems);
 
                         const baseObs = currentObs || autoUji.observasiPelaksanaan;
                         const updatedObs: SambungUjiObservasiPelaksanaan = {
                           ...baseObs,
-                          maxPossibleScore: baseObs?.maxPossibleScore || 50,
+                          maxPossibleScore: 50,
                           feedback: baseObs?.feedback || { kelebihan: '', perbaikan: '', rekomendasi: '' },
                           items: updatedItems,
-                          totalSkor: sumScore,
-                          persentaseCapaian: pct,
-                          predicate: pred,
+                          totalSkor: sum.totalSkor,
+                          totalYa: sum.totalYa,
+                          totalAspek: 25,
+                          persentaseCapaian: sum.score,
+                          predicate: sum.predicate,
                         };
 
                         setSambungDraft({
@@ -6162,6 +6150,160 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                   </tbody>
                 </table>
               </div>
+
+              {/* TABEL DATA DAMPAK KUANTITATIF & KUALITATIF (SEBELUM VS SETELAH SAMBUNG) */}
+              <div className="space-y-3 pt-6 border-t border-slate-200">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4 text-emerald-600" />
+                      <span>Data Dampak Kuantitatif &amp; Kualitatif (Sebelum vs Setelah SAMBUNG)</span>
+                    </h4>
+                    <p className="text-[11px] text-slate-500">
+                      Mengukur persentase lompatan capaian pada 4 indikator utama sebelum supervisi (Baseline) vs setelah perbaikan (Uji), beserta deskripsi penilaian dan bukti keterlaksanaan.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const defaultDampak = getTeacherDescriptiveDataDampak(
+                          currentSupervision.teacherName,
+                          currentSupervision.subject,
+                          currentSupervision.schoolName,
+                          currentSupervision.lessonTitle,
+                          currentSupervision.perangkatAjar?.telaahSummary?.predicate,
+                          currentSupervision.observasiKelas?.predicate
+                        );
+                        setSambungDraft({
+                          ...sambungDraft,
+                          nyatakan: {
+                            ...sambungDraft.nyatakan,
+                            dataDampak: defaultDampak,
+                          },
+                        });
+                        setSaveToast('Data dampak disinkronkan dari profil guru dan capaian supervisi!');
+                        setTimeout(() => setSaveToast(null), 3000);
+                      }}
+                      className="px-3 py-1.5 rounded-xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      <span>Sinkronkan Nilai Dampak</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs border-collapse rounded-2xl overflow-hidden border border-slate-200 bg-white">
+                    <thead>
+                      <tr className="bg-slate-100/90 text-slate-800 font-bold border-b border-slate-200 uppercase text-[11px]">
+                        <th className="py-3 px-3 text-center w-12">No</th>
+                        <th className="py-3 px-3 text-left w-64">Indikator Perubahan</th>
+                        <th className="py-3 px-3 text-center w-24">Awal (S)</th>
+                        <th className="py-3 px-3 text-center w-24">Akhir (U)</th>
+                        <th className="py-3 px-3 text-center w-24">Selisih</th>
+                        <th className="py-3 px-3 text-left">Makna &amp; Deskripsi Penilaian</th>
+                        <th className="py-3 px-3 text-left w-48">Bukti Kegiatan</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {(sambungDraft.nyatakan?.dataDampak || []).map((item, idx) => {
+                        const awalNum = parseFloat((item.awal || '0').replace(/[^0-9.]/g, '')) || 0;
+                        const akhirNum = parseFloat((item.akhir || '0').replace(/[^0-9.]/g, '')) || 0;
+                        const delta = Math.round((akhirNum - awalNum) * 10) / 10;
+                        return (
+                          <tr key={idx} className="hover:bg-slate-50/50 align-top">
+                            <td className="py-3 px-3 text-center font-bold text-slate-400">{idx + 1}</td>
+                            <td className="py-3 px-3 font-bold text-slate-900 bg-slate-50/40">
+                              {item.indikator}
+                            </td>
+                            <td className="py-3 px-3 text-center font-bold text-slate-600 bg-slate-50/30">
+                              <input
+                                type="text"
+                                value={item.awal}
+                                onChange={(e) => {
+                                  const list = [...(sambungDraft.nyatakan?.dataDampak || [])];
+                                  list[idx] = { ...list[idx], awal: e.target.value };
+                                  setSambungDraft({
+                                    ...sambungDraft,
+                                    nyatakan: { ...sambungDraft.nyatakan, dataDampak: list },
+                                  });
+                                }}
+                                className="w-16 text-center font-bold py-1 px-1.5 rounded-lg border border-slate-200 text-xs"
+                              />
+                            </td>
+                            <td className="py-3 px-3 text-center font-bold text-emerald-700 bg-emerald-50/30">
+                              <input
+                                type="text"
+                                value={item.akhir}
+                                onChange={(e) => {
+                                  const list = [...(sambungDraft.nyatakan?.dataDampak || [])];
+                                  list[idx] = { ...list[idx], akhir: e.target.value };
+                                  setSambungDraft({
+                                    ...sambungDraft,
+                                    nyatakan: { ...sambungDraft.nyatakan, dataDampak: list },
+                                  });
+                                }}
+                                className="w-16 text-center font-bold py-1 px-1.5 rounded-lg border border-emerald-300 text-xs bg-emerald-50/50"
+                              />
+                            </td>
+                            <td className="py-3 px-3 text-center font-black text-xs text-indigo-700 bg-indigo-50/30">
+                              +{delta}%
+                            </td>
+                            <td className="py-3 px-3 space-y-1.5">
+                              <textarea
+                                rows={2}
+                                value={item.makna || ''}
+                                onChange={(e) => {
+                                  const list = [...(sambungDraft.nyatakan?.dataDampak || [])];
+                                  list[idx] = { ...list[idx], makna: e.target.value };
+                                  setSambungDraft({
+                                    ...sambungDraft,
+                                    nyatakan: { ...sambungDraft.nyatakan, dataDampak: list },
+                                  });
+                                }}
+                                placeholder="Makna peningkatan bagi pembelajaran..."
+                                className="w-full px-2 py-1 rounded-lg border border-slate-200 text-xs font-semibold text-slate-800"
+                              />
+                              <textarea
+                                rows={2}
+                                value={item.deskripsiPenilaian || ''}
+                                onChange={(e) => {
+                                  const list = [...(sambungDraft.nyatakan?.dataDampak || [])];
+                                  list[idx] = { ...list[idx], deskripsiPenilaian: e.target.value };
+                                  setSambungDraft({
+                                    ...sambungDraft,
+                                    nyatakan: { ...sambungDraft.nyatakan, dataDampak: list },
+                                  });
+                                }}
+                                placeholder="Deskripsi spesifik penilaian pengawas terhadap transformasi guru..."
+                                className="w-full px-2 py-1 rounded-lg border border-slate-200 text-[11px] text-slate-600"
+                              />
+                            </td>
+                            <td className="py-3 px-3">
+                              <input
+                                type="text"
+                                value={item.buktiKegiatan || ''}
+                                onChange={(e) => {
+                                  const list = [...(sambungDraft.nyatakan?.dataDampak || [])];
+                                  list[idx] = { ...list[idx], buktiKegiatan: e.target.value };
+                                  setSambungDraft({
+                                    ...sambungDraft,
+                                    nyatakan: { ...sambungDraft.nyatakan, dataDampak: list },
+                                  });
+                                }}
+                                placeholder="Contoh: LKPD, Video Kelas"
+                                className="w-full px-2 py-1 rounded-lg border border-slate-200 text-[11px] text-slate-700 font-medium"
+                              />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
               {renderStageGateFooter('N', 'G')}
             </div>
           </div>
@@ -6266,6 +6408,22 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                   >
                     <Award className="w-3.5 h-3.5" />
                     <span>4. Lembar Pengesahan Tripartit</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setGSubTab('status_optimal')}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      gSubTab === 'status_optimal'
+                        ? 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-sm ring-2 ring-emerald-400'
+                        : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200'
+                    }`}
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>5. Kesimpulan Akhir: Status Optimal Guru</span>
+                    <span className="px-1.5 py-0.2 rounded-md bg-emerald-200/60 text-emerald-900 text-[10px] font-black">
+                      Optimal vs Belum Optimal
+                    </span>
                   </button>
                 </div>
               </div>
@@ -7076,6 +7234,395 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                   </div>
                 </div>
               )}
+
+              {/* ========================================================= */}
+              {/* SUBTAB 5: STATUS OPTIMAL GURU & REKAPITULASI SEMUA GURU   */}
+              {/* ========================================================= */}
+              {gSubTab === 'status_optimal' && (() => {
+                const liveSupervisionForCalc: Supervision = {
+                  ...currentSupervision,
+                  sambung: sambungDraft || currentSupervision.sambung,
+                };
+                const compResult = calculateSupervisionComprehensiveScore(liveSupervisionForCalc);
+                const aggregates = getSchoolOptimalAggregates(availableSupervisions);
+
+                const filteredTeachersList = (optimalFilterTab === 'all'
+                  ? [...aggregates.optimalTeachers, ...aggregates.belumOptimalTeachers]
+                  : optimalFilterTab === 'optimal'
+                  ? aggregates.optimalTeachers
+                  : aggregates.belumOptimalTeachers
+                ).sort((a, b) => b.result.finalComprehensiveScore - a.result.finalComprehensiveScore);
+
+                return (
+                  <div className="space-y-6">
+                    {/* 1. STATUS GURU AKTIF BANNER */}
+                    <div className={`p-6 rounded-3xl border-2 shadow-sm transition-all ${
+                      compResult.statusOptimal === 'optimal'
+                        ? 'bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 border-emerald-400/80 text-white'
+                        : 'bg-gradient-to-r from-amber-950 via-rose-950 to-slate-900 border-amber-400/80 text-white'
+                    }`}>
+                      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <span className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shadow-2xs ${
+                              compResult.statusOptimal === 'optimal'
+                                ? 'bg-emerald-400 text-emerald-950 ring-2 ring-emerald-300'
+                                : 'bg-amber-400 text-amber-950 ring-2 ring-amber-300'
+                            }`}>
+                              {compResult.statusOptimal === 'optimal' ? (
+                                <>
+                                  <Sparkles className="w-3.5 h-3.5" />
+                                  <span>STATUS: GURU SUDAH OPTIMAL (TUNTAS &amp; MANDIRI)</span>
+                                </>
+                              ) : (
+                                <>
+                                  <AlertCircle className="w-3.5 h-3.5" />
+                                  <span>STATUS: GURU BELUM OPTIMAL (MEMERLUKAN BIMBINGAN INTENSIF)</span>
+                                </>
+                              )}
+                            </span>
+                            <span className="text-xs text-white/70">
+                              Verifikasi Pengawas Pembina Kusnandar, M.Si
+                            </span>
+                          </div>
+
+                          <h3 className="text-xl sm:text-2xl font-black text-white">
+                            {currentSupervision.teacherName} — {currentSupervision.subject}
+                          </h3>
+                          <p className="text-xs text-slate-200 leading-relaxed max-w-3xl">
+                            {compResult.kategoriDeskripsi}
+                          </p>
+                        </div>
+
+                        <div className="flex flex-wrap lg:flex-col items-start lg:items-end gap-2 shrink-0">
+                          <div className="text-right">
+                            <span className="text-[11px] text-slate-300 block">Nilai Akhir Siklus SAMBUNG</span>
+                            <span className="text-3xl sm:text-4xl font-black text-white block">
+                              {compResult.finalComprehensiveScore}%
+                            </span>
+                            <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full inline-block mt-1 ${
+                              compResult.statusOptimal === 'optimal'
+                                ? 'bg-emerald-500/30 text-emerald-200 border border-emerald-400/50'
+                                : 'bg-amber-500/30 text-amber-200 border border-amber-400/50'
+                            }`}>
+                              Predikat: {compResult.predicate} (+{compResult.deltaPeningkatan}%)
+                            </span>
+                          </div>
+
+                          {canEdit && (
+                            <button
+                              type="button"
+                              onClick={handleSave}
+                              disabled={isSaving}
+                              className={`mt-2 px-4 py-2 rounded-xl text-xs font-bold shadow-md transition-all flex items-center gap-2 cursor-pointer ${
+                                compResult.statusOptimal === 'optimal'
+                                  ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
+                                  : 'bg-amber-500 hover:bg-amber-600 text-slate-900'
+                              }`}
+                            >
+                              <Save className="w-4 h-4" />
+                              <span>{isSaving ? 'Menyimpan...' : 'Simpan & Tetapkan Status ke Firebase'}</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* 4 KPI Cards */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 mt-4 border-t border-white/10 text-xs">
+                        <div className="bg-white/10 backdrop-blur-xs rounded-xl p-3 border border-white/10">
+                          <span className="text-[10px] text-slate-300 uppercase font-semibold block">1. Telaah Modul (RPP)</span>
+                          <div className="flex items-baseline gap-1.5 mt-0.5">
+                            <span className="text-lg font-black text-white">{compResult.akhirTelaah}%</span>
+                            <span className="text-[10px] text-emerald-300">dari {compResult.baselineTelaah}%</span>
+                          </div>
+                          <span className="text-[10px] text-slate-300">22 Aspek Instrumen</span>
+                        </div>
+
+                        <div className="bg-white/10 backdrop-blur-xs rounded-xl p-3 border border-white/10">
+                          <span className="text-[10px] text-slate-300 uppercase font-semibold block">2. Observasi Kelas</span>
+                          <div className="flex items-baseline gap-1.5 mt-0.5">
+                            <span className="text-lg font-black text-white">{compResult.akhirObservasi}%</span>
+                            <span className="text-[10px] text-emerald-300">dari {compResult.baselineObservasi}%</span>
+                          </div>
+                          <span className="text-[10px] text-slate-300">25 Indikator Kelas</span>
+                        </div>
+
+                        <div className="bg-white/10 backdrop-blur-xs rounded-xl p-3 border border-white/10">
+                          <span className="text-[10px] text-slate-300 uppercase font-semibold block">3. Lompatan Mutu (&Delta;)</span>
+                          <div className="flex items-baseline gap-1.5 mt-0.5">
+                            <span className="text-lg font-black text-emerald-300">+{compResult.deltaPeningkatan}%</span>
+                          </div>
+                          <span className="text-[10px] text-slate-300">Selidiki &rarr; Uji &amp; Nyatakan</span>
+                        </div>
+
+                        <div className="bg-white/10 backdrop-blur-xs rounded-xl p-3 border border-white/10">
+                          <span className="text-[10px] text-slate-300 uppercase font-semibold block">4. Status Ketercapaian</span>
+                          <div className="flex items-baseline gap-1.5 mt-0.5">
+                            <span className={`text-sm font-extrabold ${compResult.statusOptimal === 'optimal' ? 'text-emerald-300' : 'text-amber-300'}`}>
+                              {compResult.statusOptimal === 'optimal' ? 'Optimal (Tuntas)' : 'Belum Optimal'}
+                            </span>
+                          </div>
+                          <span className="text-[10px] text-slate-300">Batas Tuntas &ge; 85.0%</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 2. DUA KARTU ANALISIS KEKUATAN & AREA PEMBINAAN */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Aspek Sudah Optimal */}
+                      <div className="bg-white rounded-2xl border border-emerald-200 p-5 shadow-2xs space-y-3">
+                        <div className="flex items-center gap-2 border-b border-emerald-100 pb-2.5">
+                          <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                          <div>
+                            <h4 className="text-xs font-black uppercase text-emerald-950 tracking-wide">
+                              Aspek yang Sudah Optimal (Kekuatan Guru)
+                            </h4>
+                            <p className="text-[10px] text-emerald-700">Telah memenuhi standar Pembelajaran Mendalam secara konsisten</p>
+                          </div>
+                        </div>
+
+                        <ul className="space-y-2 text-xs">
+                          {compResult.aspekOptimal.map((asp, i) => (
+                            <li key={i} className="flex items-start gap-2 text-slate-800">
+                              <span className="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
+                                ✓
+                              </span>
+                              <span>{asp}</span>
+                            </li>
+                          ))}
+                          {compResult.aspekOptimal.length === 0 && (
+                            <li className="text-slate-400 italic text-[11px]">Belum ada aspek yang mencapai target optimal &ge; 85%.</li>
+                          )}
+                        </ul>
+                      </div>
+
+                      {/* Aspek Belum Optimal */}
+                      <div className="bg-white rounded-2xl border border-amber-200 p-5 shadow-2xs space-y-3">
+                        <div className="flex items-center gap-2 border-b border-amber-100 pb-2.5">
+                          <AlertCircle className="w-5 h-5 text-amber-600" />
+                          <div>
+                            <h4 className="text-xs font-black uppercase text-amber-950 tracking-wide">
+                              Aspek yang Belum Optimal (Fokus Bimbingan)
+                            </h4>
+                            <p className="text-[10px] text-amber-700">Area prioritas pendampingan klinis dan supervisi lanjutan</p>
+                          </div>
+                        </div>
+
+                        <ul className="space-y-2 text-xs">
+                          {compResult.aspekBelumOptimal.map((asp, i) => (
+                            <li key={i} className="flex items-start gap-2 text-slate-800">
+                              <span className="w-4 h-4 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
+                                !
+                              </span>
+                              <span>{asp}</span>
+                            </li>
+                          ))}
+                          {compResult.aspekBelumOptimal.length === 0 && (
+                            <li className="text-emerald-700 font-semibold text-[11px] flex items-center gap-1.5">
+                              <Sparkles className="w-3.5 h-3.5" />
+                              <span>Seluruh aspek telah memenuhi target ketercapaian secara optimal!</span>
+                            </li>
+                          )}
+                        </ul>
+                      </div>
+                    </div>
+
+                    {/* 3. CATATAN & REKOMENDASI RESMI PENGAWAS PEMBINA */}
+                    <div className="bg-slate-50 rounded-2xl border border-slate-200 p-5 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Award className="w-4 h-4 text-indigo-700" />
+                        <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                          Arahan &amp; Rekomendasi Resmi Pengawas Pembina Kusnandar, M.Si
+                        </h4>
+                      </div>
+                      <p className="text-xs text-slate-700 leading-relaxed bg-white p-3.5 rounded-xl border border-slate-200 italic">
+                        "{compResult.rekomendasiPengawas}"
+                      </p>
+                    </div>
+
+                    {/* 4. TABEL REKAPITULASI SELURUH GURU BINAAN: OPTIMAL VS BELUM OPTIMAL */}
+                    <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-xs space-y-4 pt-6">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-900 font-extrabold text-[10px] uppercase">
+                              REKAPITULASI KOTA BOGOR
+                            </span>
+                            <h4 className="text-sm font-black text-slate-900">
+                              Daftar Guru yang Sudah Optimal &amp; Belum Optimal
+                            </h4>
+                          </div>
+                          <p className="text-xs text-slate-500 mt-0.5">
+                            Memetakan hasil akhir supervisi SAMBUNG pada {aggregates.totalTeachers} guru binaan untuk membedakan guru yang siap berimbas (Optimal) dan guru yang membutuhkan pembinaan klinis lanjutan.
+                          </p>
+                        </div>
+
+                        {/* Filter Tabs */}
+                        <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl">
+                          <button
+                            type="button"
+                            onClick={() => setOptimalFilterTab('all')}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                              optimalFilterTab === 'all'
+                                ? 'bg-white text-slate-900 shadow-2xs'
+                                : 'text-slate-600 hover:text-slate-900'
+                            }`}
+                          >
+                            Semua ({aggregates.totalTeachers})
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setOptimalFilterTab('optimal')}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                              optimalFilterTab === 'optimal'
+                                ? 'bg-emerald-600 text-white shadow-2xs'
+                                : 'text-emerald-700 hover:bg-emerald-100/50'
+                            }`}
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Optimal ({aggregates.optimalCount})</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setOptimalFilterTab('belum_optimal')}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                              optimalFilterTab === 'belum_optimal'
+                                ? 'bg-amber-600 text-white shadow-2xs'
+                                : 'text-amber-700 hover:bg-amber-100/50'
+                            }`}
+                          >
+                            <AlertCircle className="w-3.5 h-3.5" />
+                            <span>Belum Optimal ({aggregates.belumOptimalCount})</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Stat summary pills */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                          <span className="text-[10px] text-slate-500 block">Total Guru Binaan</span>
+                          <span className="text-xl font-black text-slate-900 mt-0.5 block">{aggregates.totalTeachers} Guru</span>
+                        </div>
+                        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+                          <span className="text-[10px] text-emerald-700 block font-semibold">Guru Sudah Optimal</span>
+                          <span className="text-xl font-black text-emerald-800 mt-0.5 block">
+                            {aggregates.optimalCount} Guru ({aggregates.optimalPercentage}%)
+                          </span>
+                        </div>
+                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+                          <span className="text-[10px] text-amber-700 block font-semibold">Guru Belum Optimal</span>
+                          <span className="text-xl font-black text-amber-800 mt-0.5 block">
+                            {aggregates.belumOptimalCount} Guru ({aggregates.belumOptimalPercentage}%)
+                          </span>
+                        </div>
+                        <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-3">
+                          <span className="text-[10px] text-indigo-700 block font-semibold">Rata-rata Skor Kota Bogor</span>
+                          <span className="text-xl font-black text-indigo-900 mt-0.5 block">
+                            {aggregates.averageScore}% (+{aggregates.averageDelta}%)
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Table of teachers */}
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs border-collapse rounded-xl overflow-hidden border border-slate-200 bg-white">
+                          <thead>
+                            <tr className="bg-slate-100 text-slate-800 font-bold border-b border-slate-200 uppercase text-[11px]">
+                              <th className="py-2.5 px-3 text-center w-10">No</th>
+                              <th className="py-2.5 px-3 text-left w-56">Nama Guru &amp; NIP</th>
+                              <th className="py-2.5 px-3 text-left w-48">Satuan Pendidikan &amp; Mapel</th>
+                              <th className="py-2.5 px-3 text-center w-20">Awal</th>
+                              <th className="py-2.5 px-3 text-center w-20">Akhir</th>
+                              <th className="py-2.5 px-3 text-center w-20">Selisih</th>
+                              <th className="py-2.5 px-3 text-center w-36">Status Ketercapaian</th>
+                              <th className="py-2.5 px-3 text-left">Fokus Rekomendasi Kusnandar, M.Si</th>
+                              <th className="py-2.5 px-3 text-center w-24">Aksi</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {filteredTeachersList.map((item, idx) => {
+                              const t = item.supervision;
+                              const r = item.result;
+                              const isSelected = t.id === currentSupervision.id;
+
+                              return (
+                                <tr
+                                  key={t.id}
+                                  className={`hover:bg-slate-50/70 transition-colors ${
+                                    isSelected ? 'bg-indigo-50/40 font-semibold' : ''
+                                  }`}
+                                >
+                                  <td className="py-2.5 px-3 text-center font-bold text-slate-400">{idx + 1}</td>
+                                  <td className="py-2.5 px-3">
+                                    <div className="font-extrabold text-slate-900">{t.teacherName}</div>
+                                    <div className="text-[10px] text-slate-500 font-mono">NIP. {t.teacherNip || '-'}</div>
+                                  </td>
+                                  <td className="py-2.5 px-3">
+                                    <div className="font-semibold text-slate-800">{t.schoolName}</div>
+                                    <div className="text-[11px] text-indigo-700">{t.subject}</div>
+                                  </td>
+                                  <td className="py-2.5 px-3 text-center font-semibold text-slate-600 bg-slate-50/40">
+                                    {r.baselineAverage}%
+                                  </td>
+                                  <td className="py-2.5 px-3 text-center font-black text-slate-900 bg-slate-50/60">
+                                    {r.finalComprehensiveScore}%
+                                  </td>
+                                  <td className="py-2.5 px-3 text-center font-bold text-emerald-700">
+                                    +{r.deltaPeningkatan}%
+                                  </td>
+                                  <td className="py-2.5 px-3 text-center">
+                                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${
+                                      r.statusOptimal === 'optimal'
+                                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                        : 'bg-amber-100 text-amber-800 border border-amber-300'
+                                    }`}>
+                                      {r.statusOptimal === 'optimal' ? (
+                                        <>
+                                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                          <span>Sudah Optimal</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <AlertCircle className="w-3 h-3 text-amber-600" />
+                                          <span>Belum Optimal</span>
+                                        </>
+                                      )}
+                                    </span>
+                                  </td>
+                                  <td className="py-2.5 px-3 text-[11px] text-slate-600 leading-snug">
+                                    {r.statusOptimal === 'optimal' ? (
+                                      <span className="text-emerald-900">
+                                        Praktik inkuiri mandiri &bull; Siap pengimbasan Kombel &amp; MGMP
+                                      </span>
+                                    ) : (
+                                      <span className="text-amber-900">
+                                        Prioritas pembinaan diferensiasi &amp; pertanyaan pemantik terbuka
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td className="py-2.5 px-3 text-center">
+                                    <button
+                                      type="button"
+                                      onClick={() => setSelectedId(t.id)}
+                                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                        isSelected
+                                          ? 'bg-indigo-600 text-white shadow-2xs'
+                                          : 'bg-slate-100 hover:bg-indigo-100 text-indigo-700'
+                                      }`}
+                                    >
+                                      {isSelected ? 'Aktif' : 'Pilih'}
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
               {renderStageGateFooter('G')}
             </div>
           </fieldset>

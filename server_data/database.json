@@ -130,7 +130,7 @@
       "supervisorName": "Kusnandar, M.Si",
       "supervisorRole": "admin",
       "createdAt": "2025-08-15T08:30:00.000Z",
-      "updatedAt": "2025-09-10T11:45:00.000Z",
+      "updatedAt": "2026-10-31T07:16:47.849Z",
       "sambung": {
         "selidiki": {
           "tanggal": "2025-08-10",
@@ -1259,7 +1259,9 @@
         "generalImpression": "Guru menunjukkan perkembangan kompetensi pedagogis yang luar biasa pasca pendampingan SAMBUNG. Suasana belajar sangat hidup, interaktif, dan berorientasi pada keberhasilan setiap murid.",
         "recommendations": "Lanjutkan konsistensi pembelajaran mendalam dan jadikan lembar refleksi murid sebagai rujukan berkelanjutan dalam merancang modul ajar berikutnya.",
         "completedAt": "2026-10-21T09:56:35.676Z"
-      }
+      },
+      "statusOptimal": "optimal",
+      "nilaiAkhirKomprehensif": 93.6
     },
     {
       "id": "sup-demo-02",
@@ -15951,5 +15953,5 @@
   "deletedSupervisionIds": [],
   "deletedUserIds": [],
   "deletedUserNames": [],
-  "lastUpdated": "2026-10-21T09:57:35.102Z"
+  "lastUpdated": "2026-10-31T07:16:47.849Z"
 }

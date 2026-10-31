@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { saveSupervision, updateUserAccount, fetchAllUsers } from '../../services/firebase';
 import { getSupervisionSambungProgress } from '../../utils/sambungProgress';
+import { calculateSupervisionComprehensiveScore } from '../../utils/sambungCalculations';
 
 interface EditGuruSupervisiModalProps {
   isOpen: boolean;
@@ -193,6 +194,22 @@ export const EditGuruSupervisiModal: React.FC<EditGuruSupervisiModalProps> = ({
         }
       } catch (userSyncErr) {
         console.warn('Notice syncing user profile for teacher:', userSyncErr);
+      }
+
+      // Recompute comprehensive scores and status optimal across all stages
+      const compCalc = calculateSupervisionComprehensiveScore(updated);
+      updated.statusOptimal = compCalc.statusOptimal;
+      updated.nilaiAkhirKomprehensif = compCalc.finalComprehensiveScore;
+
+      if (updated.sambung) {
+        if (!updated.sambung.gerakkan) {
+          updated.sambung.gerakkan = {
+            tindakLanjut: [],
+            pengimbasan: [],
+          };
+        }
+        updated.sambung.gerakkan.statusOptimal = compCalc.statusOptimal;
+        updated.sambung.gerakkan.catatanOptimal = compCalc.catatanOptimal;
       }
 
       await saveSupervision(updated);
@@ -604,6 +621,32 @@ export const EditGuruSupervisiModal: React.FC<EditGuruSupervisiModalProps> = ({
                     placeholder="Umpan balik suasana kelas, pelibatan aktif murid, dan asesmen formatif..."
                   />
                 </div>
+
+                {/* Live Comprehensive Score & Status Optimal Preview */}
+                {(() => {
+                  const estAvg = (Number(telaahScore || 0) + Number(obsScore || 0)) / 2;
+                  const isEstOptimal = estAvg >= 85.0;
+                  return (
+                    <div className={`p-3 rounded-xl border text-xs flex items-center justify-between gap-3 ${
+                      isEstOptimal
+                        ? 'bg-emerald-50/80 border-emerald-200 text-emerald-950'
+                        : 'bg-amber-50/80 border-amber-200 text-amber-950'
+                    }`}>
+                      <div>
+                        <span className="font-bold uppercase text-[10px] tracking-wider block">
+                          Prediksi Status Ketercapaian Siklus:
+                        </span>
+                        <span className="font-extrabold text-xs">
+                          {isEstOptimal ? '✓ Guru Sudah Optimal (Tuntas & Mandiri)' : '⚠ Guru Belum Optimal (Perlu Bimbingan Intensif)'}
+                        </span>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className="text-[10px] block opacity-75">Estimasi Nilai Akhir</span>
+                        <span className="font-black text-sm">{estAvg.toFixed(1)}%</span>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           )}

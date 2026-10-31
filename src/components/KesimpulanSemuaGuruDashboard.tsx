@@ -6,6 +6,7 @@ import {
   DEFAULT_MATRIKS_AFTER 
 } from '../data/sambungSeed';
 import { generateGerakkanData } from '../data/autoFillData';
+import { calculateSupervisionComprehensiveScore, getSchoolOptimalAggregates } from '../utils/sambungCalculations';
 import { SambungPrintModal } from './SambungPrintModal';
 import { SambungPersentaseChart } from './SambungPersentaseChart';
 import { 
@@ -37,6 +38,7 @@ import {
   Calendar,
   CheckCircle,
   HelpCircle,
+  AlertCircle,
   Pencil
 } from 'lucide-react';
 import { EditGuruSupervisiModal } from './forms/EditGuruSupervisiModal';
@@ -145,7 +147,8 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
   const [searchQuery, setSearchQuery] = useState<string>('');
   
   // Master navigation tabs for Kesimpulan Siklus SAMBUNG
-  const [activeMainTab, setActiveMainTab] = useState<'grafik_kesimpulan_persentase' | 'alur_7_tahap' | 'matriks_before_after' | 'grafik_dampak' | 'rtl_gerakkan'>('grafik_kesimpulan_persentase');
+  const [activeMainTab, setActiveMainTab] = useState<'grafik_kesimpulan_persentase' | 'status_optimal_rekapitulasi' | 'alur_7_tahap' | 'matriks_before_after' | 'grafik_dampak' | 'rtl_gerakkan'>('grafik_kesimpulan_persentase');
+  const [optimalFilterTab, setOptimalFilterTab] = useState<'all' | 'optimal' | 'belum_optimal'>('all');
   
   const [chartViewMode, setChartViewMode] = useState<'bars' | 'trajectory'>('bars');
   const [matrixViewMode, setMatrixViewMode] = useState<'nyatakan' | 'selidiki' | 'uji'>('nyatakan');
@@ -358,6 +361,10 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
     };
   }, [filteredSupervisions, aggregatedImpact]);
 
+  const optimalAggregates = useMemo(() => {
+    return getSchoolOptimalAggregates(filteredSupervisions);
+  }, [filteredSupervisions]);
+
   return (
     <div className="space-y-8">
       {/* ========================================================================= */}
@@ -430,6 +437,40 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
               <span className="text-[10px] text-indigo-200 font-medium">
                 Meningkat dari {aggregatedImpact[3]?.awal || '33%'} (+{aggregatedImpact[3]?.deltaNum || 45}%)
               </span>
+            </div>
+          </div>
+
+          {/* Status Ketercapaian Guru (Optimal vs Belum Optimal) Banner */}
+          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/15 flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-2">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center shrink-0">
+                <CheckCircle2 className="w-5 h-5 text-emerald-300" />
+              </div>
+              <div>
+                <span className="text-[10px] text-indigo-200 uppercase font-black tracking-wider block">
+                  Status Ketercapaian Akhir Siklus SAMBUNG
+                </span>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="text-sm font-extrabold text-white">
+                    {optimalAggregates.optimalCount} Guru Sudah Optimal ({optimalAggregates.optimalPercentage}%)
+                  </span>
+                  <span className="text-indigo-300">&bull;</span>
+                  <span className="text-sm font-bold text-amber-300">
+                    {optimalAggregates.belumOptimalCount} Guru Belum Optimal ({optimalAggregates.belumOptimalPercentage}%)
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setActiveMainTab('status_optimal_rekapitulasi')}
+                className="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-xs transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+              >
+                <Award className="w-4 h-4 text-slate-950" />
+                <span>Lihat Rekap Guru Optimal &rarr;</span>
+              </button>
             </div>
           </div>
         </div>
@@ -519,6 +560,22 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
 
           <button
             type="button"
+            onClick={() => setActiveMainTab('status_optimal_rekapitulasi')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${
+              activeMainTab === 'status_optimal_rekapitulasi'
+                ? 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-md ring-2 ring-emerald-400'
+                : 'text-slate-700 hover:bg-slate-100'
+            }`}
+          >
+            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <span>2. Guru Sudah Optimal &amp; Belum Optimal</span>
+            <span className="text-[10px] bg-emerald-400 text-slate-900 px-1.5 py-0.5 rounded font-black uppercase">
+              {optimalAggregates.optimalCount} Optimal / {optimalAggregates.belumOptimalCount} Belum
+            </span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setActiveMainTab('alur_7_tahap')}
             className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${
               activeMainTab === 'alur_7_tahap'
@@ -527,7 +584,7 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
             }`}
           >
             <Layers className="w-4 h-4 text-amber-300" />
-            <span>2. Matriks Alur 7 Tahap (S — G)</span>
+            <span>3. Matriks Alur 7 Tahap (S — G)</span>
           </button>
 
           <button
@@ -540,7 +597,7 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
             }`}
           >
             <TrendingUp className="w-4 h-4 text-indigo-300" />
-            <span>3. Matriks Perubahan (4 Indikator)</span>
+            <span>4. Matriks Perubahan (4 Indikator)</span>
           </button>
 
           <button
@@ -553,7 +610,7 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
             }`}
           >
             <BarChart3 className="w-4 h-4 text-emerald-300" />
-            <span>4. Dampak Kuantitatif Murid</span>
+            <span>5. Dampak Kuantitatif Murid</span>
           </button>
 
           <button
@@ -566,7 +623,7 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
             }`}
           >
             <Share2 className="w-4 h-4 text-cyan-300" />
-            <span>5. RTL &amp; Diseminasi (Gerakkan)</span>
+            <span>6. RTL &amp; Diseminasi (Gerakkan)</span>
           </button>
         </div>
 
@@ -586,6 +643,286 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
           showTeacherTable={true}
         />
       )}
+
+      {/* ========================================================================= */}
+      {/* TAB 2: REKAPITULASI GURU SUDAH OPTIMAL & BELUM OPTIMAL                    */}
+      {/* ========================================================================= */}
+      {activeMainTab === 'status_optimal_rekapitulasi' && (() => {
+        const filteredList = (optimalFilterTab === 'all'
+          ? [...optimalAggregates.optimalTeachers, ...optimalAggregates.belumOptimalTeachers]
+          : optimalFilterTab === 'optimal'
+          ? optimalAggregates.optimalTeachers
+          : optimalAggregates.belumOptimalTeachers
+        ).sort((a, b) => b.result.finalComprehensiveScore - a.result.finalComprehensiveScore);
+
+        return (
+          <div className="space-y-6">
+            {/* Banner Utama */}
+            <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-6 sm:p-7 shadow-xl border border-indigo-800/60 relative overflow-hidden">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="space-y-2">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-200 text-xs font-bold border border-emerald-400/30">
+                    <Award className="w-3.5 h-3.5 text-emerald-300" />
+                    <span>KESIMPULAN AKHIR PENGAWAS PEMBINA KUSNANDAR, M.SI</span>
+                  </div>
+                  <h3 className="text-xl sm:text-2xl font-black text-white">
+                    Klasifikasi Ketercapaian Guru: Sudah Optimal vs Belum Optimal
+                  </h3>
+                  <p className="text-xs text-indigo-200/90 max-w-3xl leading-relaxed">
+                    Evaluasi komprehensif memadukan capaian <strong>Telaah RPP (Selidiki &amp; Berdayakan)</strong> dan <strong>Observasi Kelas (Selidiki &amp; Uji)</strong>. Guru dengan nilai akhir &ge; 85% diklasifikasikan <strong>Sudah Optimal (Tuntas)</strong> dan siap pengimbasan, sedangkan guru &lt; 85% diklasifikasikan <strong>Belum Optimal</strong> dan diprioritaskan untuk pembinaan klinis lanjutan.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap md:flex-col items-start md:items-end gap-2 shrink-0">
+                  <div className="text-right bg-white/10 p-3 rounded-2xl border border-white/10 backdrop-blur-xs">
+                    <span className="text-[10px] text-slate-300 uppercase block font-semibold">Tingkat Ketuntasan Optimal</span>
+                    <span className="text-2xl sm:text-3xl font-black text-emerald-300 block">
+                      {optimalAggregates.optimalPercentage}%
+                    </span>
+                    <span className="text-[11px] text-indigo-200">
+                      {optimalAggregates.optimalCount} dari {optimalAggregates.totalTeachers} Guru Binaan
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 4 Summary Cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 mt-4 border-t border-white/10 text-xs">
+                <div className="bg-white/10 rounded-2xl p-3.5 border border-white/10">
+                  <span className="text-[10px] text-indigo-200 font-semibold block uppercase">Total Guru Dievaluasi</span>
+                  <span className="text-2xl font-black text-white mt-0.5 block">{optimalAggregates.totalTeachers} Guru</span>
+                  <span className="text-[10px] text-indigo-300">11 SMA Kota Bogor</span>
+                </div>
+
+                <div className="bg-emerald-900/40 rounded-2xl p-3.5 border border-emerald-400/40">
+                  <span className="text-[10px] text-emerald-300 font-bold block uppercase flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                    <span>Guru Sudah Optimal</span>
+                  </span>
+                  <span className="text-2xl font-black text-emerald-300 mt-0.5 block">
+                    {optimalAggregates.optimalCount} Guru
+                  </span>
+                  <span className="text-[10px] text-emerald-200 font-bold">
+                    {optimalAggregates.optimalPercentage}% (Tuntas &amp; Mandiri)
+                  </span>
+                </div>
+
+                <div className="bg-amber-900/40 rounded-2xl p-3.5 border border-amber-400/40">
+                  <span className="text-[10px] text-amber-300 font-bold block uppercase flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3 text-amber-400" />
+                    <span>Guru Belum Optimal</span>
+                  </span>
+                  <span className="text-2xl font-black text-amber-300 mt-0.5 block">
+                    {optimalAggregates.belumOptimalCount} Guru
+                  </span>
+                  <span className="text-[10px] text-amber-200 font-bold">
+                    {optimalAggregates.belumOptimalPercentage}% (Perlu Bimbingan)
+                  </span>
+                </div>
+
+                <div className="bg-white/10 rounded-2xl p-3.5 border border-white/10">
+                  <span className="text-[10px] text-indigo-200 font-semibold block uppercase">Rata-rata Skor Capaian</span>
+                  <span className="text-2xl font-black text-white mt-0.5 block">{optimalAggregates.averageScore}%</span>
+                  <span className="text-[10px] text-emerald-300">Peningkatan +{optimalAggregates.averageDelta}%</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Filter and Table Section */}
+            <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-800 text-xs font-bold border border-indigo-200">
+                    Filter Kategori:
+                  </span>
+                  <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+                    <button
+                      type="button"
+                      onClick={() => setOptimalFilterTab('all')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        optimalFilterTab === 'all'
+                          ? 'bg-white text-slate-900 shadow-2xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      Semua Guru ({optimalAggregates.totalTeachers})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setOptimalFilterTab('optimal')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                        optimalFilterTab === 'optimal'
+                          ? 'bg-emerald-600 text-white shadow-2xs'
+                          : 'text-emerald-700 hover:bg-emerald-50'
+                      }`}
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Sudah Optimal ({optimalAggregates.optimalCount})</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setOptimalFilterTab('belum_optimal')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                        optimalFilterTab === 'belum_optimal'
+                          ? 'bg-amber-600 text-white shadow-2xs'
+                          : 'text-amber-700 hover:bg-amber-50'
+                      }`}
+                    >
+                      <AlertCircle className="w-3.5 h-3.5" />
+                      <span>Belum Optimal ({optimalAggregates.belumOptimalCount})</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="text-xs text-slate-500">
+                  Kriteria: <strong>Optimal (&ge; 85%)</strong> &bull; <strong>Belum Optimal (&lt; 85%)</strong>
+                </div>
+              </div>
+
+              {/* Table */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs border-collapse rounded-xl overflow-hidden border border-slate-200 bg-white">
+                  <thead>
+                    <tr className="bg-slate-100 text-slate-800 font-bold border-b border-slate-200 uppercase text-[11px]">
+                      <th className="py-3 px-3 text-center w-10">No</th>
+                      <th className="py-3 px-3 text-left w-56">Nama Guru &amp; NIP</th>
+                      <th className="py-3 px-3 text-left w-48">Satuan Pendidikan &amp; Mapel</th>
+                      <th className="py-3 px-3 text-center w-24">Baseline (S)</th>
+                      <th className="py-3 px-3 text-center w-24">Akhir (U &amp; B)</th>
+                      <th className="py-3 px-3 text-center w-20">Selisih</th>
+                      <th className="py-3 px-3 text-center w-36">Status Ketercapaian</th>
+                      <th className="py-3 px-3 text-left">Arahan Pengawas Pembina Kusnandar, M.Si</th>
+                      <th className="py-3 px-3 text-center w-28">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredList.map((item, idx) => {
+                      const t = item.supervision;
+                      const r = item.result;
+
+                      return (
+                        <tr key={t.id} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="py-3 px-3 text-center font-bold text-slate-400">{idx + 1}</td>
+                          <td className="py-3 px-3">
+                            <div className="font-extrabold text-slate-900">{t.teacherName}</div>
+                            <div className="text-[10px] text-slate-500 font-mono">NIP. {t.teacherNip || '-'}</div>
+                          </td>
+                          <td className="py-3 px-3">
+                            <div className="font-semibold text-slate-800">{t.schoolName}</div>
+                            <div className="text-[11px] text-indigo-700 font-medium">{t.subject}</div>
+                          </td>
+                          <td className="py-3 px-3 text-center font-semibold text-slate-600 bg-slate-50/40">
+                            {r.baselineAverage}%
+                          </td>
+                          <td className="py-3 px-3 text-center font-black text-slate-900 bg-slate-50/60">
+                            {r.finalComprehensiveScore}%
+                          </td>
+                          <td className="py-3 px-3 text-center font-black text-emerald-700 bg-emerald-50/30">
+                            +{r.deltaPeningkatan}%
+                          </td>
+                          <td className="py-3 px-3 text-center">
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${
+                              r.statusOptimal === 'optimal'
+                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                : 'bg-amber-100 text-amber-800 border border-amber-300'
+                            }`}>
+                              {r.statusOptimal === 'optimal' ? (
+                                <>
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                  <span>Sudah Optimal</span>
+                                </>
+                              ) : (
+                                <>
+                                  <AlertCircle className="w-3 h-3 text-amber-600" />
+                                  <span>Belum Optimal</span>
+                                </>
+                              )}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 text-[11px] leading-snug">
+                            {r.statusOptimal === 'optimal' ? (
+                              <p className="text-emerald-950 font-medium">
+                                <span className="font-bold text-emerald-800 block">✓ Praktik Bermakna:</span>
+                                {r.aspekOptimal[0] || 'Peran fasilitator & inkuiri aktif'}. Siap diseminasi Kombel &amp; MGMP.
+                              </p>
+                            ) : (
+                              <p className="text-amber-950 font-medium">
+                                <span className="font-bold text-amber-800 block">! Perlu Penguatan:</span>
+                                {r.aspekBelumOptimal[0] || 'Diferensiasi proses & pertanyaan inkuiri'}. Pendampingan klinis lanjutan.
+                              </p>
+                            )}
+                          </td>
+                          <td className="py-3 px-3 text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              {onOpenSambungTeacher && (
+                                <button
+                                  type="button"
+                                  onClick={() => onOpenSambungTeacher(t.id)}
+                                  className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition-colors cursor-pointer"
+                                  title="Buka Instrumen Siklus SAMBUNG"
+                                >
+                                  Buka
+                                </button>
+                              )}
+                              {onOpenPrint && (
+                                <button
+                                  type="button"
+                                  onClick={() => onOpenPrint(t)}
+                                  className="p-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer"
+                                  title="Cetak Portofolio"
+                                >
+                                  <Printer className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Per School Breakdown Grid */}
+            <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-xs space-y-3">
+              <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+                <SchoolIcon className="w-4 h-4 text-indigo-700" />
+                <h4 className="text-xs font-black uppercase text-slate-800 tracking-wider">
+                  Sebaran Status Ketercapaian Berdasarkan Satuan Pendidikan (SMA Binaan)
+                </h4>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {Object.entries(optimalAggregates.bySchool).map(([schoolName, data]) => (
+                  <div key={schoolName} className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="font-bold text-xs text-slate-900 truncate block">{schoolName}</span>
+                      <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-800 shrink-0">
+                        Rata-rata: {data.avgScore}%
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                        {data.optimal} Optimal
+                      </span>
+                      {data.belumOptimal > 0 && (
+                        <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 text-[10px] font-bold">
+                          {data.belumOptimal} Belum Optimal
+                        </span>
+                      )}
+                      <span className="text-[10px] text-slate-400 ml-auto">
+                        Total {data.total} Guru
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ========================================================================= */}
       {/* TAB 1: MATRIKS KETERHUBUNGAN 7 TAHAP SIKLUS SAMBUNG (S - A - M - B - U - N - G) */}

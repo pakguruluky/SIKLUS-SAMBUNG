@@ -4,6 +4,7 @@ import { Printer, X, Download, ShieldCheck } from 'lucide-react';
 import { DEFAULT_MATRIKS_BEFORE, DEFAULT_MATRIKS_AFTER } from '../data/sambungSeed';
 import { MAKNAI_COACHING_QUESTIONS, TELAAH_ITEMS, OBSERVASI_ITEMS, PRA_OBSERVASI_QUESTIONS, PASCA_OBSERVASI_QUESTIONS } from '../data/instrumentData';
 import { generateTeacherMaknaiData, generateBerdayakanTelaahPerbaikanData, generateUjiData, generateGerakkanData } from '../data/autoFillData';
+import { calculateSupervisionComprehensiveScore } from '../utils/sambungCalculations';
 
 interface SambungPrintModalProps {
   isOpen: boolean;
@@ -1343,9 +1344,87 @@ export const SambungPrintModal: React.FC<SambungPrintModalProps> = ({
                     </tbody>
                   </table>
 
+                  {/* 5. KESIMPULAN AKHIR KETERCAPAIAN GURU (OPTIMAL / BELUM OPTIMAL) */}
+                  {(() => {
+                    const compCalc = calculateSupervisionComprehensiveScore(supervision);
+                    const isOptimal = compCalc.statusOptimal === 'optimal';
+
+                    return (
+                      <div className="mb-6 p-3.5 border-2 border-slate-300 rounded-xl bg-slate-50/70 text-[10px]">
+                        <div className="flex items-center justify-between border-b border-slate-300 pb-2 mb-2.5">
+                          <div>
+                            <span className="font-extrabold text-[11px] uppercase tracking-wider text-slate-800 block">
+                              5. Kesimpulan Akhir Ketercapaian Guru Supervisi SAMBUNG
+                            </span>
+                            <span className="text-[9px] text-slate-500">
+                              Berdasarkan perhitungan matematis komprehensif siklus penuh (Selidiki, Berdayakan, Uji, &amp; Nyatakan)
+                            </span>
+                          </div>
+                          <div className={`px-3 py-1 rounded-md font-black text-[11px] uppercase tracking-wide border ${
+                            isOptimal
+                              ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                              : 'bg-amber-100 text-amber-900 border-amber-300'
+                          }`}>
+                            {isOptimal ? '✓ SUDAH OPTIMAL (TUNTAS & MANDIRI)' : '⚠ BELUM OPTIMAL (BIMBINGAN INTENSIF)'}
+                          </div>
+                        </div>
+
+                        {/* Metric Grid */}
+                        <div className="grid grid-cols-4 gap-2 mb-3 text-center">
+                          <div className="p-2 bg-white rounded border border-slate-200">
+                            <span className="text-[9px] text-slate-500 block uppercase">Baseline Awal (S)</span>
+                            <span className="text-sm font-black text-slate-700">{compCalc.baselineAverage.toFixed(1)}%</span>
+                            <span className="text-[8px] text-slate-400 block">Telaah &amp; Pra-Obs</span>
+                          </div>
+                          <div className="p-2 bg-white rounded border border-slate-200">
+                            <span className="text-[9px] text-slate-500 block uppercase">Telaah Revisi (B)</span>
+                            <span className="text-sm font-black text-indigo-700">{compCalc.akhirTelaah.toFixed(1)}%</span>
+                            <span className="text-[8px] text-indigo-500 block">RPP Perbaikan</span>
+                          </div>
+                          <div className="p-2 bg-white rounded border border-slate-200">
+                            <span className="text-[9px] text-slate-500 block uppercase">Observasi Kelas (U)</span>
+                            <span className="text-sm font-black text-purple-700">{compCalc.akhirObservasi.toFixed(1)}%</span>
+                            <span className="text-[8px] text-purple-500 block">{compCalc.predicate}</span>
+                          </div>
+                          <div className="p-2 bg-white rounded border-2 border-indigo-300 bg-indigo-50/30">
+                            <span className="text-[9px] font-bold text-indigo-900 block uppercase">Nilai Akhir &amp; Delta</span>
+                            <span className="text-sm font-black text-indigo-950">{compCalc.finalComprehensiveScore.toFixed(1)}%</span>
+                            <span className="text-[9px] font-bold text-emerald-700 block">+{compCalc.deltaPeningkatan.toFixed(1)}%</span>
+                          </div>
+                        </div>
+
+                        {/* Analysis Grid */}
+                        <div className="grid grid-cols-2 gap-2 mb-2.5">
+                          <div className="p-2 bg-emerald-50/50 rounded border border-emerald-200">
+                            <strong className="text-emerald-900 block mb-1">Kekuatan Pembelajaran Terverifikasi:</strong>
+                            <ul className="list-disc list-inside space-y-0.5 text-slate-700">
+                              {compCalc.aspekOptimal.slice(0, 3).map((itemStr: string, idx: number) => (
+                                <li key={idx}>{itemStr}</li>
+                              ))}
+                            </ul>
+                          </div>
+                          <div className="p-2 bg-amber-50/50 rounded border border-amber-200">
+                            <strong className="text-amber-950 block mb-1">Area Fokus &amp; Tindak Lanjut:</strong>
+                            <ul className="list-disc list-inside space-y-0.5 text-slate-700">
+                              {compCalc.aspekBelumOptimal.slice(0, 3).map((itemStr: string, idx: number) => (
+                                <li key={idx}>{itemStr}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+
+                        {/* Supervisory Directive */}
+                        <div className="p-2 bg-cyan-50/40 rounded border border-cyan-200 text-slate-800">
+                          <strong className="text-cyan-950 block mb-0.5">Arahan Supervisi Pengawas Pembina Kusnandar, M.Si:</strong>
+                          <p className="leading-snug italic">"{compCalc.rekomendasiPengawas}"</p>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {/* CATATAN PENGESAHAN PENGUATAN SUPERVISOR */}
                   <div className="bg-slate-50 border border-slate-300 p-2.5 rounded-lg mb-6 text-[10px]">
-                    <strong className="text-slate-900 block mb-0.5">Catatan Resmi Pengawas Pembina Kusnandar, M.Si:</strong>
+                    <strong className="text-slate-900 block mb-0.5">Catatan Pengesahan Pengawas Pembina Kusnandar, M.Si:</strong>
                     <p className="text-slate-700 italic leading-relaxed">
                       "{effectiveAlur.catatanPengawas}"
                     </p>

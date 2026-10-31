@@ -36,6 +36,7 @@ import {
 import { EditGuruSupervisiModal } from './forms/EditGuruSupervisiModal';
 import { KesimpulanSemuaGuruDashboard } from './KesimpulanSemuaGuruDashboard';
 import { getSupervisionSambungProgress } from '../utils/sambungProgress';
+import { calculateSupervisionComprehensiveScore, getSchoolOptimalAggregates } from '../utils/sambungCalculations';
 import { 
   Chart as ChartJS, 
   CategoryScale, 
@@ -129,6 +130,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   const [filterSchool, setFilterSchool] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterPredicate, setFilterPredicate] = useState<string>('all');
+  const [filterOptimal, setFilterOptimal] = useState<string>('all');
   const [teacherViewMode, setTeacherViewMode] = useState<'table' | 'card'>('table');
   const [editingTeacher, setEditingTeacher] = useState<Supervision | null>(null);
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
@@ -177,6 +179,11 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   const avgTelaahScore = validTelaahScores.length > 0
     ? (validTelaahScores.reduce((a, b) => a + b, 0) / validTelaahScores.length).toFixed(1)
     : '0.0';
+
+  // Optimal status aggregates across supervised teachers
+  const optimalAggregates = useMemo(() => {
+    return getSchoolOptimalAggregates(mySupervisions);
+  }, [mySupervisions]);
 
   // Chart Rendering Logic using Chart.js
   useEffect(() => {
@@ -604,6 +611,13 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
         if (filterPredicate === 'B' && !tag.includes('B')) return false;
         if (filterPredicate === 'C' && !tag.includes('C')) return false;
       }
+      // Optimal Status filter (Optimal vs Belum Optimal)
+      if (filterOptimal !== 'all') {
+        const comp = calculateSupervisionComprehensiveScore(s);
+        if (filterOptimal !== comp.statusOptimal) {
+          return false;
+        }
+      }
       // Search query
       if (teacherSearch.trim()) {
         const q = teacherSearch.toLowerCase().trim();
@@ -619,7 +633,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
       }
       return true;
     });
-  }, [mySupervisions, filterSchool, filterStatus, filterPredicate, teacherSearch]);
+  }, [mySupervisions, filterSchool, filterStatus, filterPredicate, filterOptimal, teacherSearch]);
 
   return (
     <div className="space-y-6">
@@ -812,11 +826,15 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
               </div>
             </div>
 
-            {/* Quick Metrics Bar */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-slate-100">
+            {/* Quick Metrics Bar with Optimal vs Belum Optimal Overview */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-3 border-t border-slate-100">
               <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Total Terdata</p>
                 <p className="text-xl font-black text-slate-900 mt-0.5">{mySupervisions.length} Guru</p>
+              </div>
+              <div className="p-3 rounded-2xl bg-indigo-50/60 border border-indigo-100">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-700">Rata-rata Skor</p>
+                <p className="text-xl font-black text-indigo-800 mt-0.5">{avgObsScore}% <span className="text-[11px] font-medium text-slate-500">/ {avgTelaahScore}</span></p>
               </div>
               <div className="p-3 rounded-2xl bg-emerald-50/60 border border-emerald-100">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">Selesai Penuh</p>
@@ -826,14 +844,50 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                 <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700">Dalam Observasi</p>
                 <p className="text-xl font-black text-amber-800 mt-0.5">{inProgressSupervisions} Guru</p>
               </div>
-              <div className="p-3 rounded-2xl bg-indigo-50/60 border border-indigo-100">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-700">Rata-rata Skor</p>
-                <p className="text-xl font-black text-indigo-800 mt-0.5">{avgObsScore}% <span className="text-[11px] font-medium text-slate-500">/ {avgTelaahScore}</span></p>
-              </div>
+              <button
+                type="button"
+                onClick={() => setFilterOptimal(filterOptimal === 'optimal' ? 'all' : 'optimal')}
+                className={`p-3 rounded-2xl border text-left transition-all ${
+                  filterOptimal === 'optimal'
+                    ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm ring-2 ring-emerald-400'
+                    : 'bg-emerald-50/90 border-emerald-200 hover:bg-emerald-100/80 text-emerald-950'
+                }`}
+                title="Klik untuk memfilter guru yang sudah optimal (nilai akhir >= 85%)"
+              >
+                <p className={`text-[10px] font-bold uppercase tracking-wider ${filterOptimal === 'optimal' ? 'text-emerald-100' : 'text-emerald-700'}`}>
+                  ✓ Sudah Optimal
+                </p>
+                <p className="text-xl font-black mt-0.5">
+                  {optimalAggregates.optimalCount} Guru
+                </p>
+                <span className={`text-[10px] font-bold block ${filterOptimal === 'optimal' ? 'text-white' : 'text-emerald-800'}`}>
+                  {optimalAggregates.optimalPercentage.toFixed(0)}% Tuntas &amp; Mandiri
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setFilterOptimal(filterOptimal === 'belum_optimal' ? 'all' : 'belum_optimal')}
+                className={`p-3 rounded-2xl border text-left transition-all ${
+                  filterOptimal === 'belum_optimal'
+                    ? 'bg-amber-600 text-white border-amber-700 shadow-sm ring-2 ring-amber-400'
+                    : 'bg-amber-50/90 border-amber-200 hover:bg-amber-100/80 text-amber-950'
+                }`}
+                title="Klik untuk memfilter guru yang belum optimal (nilai akhir < 85%)"
+              >
+                <p className={`text-[10px] font-bold uppercase tracking-wider ${filterOptimal === 'belum_optimal' ? 'text-amber-100' : 'text-amber-700'}`}>
+                  ⚠ Belum Optimal
+                </p>
+                <p className="text-xl font-black mt-0.5">
+                  {optimalAggregates.belumOptimalCount} Guru
+                </p>
+                <span className={`text-[10px] font-bold block ${filterOptimal === 'belum_optimal' ? 'text-white' : 'text-amber-800'}`}>
+                  {optimalAggregates.belumOptimalPercentage.toFixed(0)}% Perlu Bimbingan
+                </span>
+              </button>
             </div>
 
             {/* Filters Row */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-3 border-t border-slate-100">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-3 border-t border-slate-100">
               {/* Search */}
               <div className="relative">
                 <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -896,6 +950,19 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                   <option value="C">Cukup (C)</option>
                 </select>
               </div>
+
+              {/* Optimal Status Filter */}
+              <div>
+                <select
+                  value={filterOptimal}
+                  onChange={(e) => setFilterOptimal(e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-indigo-200 bg-indigo-50/40 font-bold text-indigo-900 focus:outline-indigo-600"
+                >
+                  <option value="all">Semua Ketercapaian (Optimal &amp; Belum)</option>
+                  <option value="optimal">✓ Sudah Optimal (≥ 85%)</option>
+                  <option value="belum_optimal">⚠ Belum Optimal (&lt; 85%)</option>
+                </select>
+              </div>
             </div>
           </div>
 
@@ -914,13 +981,14 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                       <th className="py-3.5 px-4 text-center">Telaah RPP</th>
                       <th className="py-3.5 px-4 text-center">Observasi</th>
                       <th className="py-3.5 px-4 text-center">Status</th>
+                      <th className="py-3.5 px-4 text-center">Status Optimal</th>
                       <th className="py-3.5 px-4 text-center w-48">Menu Edit Guru</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {filteredTeacherList.length === 0 ? (
                       <tr>
-                        <td colSpan={9} className="py-12 text-center text-slate-400">
+                        <td colSpan={10} className="py-12 text-center text-slate-400">
                           Tidak ditemukan data guru yang sesuai kriteria pencarian / filter.
                         </td>
                       </tr>
@@ -1026,6 +1094,30 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                                   ? 'Observasi'
                                   : 'Draf'}
                               </span>
+                            </td>
+
+                            <td className="py-3.5 px-4 text-center">
+                              {(() => {
+                                const compScore = calculateSupervisionComprehensiveScore(sup);
+                                const isOpt = compScore.statusOptimal === 'optimal';
+                                return (
+                                  <div className="inline-flex flex-col items-center">
+                                    <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black border ${
+                                      isOpt
+                                        ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                        : 'bg-amber-50 text-amber-800 border-amber-300'
+                                    }`}>
+                                      {isOpt ? '✓ Optimal' : '⚠ Belum Optimal'}
+                                    </span>
+                                    <span className="text-[10px] font-bold text-slate-700 mt-0.5">
+                                      {compScore.finalComprehensiveScore.toFixed(1)}%
+                                      <span className="text-emerald-600 font-semibold text-[9px] ml-1">
+                                        (+{compScore.deltaPeningkatan.toFixed(0)}%)
+                                      </span>
+                                    </span>
+                                  </div>
+                                );
+                              })()}
                             </td>
 
                             <td className="py-3.5 px-4 text-center">
@@ -1231,21 +1323,39 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                         )}
                       </div>
 
-                      {/* Score Boxes */}
-                      <div className="grid grid-cols-2 gap-2 mt-3 pt-2">
-                        <div className="p-2.5 rounded-xl bg-indigo-50/70 border border-indigo-100">
-                          <span className="text-[10px] font-bold text-indigo-800 block">Telaah RPP</span>
-                          <span className="text-base font-black text-indigo-600">
-                            {sup.perangkatAjar?.telaahSummary?.finalScore ? sup.perangkatAjar.telaahSummary.finalScore.toFixed(1) : '-'}
-                          </span>
-                        </div>
-                        <div className="p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-100">
-                          <span className="text-[10px] font-bold text-emerald-800 block">Observasi</span>
-                          <span className="text-base font-black text-emerald-600">
-                            {sup.observasiKelas?.score ? `${sup.observasiKelas.score}%` : '-'}
-                          </span>
-                        </div>
-                      </div>
+                      {/* Score Boxes with Status Optimal */}
+                      {(() => {
+                        const compScore = calculateSupervisionComprehensiveScore(sup);
+                        const isOpt = compScore.statusOptimal === 'optimal';
+                        return (
+                          <div className="grid grid-cols-3 gap-2 mt-3 pt-2">
+                            <div className="p-2 rounded-xl bg-indigo-50/70 border border-indigo-100 text-center">
+                              <span className="text-[9px] font-bold text-indigo-800 block">Telaah RPP</span>
+                              <span className="text-sm font-black text-indigo-600">
+                                {sup.perangkatAjar?.telaahSummary?.finalScore ? sup.perangkatAjar.telaahSummary.finalScore.toFixed(1) : '-'}
+                              </span>
+                            </div>
+                            <div className="p-2 rounded-xl bg-purple-50/70 border border-purple-100 text-center">
+                              <span className="text-[9px] font-bold text-purple-800 block">Observasi</span>
+                              <span className="text-sm font-black text-purple-600">
+                                {sup.observasiKelas?.score ? `${sup.observasiKelas.score}%` : '-'}
+                              </span>
+                            </div>
+                            <div className={`p-2 rounded-xl border text-center ${
+                              isOpt
+                                ? 'bg-emerald-50/80 border-emerald-200 text-emerald-900'
+                                : 'bg-amber-50/80 border-amber-200 text-amber-900'
+                            }`}>
+                              <span className="text-[9px] font-bold block">
+                                {isOpt ? '✓ Optimal' : '⚠ Bimbingan'}
+                              </span>
+                              <span className="text-sm font-black block">
+                                {compScore.finalComprehensiveScore.toFixed(0)}%
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     {/* Action buttons */}

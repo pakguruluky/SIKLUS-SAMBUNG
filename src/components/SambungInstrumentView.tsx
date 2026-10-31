@@ -11,7 +11,8 @@ import {
   SambungRtlNyatakanItem,
   SambungKesimpulanAlurSambung,
   SambungMatriksPerubahan,
-  SambungBeforeAfterItem
+  SambungBeforeAfterItem,
+  IndikatorKunciType
 } from '../types';
 import { 
   createDefaultSambungForTeacher, 
@@ -26,7 +27,10 @@ import {
   calculateTelaahSummary as calculateTelaahSummaryUnified, 
   calculateObservasiSummary as calculateObservasiSummaryUnified,
   calculateSupervisionComprehensiveScore, 
-  getSchoolOptimalAggregates 
+  getSchoolOptimalAggregates,
+  getTeacherIndikatorOptimalStatus,
+  getFourIndicatorsOptimalBreakdown,
+  INDIKATOR_LABELS
 } from '../utils/sambungCalculations';
 import { saveSupervision, deleteSupervision, deleteUserAccount, getDeletedUserIds, getDeletedSupervisionIds, getDeletedUserNames } from '../services/firebase';
 import { analyzeTelaahRppWithAI } from '../services/aiService';
@@ -77,6 +81,7 @@ import {
   Filter,
   Share2,
   ArrowRightLeft,
+  RotateCcw,
   X
 } from 'lucide-react';
 import { 
@@ -186,6 +191,16 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
   const [saveToast, setSaveToast] = useState<string | null>(null);
   const [lockedWarning, setLockedWarning] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [activeIndicatorListModal, setActiveIndicatorListModal] = useState<{
+    stage: 'selidiki' | 'uji';
+    key: IndikatorKunciType;
+    filter: 'all' | 'optimal' | 'belum_optimal';
+  } | null>(null);
+
+  // Cross-teacher aggregation for the 4 indicators in Kesimpulan Selidiki and Kesimpulan Uji
+  const fourIndicatorsBreakdown = useMemo(() => {
+    return getFourIndicatorsOptimalBreakdown(availableSupervisions);
+  }, [availableSupervisions]);
 
   const handleDeleteSupervision = async (target: Supervision) => {
     if (!canEdit) return;
@@ -884,6 +899,53 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
     setSambungDraft(updatedDraft);
   };
 
+  const handleToggleSelidikiOptimalStatus = async (
+    field: IndikatorKunciType,
+    nextStatus: 'optimal' | 'belum_optimal'
+  ) => {
+    if (!canEdit || !currentSupervision || !sambungDraft) return;
+
+    const curMatriks = sambungDraft.selidiki?.matriksBefore || { ...DEFAULT_MATRIKS_BEFORE };
+    const curStatusMap = {
+      ...(sambungDraft.selidiki?.statusOptimalPerIndikator || {}),
+      ...(curMatriks.statusOptimalPerIndikator || {}),
+      [field]: nextStatus,
+    };
+
+    const nextMatriks: SambungMatriksPerubahan = {
+      ...curMatriks,
+      statusOptimalPerIndikator: curStatusMap,
+    };
+
+    const updatedSelidiki = {
+      ...sambungDraft.selidiki,
+      matriksBefore: nextMatriks,
+      statusOptimalPerIndikator: curStatusMap,
+    };
+
+    const updatedDraft: SambungData = {
+      ...sambungDraft,
+      selidiki: updatedSelidiki,
+      lastUpdated: new Date().toISOString(),
+    };
+
+    const updatedSupervision: Supervision = {
+      ...currentSupervision,
+      sambung: updatedDraft,
+      updatedAt: new Date().toISOString(),
+    };
+
+    setSambungDraft(updatedDraft);
+    onUpdateSupervision(updatedSupervision);
+    try {
+      await saveSupervision(updatedSupervision);
+      setSaveToast(`Status ${INDIKATOR_LABELS[field].title} (Selidiki) diubah: ${nextStatus === 'optimal' ? 'Sudah Optimal' : 'Belum Optimal'}`);
+      setTimeout(() => setSaveToast(null), 3000);
+    } catch (e) {
+      console.warn('Notice saving status optimal to Firebase:', e);
+    }
+  };
+
   const handleSaveKesimpulanSelidiki = async () => {
     if (!currentSupervision || !sambungDraft) return;
     try {
@@ -1038,6 +1100,53 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
     };
 
     setSambungDraft(updatedDraft);
+  };
+
+  const handleToggleUjiOptimalStatus = async (
+    field: IndikatorKunciType,
+    nextStatus: 'optimal' | 'belum_optimal'
+  ) => {
+    if (!canEdit || !currentSupervision || !sambungDraft) return;
+
+    const curMatriks = sambungDraft.uji?.matriksAfter || { ...DEFAULT_MATRIKS_AFTER };
+    const curStatusMap = {
+      ...(sambungDraft.uji?.statusOptimalPerIndikator || {}),
+      ...(curMatriks.statusOptimalPerIndikator || {}),
+      [field]: nextStatus,
+    };
+
+    const nextMatriks: SambungMatriksPerubahan = {
+      ...curMatriks,
+      statusOptimalPerIndikator: curStatusMap,
+    };
+
+    const updatedUji = {
+      ...sambungDraft.uji,
+      matriksAfter: nextMatriks,
+      statusOptimalPerIndikator: curStatusMap,
+    };
+
+    const updatedDraft: SambungData = {
+      ...sambungDraft,
+      uji: updatedUji,
+      lastUpdated: new Date().toISOString(),
+    };
+
+    const updatedSupervision: Supervision = {
+      ...currentSupervision,
+      sambung: updatedDraft,
+      updatedAt: new Date().toISOString(),
+    };
+
+    setSambungDraft(updatedDraft);
+    onUpdateSupervision(updatedSupervision);
+    try {
+      await saveSupervision(updatedSupervision);
+      setSaveToast(`Status ${INDIKATOR_LABELS[field].title} (Uji) diubah: ${nextStatus === 'optimal' ? 'Sudah Optimal' : 'Belum Optimal'}`);
+      setTimeout(() => setSaveToast(null), 3000);
+    } catch (e) {
+      console.warn('Notice saving status optimal to Firebase:', e);
+    }
   };
 
   const handleSaveKesimpulanUji = async () => {
@@ -2801,6 +2910,133 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                     </div>
                   </div>
 
+                  {/* STATUS OPTIMAL 4 INDIKATOR SELIDIKI (BASELINE) */}
+                  <div className="bg-white rounded-2xl border-2 border-amber-300 p-5 shadow-sm space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-amber-100 pb-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="px-2.5 py-0.5 rounded-md bg-amber-600 text-white text-[10px] font-black uppercase tracking-wider">
+                            Evaluasi Baseline 4 Indikator
+                          </span>
+                          <span className="text-xs font-black text-slate-800">
+                            Status Optimal Guru: {currentSupervision.teacherName}
+                          </span>
+                        </div>
+                        <h4 className="text-sm font-black text-slate-900 mt-1">
+                          Pemetaan Guru Sudah Optimal vs Belum Optimal pada Kondisi Awal (Tahap Selidiki)
+                        </h4>
+                        <p className="text-[11px] text-slate-500">
+                          Pengawas Pembina (Kusnandar, M.Si) dapat menetapkan status ketercapaian awal untuk setiap indikator secara langsung atau mengikuti evaluasi otomatis instrumen. Perubahan tersimpan permanen ke Backend &amp; Firebase.
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-[11px] font-semibold text-slate-600 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
+                          Total Supervisi: <strong>{availableSupervisions.length} Guru</strong>
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* 4 Cards Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                      {(['peranGuru', 'aktivitasMurid', 'konteksNyata', 'refleksiMurid'] as IndikatorKunciType[]).map((indKey) => {
+                        const meta = INDIKATOR_LABELS[indKey];
+                        const curTeacherStatus = getTeacherIndikatorOptimalStatus(currentSupervision, 'selidiki', indKey);
+                        const isCurOptimal = curTeacherStatus === 'optimal';
+                        const agg = fourIndicatorsBreakdown[indKey]?.selidiki;
+
+                        return (
+                          <div 
+                            key={indKey}
+                            className={`p-3.5 rounded-xl border transition-all ${
+                              isCurOptimal 
+                                ? 'bg-emerald-50/50 border-emerald-300' 
+                                : 'bg-amber-50/50 border-amber-300'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-1 mb-2">
+                              <span className="text-[10px] font-extrabold uppercase tracking-wide text-slate-600">
+                                {meta.shortTitle}
+                              </span>
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-black flex items-center gap-1 ${
+                                isCurOptimal 
+                                  ? 'bg-emerald-600 text-white' 
+                                  : 'bg-amber-600 text-white'
+                              }`}>
+                                {isCurOptimal ? <CheckCheck className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
+                                <span>{isCurOptimal ? 'Sudah Optimal' : 'Belum Optimal'}</span>
+                              </span>
+                            </div>
+
+                            <p className="text-xs font-bold text-slate-900 line-clamp-2 mb-2 leading-tight">
+                              {meta.title}
+                            </p>
+
+                            {/* Status Guru Aktif & Quick Toggle */}
+                            <div className="bg-white/90 p-2.5 rounded-lg border border-slate-200/80 mb-2.5 space-y-1.5">
+                              <div className="text-[10px] text-slate-500 font-medium">
+                                Status Guru Ini: <strong className="text-slate-800">{currentSupervision.teacherName}</strong>
+                              </div>
+                              {canEdit ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleSelidikiOptimalStatus(indKey, isCurOptimal ? 'belum_optimal' : 'optimal')}
+                                  disabled={isSaving}
+                                  className={`w-full py-1.5 px-2 rounded-lg font-bold text-[11px] transition-colors flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer ${
+                                    isCurOptimal
+                                      ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300'
+                                      : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                                  }`}
+                                  title={`Klik untuk ubah status ${currentSupervision.teacherName} menjadi ${isCurOptimal ? 'Belum Optimal' : 'Sudah Optimal'} & simpan ke Firebase`}
+                                >
+                                  {isCurOptimal ? (
+                                    <>
+                                      <RotateCcw className="w-3 h-3" />
+                                      <span>Ubah ke Belum Optimal</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <CheckCircle2 className="w-3 h-3" />
+                                      <span>Tandai Sudah Optimal</span>
+                                    </>
+                                  )}
+                                </button>
+                              ) : (
+                                <div className="text-[10px] font-bold text-slate-600">
+                                  {isCurOptimal ? '✓ Terverifikasi Optimal' : '⚠ Perlu Peningkatan'}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Rekap Seluruh Guru pada Indikator Ini */}
+                            <div className="space-y-1.5 pt-1 border-t border-slate-200/70">
+                              <div className="flex items-center justify-between text-[10px] font-bold">
+                                <span className="text-emerald-700">✓ Sudah Optimal:</span>
+                                <span className="text-emerald-800 px-1.5 py-0.2 rounded bg-emerald-100 border border-emerald-200 font-black">
+                                  {agg?.optimalCount || 0} Guru
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between text-[10px] font-bold">
+                                <span className="text-amber-700">⚠ Belum Optimal:</span>
+                                <span className="text-amber-800 px-1.5 py-0.2 rounded bg-amber-100 border border-amber-200 font-black">
+                                  {agg?.belumOptimalCount || 0} Guru
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setActiveIndicatorListModal({ stage: 'selidiki', key: indKey, filter: 'all' })}
+                                className="w-full mt-1.5 py-1 px-2 rounded-md bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-bold transition-colors flex items-center justify-center gap-1 border border-indigo-200 cursor-pointer"
+                              >
+                                <Users className="w-3 h-3 text-indigo-600" />
+                                <span>Lihat Nama Guru ({agg?.total || 0})</span>
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
                   {/* TABEL KESIMPULAN (PERSIS SESUAI DOKUMEN YANG DIUNGGAH) */}
                   <div className="bg-white rounded-2xl border-2 border-slate-300 shadow-sm overflow-hidden">
                     {/* Header Tabel */}
@@ -2852,6 +3088,34 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                                 <p className="text-[11px] text-slate-500 leading-relaxed pl-8">
                                   Bagaimana orientasi guru dalam memfasilitasi dan merancang keterlibatan aktif murid selama kegiatan belajar mengajar?
                                 </p>
+
+                                {/* Optimal Status Badge & Toggle Row 1 */}
+                                <div className="mt-2.5 pt-2 border-t border-slate-200/80 flex items-center justify-between gap-2 flex-wrap pl-8">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className={`px-2 py-0.5 rounded text-[10px] font-black ${
+                                      getTeacherIndikatorOptimalStatus(currentSupervision, 'selidiki', 'peranGuru') === 'optimal'
+                                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                        : 'bg-amber-100 text-amber-800 border border-amber-300'
+                                    }`}>
+                                      {getTeacherIndikatorOptimalStatus(currentSupervision, 'selidiki', 'peranGuru') === 'optimal' ? '✓ Sudah Optimal' : '⚠ Belum Optimal'}
+                                    </span>
+                                    <span className="text-[10px] text-slate-500 font-medium">
+                                      (Rekap: {fourIndicatorsBreakdown.peranGuru.selidiki.optimalCount} Optimal &bull; {fourIndicatorsBreakdown.peranGuru.selidiki.belumOptimalCount} Belum)
+                                    </span>
+                                  </div>
+                                  {canEdit && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleToggleSelidikiOptimalStatus(
+                                        'peranGuru',
+                                        getTeacherIndikatorOptimalStatus(currentSupervision, 'selidiki', 'peranGuru') === 'optimal' ? 'belum_optimal' : 'optimal'
+                                      )}
+                                      className="text-[10px] font-bold text-indigo-700 hover:text-indigo-900 underline cursor-pointer"
+                                    >
+                                      Ganti Status
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                             </td>
                             <td className="py-3 px-4 align-top">
@@ -2886,6 +3150,34 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                                 <p className="text-[11px] text-slate-500 leading-relaxed pl-8">
                                   Sejauh mana murid terlibat aktif berpikir, berdiskusi, bereksperimen, dan mempraktikkan konsep untuk memecahkan persoalan?
                                 </p>
+
+                                {/* Optimal Status Badge & Toggle Row 2 */}
+                                <div className="mt-2.5 pt-2 border-t border-slate-200/80 flex items-center justify-between gap-2 flex-wrap pl-8">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className={`px-2 py-0.5 rounded text-[10px] font-black ${
+                                      getTeacherIndikatorOptimalStatus(currentSupervision, 'selidiki', 'aktivitasMurid') === 'optimal'
+                                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                        : 'bg-amber-100 text-amber-800 border border-amber-300'
+                                    }`}>
+                                      {getTeacherIndikatorOptimalStatus(currentSupervision, 'selidiki', 'aktivitasMurid') === 'optimal' ? '✓ Sudah Optimal' : '⚠ Belum Optimal'}
+                                    </span>
+                                    <span className="text-[10px] text-slate-500 font-medium">
+                                      (Rekap: {fourIndicatorsBreakdown.aktivitasMurid.selidiki.optimalCount} Optimal &bull; {fourIndicatorsBreakdown.aktivitasMurid.selidiki.belumOptimalCount} Belum)
+                                    </span>
+                                  </div>
+                                  {canEdit && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleToggleSelidikiOptimalStatus(
+                                        'aktivitasMurid',
+                                        getTeacherIndikatorOptimalStatus(currentSupervision, 'selidiki', 'aktivitasMurid') === 'optimal' ? 'belum_optimal' : 'optimal'
+                                      )}
+                                      className="text-[10px] font-bold text-indigo-700 hover:text-indigo-900 underline cursor-pointer"
+                                    >
+                                      Ganti Status
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                             </td>
                             <td className="py-3 px-4 align-top">
@@ -2920,6 +3212,34 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                                 <p className="text-[11px] text-slate-500 leading-relaxed pl-8">
                                   Apakah materi ajar dan tugas dikaitkan dengan kehidupan sehari-hari, lingkungan sekitar murid, atau isu kontekstual?
                                 </p>
+
+                                {/* Optimal Status Badge & Toggle Row 3 */}
+                                <div className="mt-2.5 pt-2 border-t border-slate-200/80 flex items-center justify-between gap-2 flex-wrap pl-8">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className={`px-2 py-0.5 rounded text-[10px] font-black ${
+                                      getTeacherIndikatorOptimalStatus(currentSupervision, 'selidiki', 'konteksNyata') === 'optimal'
+                                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                        : 'bg-amber-100 text-amber-800 border border-amber-300'
+                                    }`}>
+                                      {getTeacherIndikatorOptimalStatus(currentSupervision, 'selidiki', 'konteksNyata') === 'optimal' ? '✓ Sudah Optimal' : '⚠ Belum Optimal'}
+                                    </span>
+                                    <span className="text-[10px] text-slate-500 font-medium">
+                                      (Rekap: {fourIndicatorsBreakdown.konteksNyata.selidiki.optimalCount} Optimal &bull; {fourIndicatorsBreakdown.konteksNyata.selidiki.belumOptimalCount} Belum)
+                                    </span>
+                                  </div>
+                                  {canEdit && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleToggleSelidikiOptimalStatus(
+                                        'konteksNyata',
+                                        getTeacherIndikatorOptimalStatus(currentSupervision, 'selidiki', 'konteksNyata') === 'optimal' ? 'belum_optimal' : 'optimal'
+                                      )}
+                                      className="text-[10px] font-bold text-indigo-700 hover:text-indigo-900 underline cursor-pointer"
+                                    >
+                                      Ganti Status
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                             </td>
                             <td className="py-3 px-4 align-top">
@@ -2954,6 +3274,34 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                                 <p className="text-[11px] text-slate-500 leading-relaxed pl-8">
                                   Bagaimana kebiasaan murid dalam merefleksikan proses belajar, mengevaluasi pemahaman diri, dan menarik makna pribadi?
                                 </p>
+
+                                {/* Optimal Status Badge & Toggle Row 4 */}
+                                <div className="mt-2.5 pt-2 border-t border-slate-200/80 flex items-center justify-between gap-2 flex-wrap pl-8">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className={`px-2 py-0.5 rounded text-[10px] font-black ${
+                                      getTeacherIndikatorOptimalStatus(currentSupervision, 'selidiki', 'refleksiMurid') === 'optimal'
+                                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                        : 'bg-amber-100 text-amber-800 border border-amber-300'
+                                    }`}>
+                                      {getTeacherIndikatorOptimalStatus(currentSupervision, 'selidiki', 'refleksiMurid') === 'optimal' ? '✓ Sudah Optimal' : '⚠ Belum Optimal'}
+                                    </span>
+                                    <span className="text-[10px] text-slate-500 font-medium">
+                                      (Rekap: {fourIndicatorsBreakdown.refleksiMurid.selidiki.optimalCount} Optimal &bull; {fourIndicatorsBreakdown.refleksiMurid.selidiki.belumOptimalCount} Belum)
+                                    </span>
+                                  </div>
+                                  {canEdit && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleToggleSelidikiOptimalStatus(
+                                        'refleksiMurid',
+                                        getTeacherIndikatorOptimalStatus(currentSupervision, 'selidiki', 'refleksiMurid') === 'optimal' ? 'belum_optimal' : 'optimal'
+                                      )}
+                                      className="text-[10px] font-bold text-indigo-700 hover:text-indigo-900 underline cursor-pointer"
+                                    >
+                                      Ganti Status
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                             </td>
                             <td className="py-3 px-4 align-top">
@@ -5563,6 +5911,133 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                     </div>
                   </div>
 
+                  {/* STATUS OPTIMAL 4 INDIKATOR UJI (HASIL UJI COBA SETELAH SUPERVISI) */}
+                  <div className="bg-white rounded-2xl border-2 border-purple-300 p-5 shadow-sm space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-purple-100 pb-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="px-2.5 py-0.5 rounded-md bg-purple-600 text-white text-[10px] font-black uppercase tracking-wider">
+                            Evaluasi Uji Coba 4 Indikator
+                          </span>
+                          <span className="text-xs font-black text-slate-800">
+                            Status Optimal Guru: {currentSupervision.teacherName}
+                          </span>
+                        </div>
+                        <h4 className="text-sm font-black text-slate-900 mt-1">
+                          Pemetaan Guru Sudah Optimal vs Belum Optimal pada Kondisi Akhir (Tahap Uji)
+                        </h4>
+                        <p className="text-[11px] text-slate-500">
+                          Pengawas Pembina (Kusnandar, M.Si) dapat menetapkan status ketercapaian akhir untuk setiap indikator pasca pendampingan klinis. Perubahan tersimpan permanen ke Backend &amp; Firebase.
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-[11px] font-semibold text-slate-600 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
+                          Total Supervisi: <strong>{availableSupervisions.length} Guru</strong>
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* 4 Cards Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                      {(['peranGuru', 'aktivitasMurid', 'konteksNyata', 'refleksiMurid'] as IndikatorKunciType[]).map((indKey) => {
+                        const meta = INDIKATOR_LABELS[indKey];
+                        const curTeacherStatus = getTeacherIndikatorOptimalStatus(currentSupervision, 'uji', indKey);
+                        const isCurOptimal = curTeacherStatus === 'optimal';
+                        const agg = fourIndicatorsBreakdown[indKey]?.uji;
+
+                        return (
+                          <div 
+                            key={indKey}
+                            className={`p-3.5 rounded-xl border transition-all ${
+                              isCurOptimal 
+                                ? 'bg-emerald-50/50 border-emerald-300' 
+                                : 'bg-amber-50/50 border-amber-300'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-1 mb-2">
+                              <span className="text-[10px] font-extrabold uppercase tracking-wide text-slate-600">
+                                {meta.shortTitle}
+                              </span>
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-black flex items-center gap-1 ${
+                                isCurOptimal 
+                                  ? 'bg-emerald-600 text-white' 
+                                  : 'bg-amber-600 text-white'
+                              }`}>
+                                {isCurOptimal ? <CheckCheck className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
+                                <span>{isCurOptimal ? 'Sudah Optimal' : 'Belum Optimal'}</span>
+                              </span>
+                            </div>
+
+                            <p className="text-xs font-bold text-slate-900 line-clamp-2 mb-2 leading-tight">
+                              {meta.title}
+                            </p>
+
+                            {/* Status Guru Aktif & Quick Toggle */}
+                            <div className="bg-white/90 p-2.5 rounded-lg border border-slate-200/80 mb-2.5 space-y-1.5">
+                              <div className="text-[10px] text-slate-500 font-medium">
+                                Status Guru Ini: <strong className="text-slate-800">{currentSupervision.teacherName}</strong>
+                              </div>
+                              {canEdit ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleUjiOptimalStatus(indKey, isCurOptimal ? 'belum_optimal' : 'optimal')}
+                                  disabled={isSaving}
+                                  className={`w-full py-1.5 px-2 rounded-lg font-bold text-[11px] transition-colors flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer ${
+                                    isCurOptimal
+                                      ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300'
+                                      : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                                  }`}
+                                  title={`Klik untuk ubah status ${currentSupervision.teacherName} menjadi ${isCurOptimal ? 'Belum Optimal' : 'Sudah Optimal'} & simpan ke Firebase`}
+                                >
+                                  {isCurOptimal ? (
+                                    <>
+                                      <RotateCcw className="w-3 h-3" />
+                                      <span>Ubah ke Belum Optimal</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <CheckCircle2 className="w-3 h-3" />
+                                      <span>Tandai Sudah Optimal</span>
+                                    </>
+                                  )}
+                                </button>
+                              ) : (
+                                <div className="text-[10px] font-bold text-slate-600">
+                                  {isCurOptimal ? '✓ Terverifikasi Optimal' : '⚠ Perlu Peningkatan'}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Rekap Seluruh Guru pada Indikator Ini */}
+                            <div className="space-y-1.5 pt-1 border-t border-slate-200/70">
+                              <div className="flex items-center justify-between text-[10px] font-bold">
+                                <span className="text-emerald-700">✓ Sudah Optimal:</span>
+                                <span className="text-emerald-800 px-1.5 py-0.2 rounded bg-emerald-100 border border-emerald-200 font-black">
+                                  {agg?.optimalCount || 0} Guru
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between text-[10px] font-bold">
+                                <span className="text-amber-700">⚠ Belum Optimal:</span>
+                                <span className="text-amber-800 px-1.5 py-0.2 rounded bg-amber-100 border border-amber-200 font-black">
+                                  {agg?.belumOptimalCount || 0} Guru
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setActiveIndicatorListModal({ stage: 'uji', key: indKey, filter: 'all' })}
+                                className="w-full mt-1.5 py-1 px-2 rounded-md bg-purple-50 hover:bg-purple-100 text-purple-700 text-[10px] font-bold transition-colors flex items-center justify-center gap-1 border border-purple-200 cursor-pointer"
+                              >
+                                <Users className="w-3 h-3 text-purple-600" />
+                                <span>Lihat Nama Guru ({agg?.total || 0})</span>
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
                   {/* TABEL KESIMPULAN UJI (SESUAI KOMPONEN UNGGAHAN) */}
                   <div className="bg-white rounded-2xl border-2 border-slate-300 shadow-sm overflow-hidden">
                     {/* Header Tabel */}
@@ -5614,6 +6089,34 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                                 <p className="text-[11px] text-slate-500 leading-relaxed pl-8">
                                   Bagaimana transformasi peran guru setelah pendampingan klinis? Apakah guru telah berhasil menjadi fasilitator inkuiri aktif yang memuliakan murid?
                                 </p>
+
+                                {/* Optimal Status Badge & Toggle Row 1 */}
+                                <div className="mt-2.5 pt-2 border-t border-slate-200/80 flex items-center justify-between gap-2 flex-wrap pl-8">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className={`px-2 py-0.5 rounded text-[10px] font-black ${
+                                      getTeacherIndikatorOptimalStatus(currentSupervision, 'uji', 'peranGuru') === 'optimal'
+                                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                        : 'bg-amber-100 text-amber-800 border border-amber-300'
+                                    }`}>
+                                      {getTeacherIndikatorOptimalStatus(currentSupervision, 'uji', 'peranGuru') === 'optimal' ? '✓ Sudah Optimal' : '⚠ Belum Optimal'}
+                                    </span>
+                                    <span className="text-[10px] text-slate-500 font-medium">
+                                      (Rekap: {fourIndicatorsBreakdown.peranGuru.uji.optimalCount} Optimal &bull; {fourIndicatorsBreakdown.peranGuru.uji.belumOptimalCount} Belum)
+                                    </span>
+                                  </div>
+                                  {canEdit && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleToggleUjiOptimalStatus(
+                                        'peranGuru',
+                                        getTeacherIndikatorOptimalStatus(currentSupervision, 'uji', 'peranGuru') === 'optimal' ? 'belum_optimal' : 'optimal'
+                                      )}
+                                      className="text-[10px] font-bold text-purple-700 hover:text-purple-900 underline cursor-pointer"
+                                    >
+                                      Ganti Status
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                             </td>
                             <td className="py-3 px-4 align-top">
@@ -5648,6 +6151,34 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                                 <p className="text-[11px] text-slate-500 leading-relaxed pl-8">
                                   Sejauh mana murid terbukti antusias berpikir kritis, berdiskusi kelompok, menguji hipotesis, dan mempraktikkan materi pembelajaran?
                                 </p>
+
+                                {/* Optimal Status Badge & Toggle Row 2 */}
+                                <div className="mt-2.5 pt-2 border-t border-slate-200/80 flex items-center justify-between gap-2 flex-wrap pl-8">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className={`px-2 py-0.5 rounded text-[10px] font-black ${
+                                      getTeacherIndikatorOptimalStatus(currentSupervision, 'uji', 'aktivitasMurid') === 'optimal'
+                                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                        : 'bg-amber-100 text-amber-800 border border-amber-300'
+                                    }`}>
+                                      {getTeacherIndikatorOptimalStatus(currentSupervision, 'uji', 'aktivitasMurid') === 'optimal' ? '✓ Sudah Optimal' : '⚠ Belum Optimal'}
+                                    </span>
+                                    <span className="text-[10px] text-slate-500 font-medium">
+                                      (Rekap: {fourIndicatorsBreakdown.aktivitasMurid.uji.optimalCount} Optimal &bull; {fourIndicatorsBreakdown.aktivitasMurid.uji.belumOptimalCount} Belum)
+                                    </span>
+                                  </div>
+                                  {canEdit && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleToggleUjiOptimalStatus(
+                                        'aktivitasMurid',
+                                        getTeacherIndikatorOptimalStatus(currentSupervision, 'uji', 'aktivitasMurid') === 'optimal' ? 'belum_optimal' : 'optimal'
+                                      )}
+                                      className="text-[10px] font-bold text-purple-700 hover:text-purple-900 underline cursor-pointer"
+                                    >
+                                      Ganti Status
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                             </td>
                             <td className="py-3 px-4 align-top">
@@ -5682,6 +6213,34 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                                 <p className="text-[11px] text-slate-500 leading-relaxed pl-8">
                                   Bagaimana materi ajar dan tugas telah dikaitkan secara nyata dengan kehidupan sehari-hari, lingkungan sekitar murid, atau isu kontekstual?
                                 </p>
+
+                                {/* Optimal Status Badge & Toggle Row 3 */}
+                                <div className="mt-2.5 pt-2 border-t border-slate-200/80 flex items-center justify-between gap-2 flex-wrap pl-8">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className={`px-2 py-0.5 rounded text-[10px] font-black ${
+                                      getTeacherIndikatorOptimalStatus(currentSupervision, 'uji', 'konteksNyata') === 'optimal'
+                                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                        : 'bg-amber-100 text-amber-800 border border-amber-300'
+                                    }`}>
+                                      {getTeacherIndikatorOptimalStatus(currentSupervision, 'uji', 'konteksNyata') === 'optimal' ? '✓ Sudah Optimal' : '⚠ Belum Optimal'}
+                                    </span>
+                                    <span className="text-[10px] text-slate-500 font-medium">
+                                      (Rekap: {fourIndicatorsBreakdown.konteksNyata.uji.optimalCount} Optimal &bull; {fourIndicatorsBreakdown.konteksNyata.uji.belumOptimalCount} Belum)
+                                    </span>
+                                  </div>
+                                  {canEdit && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleToggleUjiOptimalStatus(
+                                        'konteksNyata',
+                                        getTeacherIndikatorOptimalStatus(currentSupervision, 'uji', 'konteksNyata') === 'optimal' ? 'belum_optimal' : 'optimal'
+                                      )}
+                                      className="text-[10px] font-bold text-purple-700 hover:text-purple-900 underline cursor-pointer"
+                                    >
+                                      Ganti Status
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                             </td>
                             <td className="py-3 px-4 align-top">
@@ -5716,6 +6275,34 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                                 <p className="text-[11px] text-slate-500 leading-relaxed pl-8">
                                   Bagaimana pembiasaan refleksi telah membudaya, di mana murid mampu mengevaluasi proses belajarnya dan merumuskan makna pribadi?
                                 </p>
+
+                                {/* Optimal Status Badge & Toggle Row 4 */}
+                                <div className="mt-2.5 pt-2 border-t border-slate-200/80 flex items-center justify-between gap-2 flex-wrap pl-8">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className={`px-2 py-0.5 rounded text-[10px] font-black ${
+                                      getTeacherIndikatorOptimalStatus(currentSupervision, 'uji', 'refleksiMurid') === 'optimal'
+                                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                        : 'bg-amber-100 text-amber-800 border border-amber-300'
+                                    }`}>
+                                      {getTeacherIndikatorOptimalStatus(currentSupervision, 'uji', 'refleksiMurid') === 'optimal' ? '✓ Sudah Optimal' : '⚠ Belum Optimal'}
+                                    </span>
+                                    <span className="text-[10px] text-slate-500 font-medium">
+                                      (Rekap: {fourIndicatorsBreakdown.refleksiMurid.uji.optimalCount} Optimal &bull; {fourIndicatorsBreakdown.refleksiMurid.uji.belumOptimalCount} Belum)
+                                    </span>
+                                  </div>
+                                  {canEdit && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleToggleUjiOptimalStatus(
+                                        'refleksiMurid',
+                                        getTeacherIndikatorOptimalStatus(currentSupervision, 'uji', 'refleksiMurid') === 'optimal' ? 'belum_optimal' : 'optimal'
+                                      )}
+                                      className="text-[10px] font-bold text-purple-700 hover:text-purple-900 underline cursor-pointer"
+                                    >
+                                      Ganti Status
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                             </td>
                             <td className="py-3 px-4 align-top">
@@ -7740,6 +8327,178 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
           }}
         />
       )}
+
+      {/* MODAL DAFTAR GURU PER INDIKATOR (SELIDIKI & UJI) */}
+      {activeIndicatorListModal && (() => {
+        const { stage, key, filter } = activeIndicatorListModal;
+        const meta = INDIKATOR_LABELS[key];
+        const breakdownData = fourIndicatorsBreakdown[key]?.[stage];
+        const isSelidiki = stage === 'selidiki';
+
+        const listToDisplay = availableSupervisions.filter((sup) => {
+          const status = getTeacherIndikatorOptimalStatus(sup, stage, key);
+          if (filter === 'optimal') return status === 'optimal';
+          if (filter === 'belum_optimal') return status === 'belum_optimal';
+          return true;
+        });
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
+            <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
+              {/* Header */}
+              <div className={`p-5 text-white ${isSelidiki ? 'bg-gradient-to-r from-amber-700 to-indigo-900' : 'bg-gradient-to-r from-purple-800 to-indigo-950'}`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="px-2.5 py-0.5 rounded-md bg-white/20 text-white text-[10px] font-black uppercase tracking-wider backdrop-blur-xs">
+                        {isSelidiki ? 'Tahap S • Selidiki' : 'Tahap U • Uji'}
+                      </span>
+                      <span className="text-xs font-bold text-amber-200">
+                        {meta.shortTitle}
+                      </span>
+                    </div>
+                    <h3 className="text-base font-extrabold text-white leading-snug">
+                      Daftar Guru: {meta.title}
+                    </h3>
+                    <p className="text-xs text-white/80 mt-1">
+                      {isSelidiki
+                        ? 'Pemetaan ketercapaian kondisi awal (baseline) guru sebelum intervensi SAMBUNG.'
+                        : 'Pemetaan ketercapaian setelah pendampingan klinis dan pembuktian uji coba.'}
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveIndicatorListModal(null)}
+                    className="p-1.5 rounded-xl bg-white/10 hover:bg-white/25 text-white transition-colors cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Aggregates & Filter Tabs */}
+              <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setActiveIndicatorListModal({ ...activeIndicatorListModal, filter: 'all' })}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      filter === 'all'
+                        ? 'bg-slate-900 text-white shadow-2xs'
+                        : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-100'
+                    }`}
+                  >
+                    Semua Guru ({breakdownData?.total || 0})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveIndicatorListModal({ ...activeIndicatorListModal, filter: 'optimal' })}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      filter === 'optimal'
+                        ? 'bg-emerald-600 text-white shadow-2xs'
+                        : 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
+                    }`}
+                  >
+                    ✓ Sudah Optimal ({breakdownData?.optimalCount || 0})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveIndicatorListModal({ ...activeIndicatorListModal, filter: 'belum_optimal' })}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      filter === 'belum_optimal'
+                        ? 'bg-amber-600 text-white shadow-2xs'
+                        : 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100'
+                    }`}
+                  >
+                    ⚠ Belum Optimal ({breakdownData?.belumOptimalCount || 0})
+                  </button>
+                </div>
+
+                <div className="text-[11px] font-semibold text-slate-500">
+                  Total {listToDisplay.length} guru ditampilkan
+                </div>
+              </div>
+
+              {/* Teacher List */}
+              <div className="overflow-y-auto p-4 space-y-2.5 flex-1 divide-y divide-slate-100">
+                {listToDisplay.length === 0 ? (
+                  <div className="text-center py-10 text-slate-400 text-xs">
+                    Tidak ada guru dengan status filter ini.
+                  </div>
+                ) : (
+                  listToDisplay.map((teacherSup) => {
+                    const status = getTeacherIndikatorOptimalStatus(teacherSup, stage, key);
+                    const isOpt = status === 'optimal';
+                    const isCurrent = teacherSup.id === currentSupervision.id;
+
+                    return (
+                      <div
+                        key={teacherSup.id}
+                        className={`pt-2.5 first:pt-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-2xl transition-all ${
+                          isCurrent ? 'bg-indigo-50/80 border border-indigo-200' : 'hover:bg-slate-50'
+                        }`}
+                      >
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-extrabold text-xs text-slate-900">
+                              {teacherSup.teacherName}
+                            </span>
+                            {isCurrent && (
+                              <span className="px-2 py-0.2 rounded text-[10px] font-black bg-indigo-600 text-white">
+                                Sedang Dibuka
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-slate-500 font-medium">
+                            {teacherSup.subject} &bull; {teacherSup.schoolName}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className={`px-2.5 py-1 rounded-lg text-[11px] font-black flex items-center gap-1 ${
+                            isOpt
+                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                              : 'bg-amber-100 text-amber-800 border border-amber-300'
+                          }`}>
+                            {isOpt ? <CheckCheck className="w-3.5 h-3.5 text-emerald-600" /> : <AlertCircle className="w-3.5 h-3.5 text-amber-600" />}
+                            <span>{isOpt ? 'Sudah Optimal' : 'Belum Optimal'}</span>
+                          </span>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedId(teacherSup.id);
+                              setActiveIndicatorListModal(null);
+                            }}
+                            className="px-3 py-1 rounded-xl bg-slate-900 hover:bg-indigo-600 text-white text-[11px] font-bold transition-colors cursor-pointer"
+                          >
+                            Buka Supervisi
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs">
+                <span className="text-[11px] text-slate-500">
+                  Status otomatis tersimpan ke backend database &amp; Firestore.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setActiveIndicatorListModal(null)}
+                  className="px-4 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold transition-colors cursor-pointer"
+                >
+                  Tutup
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };

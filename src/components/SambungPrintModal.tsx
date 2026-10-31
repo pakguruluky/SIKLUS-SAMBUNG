@@ -1,10 +1,10 @@
 import React from 'react';
-import { Supervision } from '../types';
-import { Printer, X, Download, ShieldCheck } from 'lucide-react';
+import { Supervision, IndikatorKunciType } from '../types';
+import { Printer, X, Download, ShieldCheck, CheckCircle2, AlertCircle } from 'lucide-react';
 import { DEFAULT_MATRIKS_BEFORE, DEFAULT_MATRIKS_AFTER } from '../data/sambungSeed';
 import { MAKNAI_COACHING_QUESTIONS, TELAAH_ITEMS, OBSERVASI_ITEMS, PRA_OBSERVASI_QUESTIONS, PASCA_OBSERVASI_QUESTIONS } from '../data/instrumentData';
 import { generateTeacherMaknaiData, generateBerdayakanTelaahPerbaikanData, generateUjiData, generateGerakkanData } from '../data/autoFillData';
-import { calculateSupervisionComprehensiveScore } from '../utils/sambungCalculations';
+import { calculateSupervisionComprehensiveScore, getTeacherIndikatorOptimalStatus, INDIKATOR_LABELS } from '../utils/sambungCalculations';
 
 interface SambungPrintModalProps {
   isOpen: boolean;
@@ -205,25 +205,66 @@ export const SambungPrintModal: React.FC<SambungPrintModalProps> = ({
                 <thead>
                   <tr className="bg-slate-100 text-slate-800 font-bold">
                     <th className="border border-slate-300 px-2 py-1.5 w-8 text-center">No</th>
-                    <th className="border border-slate-300 px-2 py-1.5 w-60 text-left">Indikator Pembelajaran</th>
+                    <th className="border border-slate-300 px-2 py-1.5 w-52 text-left">Indikator Pembelajaran</th>
                     <th className="border border-slate-300 px-2 py-1.5 text-left">Kesimpulan Selidiki (Kondisi Awal / Baseline)</th>
-                    <th className="border border-slate-300 px-2 py-1.5 w-52 text-left">Arah Transformasi Sasaran</th>
+                    <th className="border border-slate-300 px-2 py-1.5 w-36 text-center">Status Kondisi Awal</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr>
-                    <td className="border border-slate-300 px-2 py-1.5 text-center font-semibold">1</td>
-                    <td className="border border-slate-300 px-2 py-1.5 font-bold text-slate-900 bg-slate-50/50">
-                      Refleksi menjadi bagian rutin dalam proses pembelajaran
-                      <span className="block text-[9px] text-blue-700 font-normal">Aspek: Refleksi Murid</span>
-                    </td>
-                    <td className="border border-slate-300 px-2 py-1.5 text-slate-700">
-                      {sambung.selidiki.matriksBefore?.refleksiMurid || DEFAULT_MATRIKS_BEFORE.refleksiMurid}
-                    </td>
-                    <td className="border border-slate-300 px-2 py-1.5 text-blue-900 text-[10px]">
-                      &rarr; Dari belum rutin menjadi bagian integral pembelajaran harian
-                    </td>
-                  </tr>
+                  {[
+                    {
+                      no: 1,
+                      key: 'peranGuru' as IndikatorKunciType,
+                      title: 'Guru berorientasi pada pengalaman belajar murid',
+                      aspek: 'Peran Guru (Fasilitator Inkuiri)',
+                      desc: sambung.selidiki.matriksBefore?.peranGuru || DEFAULT_MATRIKS_BEFORE.peranGuru,
+                    },
+                    {
+                      no: 2,
+                      key: 'aktivitasMurid' as IndikatorKunciType,
+                      title: 'Pembelajaran menghasilkan murid aktif mengaplikasikan pengetahuan',
+                      aspek: 'Aktivitas Murid (Student Agency)',
+                      desc: sambung.selidiki.matriksBefore?.aktivitasMurid || DEFAULT_MATRIKS_BEFORE.aktivitasMurid,
+                    },
+                    {
+                      no: 3,
+                      key: 'konteksNyata' as IndikatorKunciType,
+                      title: 'Pembelajaran terhubung dengan konteks nyata',
+                      aspek: 'Konteks Nyata (Relevansi Kehidupan)',
+                      desc: sambung.selidiki.matriksBefore?.konteksNyata || DEFAULT_MATRIKS_BEFORE.konteksNyata,
+                    },
+                    {
+                      no: 4,
+                      key: 'refleksiMurid' as IndikatorKunciType,
+                      title: 'Pembelajaran membiasakan murid melakukan refleksi',
+                      aspek: 'Refleksi Murid (Metakognisi)',
+                      desc: sambung.selidiki.matriksBefore?.refleksiMurid || DEFAULT_MATRIKS_BEFORE.refleksiMurid,
+                    },
+                  ].map((ind) => {
+                    const status = getTeacherIndikatorOptimalStatus(supervision, 'selidiki', ind.key);
+                    const isOptimal = status === 'optimal';
+                    return (
+                      <tr key={ind.key}>
+                        <td className="border border-slate-300 px-2 py-1.5 text-center font-semibold">{ind.no}</td>
+                        <td className="border border-slate-300 px-2 py-1.5 font-bold text-slate-900 bg-slate-50/50 align-top">
+                          {ind.title}
+                          <span className="block text-[9px] text-indigo-700 font-normal mt-0.5">Aspek: {ind.aspek}</span>
+                        </td>
+                        <td className="border border-slate-300 px-2 py-1.5 text-slate-700 align-top leading-relaxed">
+                          {ind.desc}
+                        </td>
+                        <td className="border border-slate-300 px-2 py-1.5 text-center align-top">
+                          <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-black ${
+                            isOptimal 
+                              ? 'bg-emerald-100 text-emerald-900 border border-emerald-300' 
+                              : 'bg-amber-100 text-amber-900 border border-amber-300'
+                          }`}>
+                            {isOptimal ? '✓ Sudah Optimal' : '⚠ Belum Optimal'}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -1009,64 +1050,67 @@ export const SambungPrintModal: React.FC<SambungPrintModalProps> = ({
                 <thead>
                   <tr className="bg-slate-100 text-slate-800 font-bold">
                     <th className="border border-slate-300 px-2 py-1.5 w-8 text-center">No</th>
-                    <th className="border border-slate-300 px-2 py-1.5 w-60 text-left">Indikator Pembelajaran</th>
+                    <th className="border border-slate-300 px-2 py-1.5 w-52 text-left">Indikator Pembelajaran</th>
                     <th className="border border-slate-300 px-2 py-1.5 text-left">Kesimpulan Uji (Kondisi Setelah Perbaikan)</th>
-                    <th className="border border-slate-300 px-2 py-1.5 w-44 text-center">Status Pembuktian Uji</th>
+                    <th className="border border-slate-300 px-2 py-1.5 w-40 text-center">Status Pembuktian Uji</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr>
-                    <td className="border border-slate-300 px-2 py-1.5 text-center font-semibold">1</td>
-                    <td className="border border-slate-300 px-2 py-1.5 font-bold text-slate-900 bg-slate-50/50">
-                      Guru berorientasi pada pengalaman belajar murid
-                      <span className="block text-[9px] text-indigo-700 font-normal">Aspek: Peran Guru</span>
-                    </td>
-                    <td className="border border-slate-300 px-2 py-1.5 text-slate-800 font-medium">
-                      {sambung.uji.matriksAfter?.peranGuru || DEFAULT_MATRIKS_AFTER.peranGuru}
-                    </td>
-                    <td className="border border-slate-300 px-2 py-1.5 text-center text-emerald-800 font-bold text-[10px] bg-emerald-50/40">
-                      Terverifikasi Uji Lapangan
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="border border-slate-300 px-2 py-1.5 text-center font-semibold">2</td>
-                    <td className="border border-slate-300 px-2 py-1.5 font-bold text-slate-900 bg-slate-50/50">
-                      Murid aktif mengaplikasikan pengetahuan
-                      <span className="block text-[9px] text-purple-700 font-normal">Aspek: Aktivitas Murid</span>
-                    </td>
-                    <td className="border border-slate-300 px-2 py-1.5 text-slate-800 font-medium">
-                      {sambung.uji.matriksAfter?.aktivitasMurid || DEFAULT_MATRIKS_AFTER.aktivitasMurid}
-                    </td>
-                    <td className="border border-slate-300 px-2 py-1.5 text-center text-emerald-800 font-bold text-[10px] bg-emerald-50/40">
-                      Terverifikasi Uji Lapangan
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="border border-slate-300 px-2 py-1.5 text-center font-semibold">3</td>
-                    <td className="border border-slate-300 px-2 py-1.5 font-bold text-slate-900 bg-slate-50/50">
-                      Pembelajaran terhubung dengan konteks kehidupan nyata murid
-                      <span className="block text-[9px] text-amber-700 font-normal">Aspek: Konteks Nyata</span>
-                    </td>
-                    <td className="border border-slate-300 px-2 py-1.5 text-slate-800 font-medium">
-                      {sambung.uji.matriksAfter?.konteksNyata || DEFAULT_MATRIKS_AFTER.konteksNyata}
-                    </td>
-                    <td className="border border-slate-300 px-2 py-1.5 text-center text-emerald-800 font-bold text-[10px] bg-emerald-50/40">
-                      Terverifikasi Uji Lapangan
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="border border-slate-300 px-2 py-1.5 text-center font-semibold">4</td>
-                    <td className="border border-slate-300 px-2 py-1.5 font-bold text-slate-900 bg-slate-50/50">
-                      Refleksi menjadi bagian rutin dalam proses pembelajaran
-                      <span className="block text-[9px] text-blue-700 font-normal">Aspek: Refleksi Murid</span>
-                    </td>
-                    <td className="border border-slate-300 px-2 py-1.5 text-slate-800 font-medium">
-                      {sambung.uji.matriksAfter?.refleksiMurid || DEFAULT_MATRIKS_AFTER.refleksiMurid}
-                    </td>
-                    <td className="border border-slate-300 px-2 py-1.5 text-center text-emerald-800 font-bold text-[10px] bg-emerald-50/40">
-                      Terverifikasi Uji Lapangan
-                    </td>
-                  </tr>
+                  {[
+                    {
+                      no: 1,
+                      key: 'peranGuru' as IndikatorKunciType,
+                      title: 'Guru berorientasi pada pengalaman belajar murid',
+                      aspek: 'Peran Guru (Fasilitator Inkuiri)',
+                      desc: sambung.uji.matriksAfter?.peranGuru || DEFAULT_MATRIKS_AFTER.peranGuru,
+                    },
+                    {
+                      no: 2,
+                      key: 'aktivitasMurid' as IndikatorKunciType,
+                      title: 'Murid aktif mengaplikasikan pengetahuan',
+                      aspek: 'Aktivitas Murid (Student Agency)',
+                      desc: sambung.uji.matriksAfter?.aktivitasMurid || DEFAULT_MATRIKS_AFTER.aktivitasMurid,
+                    },
+                    {
+                      no: 3,
+                      key: 'konteksNyata' as IndikatorKunciType,
+                      title: 'Pembelajaran terhubung dengan konteks kehidupan nyata murid',
+                      aspek: 'Konteks Nyata (Relevansi Kehidupan)',
+                      desc: sambung.uji.matriksAfter?.konteksNyata || DEFAULT_MATRIKS_AFTER.konteksNyata,
+                    },
+                    {
+                      no: 4,
+                      key: 'refleksiMurid' as IndikatorKunciType,
+                      title: 'Refleksi menjadi bagian rutin dalam proses pembelajaran',
+                      aspek: 'Refleksi Murid (Metakognisi)',
+                      desc: sambung.uji.matriksAfter?.refleksiMurid || DEFAULT_MATRIKS_AFTER.refleksiMurid,
+                    },
+                  ].map((ind) => {
+                    const status = getTeacherIndikatorOptimalStatus(supervision, 'uji', ind.key);
+                    const isOptimal = status === 'optimal';
+                    return (
+                      <tr key={ind.key}>
+                        <td className="border border-slate-300 px-2 py-1.5 text-center font-semibold">{ind.no}</td>
+                        <td className="border border-slate-300 px-2 py-1.5 font-bold text-slate-900 bg-slate-50/50 align-top">
+                          {ind.title}
+                          <span className="block text-[9px] text-purple-700 font-normal mt-0.5">Aspek: {ind.aspek}</span>
+                        </td>
+                        <td className="border border-slate-300 px-2 py-1.5 text-slate-800 font-medium align-top leading-relaxed">
+                          {ind.desc}
+                        </td>
+                        <td className="border border-slate-300 px-2 py-1.5 text-center align-top space-y-1">
+                          <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-black ${
+                            isOptimal 
+                              ? 'bg-emerald-100 text-emerald-900 border border-emerald-300' 
+                              : 'bg-amber-100 text-amber-900 border border-amber-300'
+                          }`}>
+                            {isOptimal ? '✓ Sudah Optimal' : '⚠ Belum Optimal'}
+                          </span>
+                          <span className="block text-[9px] text-emerald-800 font-medium">Terverifikasi Uji Lapangan</span>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

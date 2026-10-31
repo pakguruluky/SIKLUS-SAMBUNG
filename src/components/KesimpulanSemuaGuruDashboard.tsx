@@ -1,12 +1,18 @@
 import React, { useState, useMemo } from 'react';
-import { Supervision, UserProfile, School, SambungKesimpulanAlurSambung, SambungRtlNyatakanItem, SambungPengimbasanItem } from '../types';
+import { Supervision, UserProfile, School, SambungKesimpulanAlurSambung, SambungRtlNyatakanItem, SambungPengimbasanItem, IndikatorKunciType } from '../types';
 import { 
   DEFAULT_DATA_DAMPAK, 
   DEFAULT_MATRIKS_BEFORE, 
   DEFAULT_MATRIKS_AFTER 
 } from '../data/sambungSeed';
 import { generateGerakkanData } from '../data/autoFillData';
-import { calculateSupervisionComprehensiveScore, getSchoolOptimalAggregates } from '../utils/sambungCalculations';
+import { 
+  calculateSupervisionComprehensiveScore, 
+  getSchoolOptimalAggregates,
+  getFourIndicatorsOptimalBreakdown,
+  INDIKATOR_LABELS,
+  getTeacherIndikatorOptimalStatus
+} from '../utils/sambungCalculations';
 import { SambungPrintModal } from './SambungPrintModal';
 import { SambungPersentaseChart } from './SambungPersentaseChart';
 import { 
@@ -363,6 +369,10 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
 
   const optimalAggregates = useMemo(() => {
     return getSchoolOptimalAggregates(filteredSupervisions);
+  }, [filteredSupervisions]);
+
+  const fourIndicatorsBreakdown = useMemo(() => {
+    return getFourIndicatorsOptimalBreakdown(filteredSupervisions);
   }, [filteredSupervisions]);
 
   return (
@@ -1346,6 +1356,222 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
                   </tr>
                 </tbody>
               </table>
+            </div>
+          </div>
+
+          {/* ========================================================================= */}
+          {/* KOMPARASI 4 INDIKATOR KUNCI: KESIMPULAN SELIDIKI VS KESIMPULAN UJI        */}
+          {/* ========================================================================= */}
+          <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-xs space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+              <div>
+                <div className="flex items-center gap-2 text-indigo-600 font-bold text-xs uppercase tracking-wider mb-1">
+                  <Target className="w-4 h-4" />
+                  <span>Ketercapaian 4 Indikator Transformasi Pembelajaran</span>
+                </div>
+                <h3 className="text-lg font-black text-slate-900">
+                  Pemetaan Guru Sudah Optimal vs Belum Optimal: Kesimpulan Selidiki vs Kesimpulan Uji
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Perbandingan status ketercapaian kondisi awal (Tahap Selidiki / Baseline) terhadap pembuktian uji coba klinis (Tahap Uji / Pasca Pendampingan) untuk setiap indikator. Klik nama guru untuk membuka instrumen supervisinya.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-xs font-bold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
+                  {filteredSupervisions.length} Guru Binaan Terpantau
+                </span>
+              </div>
+            </div>
+
+            {/* 4 Cards Breakdown */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {(['peranGuru', 'aktivitasMurid', 'konteksNyata', 'refleksiMurid'] as IndikatorKunciType[]).map((indKey) => {
+                const meta = INDIKATOR_LABELS[indKey];
+                const itemBreakdown = fourIndicatorsBreakdown[indKey];
+                const selidikiOpt = itemBreakdown?.selidiki.optimalCount || 0;
+                const selidikiBelum = itemBreakdown?.selidiki.belumOptimalCount || 0;
+                const ujiOpt = itemBreakdown?.uji.optimalCount || 0;
+                const ujiBelum = itemBreakdown?.uji.belumOptimalCount || 0;
+                const deltaOptimal = ujiOpt - selidikiOpt;
+
+                return (
+                  <div key={indKey} className="rounded-2xl border border-slate-200 bg-slate-50/50 p-5 space-y-4 hover:border-indigo-300 transition-all shadow-2xs">
+                    {/* Header Card */}
+                    <div className="flex items-start justify-between gap-2 border-b border-slate-200/80 pb-3">
+                      <div>
+                        <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 border border-indigo-200">
+                          {meta.shortTitle}
+                        </span>
+                        <h4 className="text-sm font-black text-slate-900 mt-1.5 leading-snug">
+                          {meta.title}
+                        </h4>
+                        <p className="text-[11px] text-slate-500 mt-0.5">
+                          {meta.subTitle}
+                        </p>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-black ${
+                          deltaOptimal > 0
+                            ? 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                            : 'bg-slate-100 text-slate-700 border border-slate-300'
+                        }`}>
+                          <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>+{deltaOptimal} Guru Optimal</span>
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Side-by-side: Selidiki vs Uji */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {/* Box 1: Kesimpulan Selidiki (Baseline) */}
+                      <div className="p-3.5 rounded-xl bg-amber-50/60 border border-amber-200/80 space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-extrabold uppercase text-amber-900 tracking-wide">
+                            1. Kesimpulan Selidiki (Awal)
+                          </span>
+                          <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-1.5 py-0.2 rounded">
+                            Baseline
+                          </span>
+                        </div>
+
+                        {/* Optimal in Selidiki */}
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-xs font-bold text-emerald-900">
+                            <span className="flex items-center gap-1">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>Sudah Optimal:</span>
+                            </span>
+                            <span className="font-extrabold px-1.5 py-0.2 rounded bg-emerald-100 border border-emerald-300">
+                              {selidikiOpt} Guru
+                            </span>
+                          </div>
+                          {itemBreakdown.selidiki.optimalTeachers.length > 0 ? (
+                            <div className="flex flex-wrap gap-1 pt-1">
+                              {itemBreakdown.selidiki.optimalTeachers.map(t => (
+                                <button
+                                  key={t.id}
+                                  type="button"
+                                  onClick={() => onOpenSambungTeacher && onOpenSambungTeacher(t.id)}
+                                  className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-white hover:bg-emerald-100 text-slate-700 border border-emerald-200 transition-colors cursor-pointer text-left"
+                                  title={`Buka supervisi ${t.teacherName} (${t.subject})`}
+                                >
+                                  {t.teacherName}
+                                </button>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-[10px] text-slate-400 italic">Belum ada guru optimal</p>
+                          )}
+                        </div>
+
+                        {/* Belum Optimal in Selidiki */}
+                        <div className="space-y-1 pt-1 border-t border-amber-200/60">
+                          <div className="flex items-center justify-between text-xs font-bold text-amber-900">
+                            <span className="flex items-center gap-1">
+                              <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
+                              <span>Belum Optimal:</span>
+                            </span>
+                            <span className="font-extrabold px-1.5 py-0.2 rounded bg-amber-100 border border-amber-300">
+                              {selidikiBelum} Guru
+                            </span>
+                          </div>
+                          {itemBreakdown.selidiki.belumOptimalTeachers.length > 0 ? (
+                            <div className="flex flex-wrap gap-1 pt-1">
+                              {itemBreakdown.selidiki.belumOptimalTeachers.map(t => (
+                                <button
+                                  key={t.id}
+                                  type="button"
+                                  onClick={() => onOpenSambungTeacher && onOpenSambungTeacher(t.id)}
+                                  className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-white hover:bg-amber-100 text-slate-700 border border-amber-200 transition-colors cursor-pointer text-left"
+                                  title={`Buka supervisi ${t.teacherName} (${t.subject})`}
+                                >
+                                  {t.teacherName}
+                                </button>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-[10px] text-slate-400 italic">Nihil</p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Box 2: Kesimpulan Uji (Setelah Supervisi) */}
+                      <div className="p-3.5 rounded-xl bg-purple-50/60 border border-purple-200/80 space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-extrabold uppercase text-purple-900 tracking-wide">
+                            2. Kesimpulan Uji (Akhir)
+                          </span>
+                          <span className="text-[10px] font-bold text-purple-800 bg-purple-100 px-1.5 py-0.2 rounded">
+                            Hasil Intervensi
+                          </span>
+                        </div>
+
+                        {/* Optimal in Uji */}
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-xs font-bold text-emerald-900">
+                            <span className="flex items-center gap-1">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>Sudah Optimal:</span>
+                            </span>
+                            <span className="font-extrabold px-1.5 py-0.2 rounded bg-emerald-100 border border-emerald-300">
+                              {ujiOpt} Guru
+                            </span>
+                          </div>
+                          {itemBreakdown.uji.optimalTeachers.length > 0 ? (
+                            <div className="flex flex-wrap gap-1 pt-1">
+                              {itemBreakdown.uji.optimalTeachers.map(t => (
+                                <button
+                                  key={t.id}
+                                  type="button"
+                                  onClick={() => onOpenSambungTeacher && onOpenSambungTeacher(t.id)}
+                                  className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-white hover:bg-emerald-100 text-slate-700 border border-emerald-200 transition-colors cursor-pointer text-left"
+                                  title={`Buka supervisi ${t.teacherName} (${t.subject})`}
+                                >
+                                  {t.teacherName}
+                                </button>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-[10px] text-slate-400 italic">Belum ada guru optimal</p>
+                          )}
+                        </div>
+
+                        {/* Belum Optimal in Uji */}
+                        <div className="space-y-1 pt-1 border-t border-purple-200/60">
+                          <div className="flex items-center justify-between text-xs font-bold text-amber-900">
+                            <span className="flex items-center gap-1">
+                              <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
+                              <span>Belum Optimal:</span>
+                            </span>
+                            <span className="font-extrabold px-1.5 py-0.2 rounded bg-amber-100 border border-amber-300">
+                              {ujiBelum} Guru
+                            </span>
+                          </div>
+                          {itemBreakdown.uji.belumOptimalTeachers.length > 0 ? (
+                            <div className="flex flex-wrap gap-1 pt-1">
+                              {itemBreakdown.uji.belumOptimalTeachers.map(t => (
+                                <button
+                                  key={t.id}
+                                  type="button"
+                                  onClick={() => onOpenSambungTeacher && onOpenSambungTeacher(t.id)}
+                                  className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-white hover:bg-amber-100 text-slate-700 border border-amber-200 transition-colors cursor-pointer text-left"
+                                  title={`Buka supervisi ${t.teacherName} (${t.subject})`}
+                                >
+                                  {t.teacherName}
+                                </button>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-[10px] text-slate-400 italic">Nihil (Semua Optimal)</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 

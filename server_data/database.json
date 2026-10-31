@@ -130,7 +130,7 @@
       "supervisorName": "Kusnandar, M.Si",
       "supervisorRole": "admin",
       "createdAt": "2025-08-15T08:30:00.000Z",
-      "updatedAt": "2026-10-31T07:16:47.849Z",
+      "updatedAt": "2026-10-31T07:47:58.866Z",
       "sambung": {
         "selidiki": {
           "tanggal": "2025-08-10",
@@ -186,6 +186,12 @@
             "aktivitasMurid": "Menyalin tulisan di papan, mencatat rumus tanpa berdialog, pasif menunggu jam pelajaran selesai.",
             "konteksNyata": "Soal teks abstrak berupa kawat penghantar tanpa konteks gawai atau perangkat rumah tangga.",
             "refleksiMurid": "Sama sekali tidak ada alokasi waktu refleksi di akhir jam belajar."
+          },
+          "statusOptimalPerIndikator": {
+            "peranGuru": "belum_optimal",
+            "aktivitasMurid": "belum_optimal",
+            "konteksNyata": "belum_optimal",
+            "refleksiMurid": "belum_optimal"
           }
         },
         "arahkan": {
@@ -623,6 +629,12 @@
             "aktivitasMurid": "Murid bertransformasi dari penyimak pasif menjadi pembelajar aktif yang mengonstruksi pengetahuan secara mandiri dan kolaboratif, percaya diri dalam diskusi kelompok, serta terampil memecahkan masalah nyata.",
             "konteksNyata": "Pembelajaran terhubung erat dan terpadu secara autentik dengan fenomena kehidupan sehari-hari dan lingkungan sekitar murid, menjadikan pembelajaran bermakna dan aplikatif.",
             "refleksiMurid": "Refleksi menjadi budaya belajar rutin yang mengakar; murid terbiasa mengevaluasi proses pemahaman diri (metakognisi), mengenali capaian belajarnya, dan merencanakan langkah perbaikan berikutnya."
+          },
+          "statusOptimalPerIndikator": {
+            "peranGuru": "optimal",
+            "aktivitasMurid": "optimal",
+            "konteksNyata": "optimal",
+            "refleksiMurid": "optimal"
           }
         },
         "nyatakan": {
@@ -15953,5 +15965,5 @@
   "deletedSupervisionIds": [],
   "deletedUserIds": [],
   "deletedUserNames": [],
-  "lastUpdated": "2026-10-31T07:16:47.849Z"
+  "lastUpdated": "2026-10-31T07:47:58.866Z"
 }

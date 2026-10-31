@@ -1,4 +1,4 @@
-import { Supervision, SambungCatatanOptimal } from '../types';
+import { Supervision, SambungCatatanOptimal, IndikatorKunciType } from '../types';
 import { TELAAH_ITEMS, OBSERVASI_ITEMS } from '../data/instrumentData';
 
 /**
@@ -328,4 +328,183 @@ export function getSchoolOptimalAggregates(supervisions: Supervision[]): Optimal
     averageDelta,
     bySchool: formattedBySchool,
   };
+}
+
+export interface TeacherMiniInfo {
+  id: string;
+  name: string;
+  teacherName: string;
+  school: string;
+  subject: string;
+}
+
+/**
+ * 5. Metadata Label dan Deskripsi 4 Indikator Kunci Transformasi SAMBUNG
+ */
+export const INDIKATOR_LABELS: Record<IndikatorKunciType, { 
+  title: string; 
+  subtitle: string; 
+  shortTitle: string;
+  subTitle: string;
+  iconName: string 
+}> = {
+  peranGuru: {
+    title: 'Guru berorientasi pada pengalaman belajar murid',
+    shortTitle: 'Peran Guru',
+    subtitle: 'Guru berorientasi pada pengalaman belajar murid (Fasilitator Inkuiri)',
+    subTitle: 'Guru berorientasi pada pengalaman belajar murid (Fasilitator Inkuiri)',
+    iconName: 'User',
+  },
+  aktivitasMurid: {
+    title: 'Pembelajaran menghasilkan murid aktif mengaplikasikan pengetahuan',
+    shortTitle: 'Aktivitas Murid',
+    subtitle: 'Pembelajaran menghasilkan murid aktif mengaplikasikan pengetahuan',
+    subTitle: 'Pembelajaran menghasilkan murid aktif mengaplikasikan pengetahuan',
+    iconName: 'Users',
+  },
+  konteksNyata: {
+    title: 'Pembelajaran terhubung dengan konteks nyata kehidupan',
+    shortTitle: 'Konteks Nyata',
+    subtitle: 'Pembelajaran terhubung dengan konteks nyata kehidupan',
+    subTitle: 'Pembelajaran terhubung dengan konteks nyata kehidupan',
+    iconName: 'Compass',
+  },
+  refleksiMurid: {
+    title: 'Pembelajaran membiasakan murid melakukan refleksi & metakognisi',
+    shortTitle: 'Refleksi Murid',
+    subtitle: 'Pembelajaran membiasakan murid melakukan refleksi & metakognisi',
+    subTitle: 'Pembelajaran membiasakan murid melakukan refleksi & metakognisi',
+    iconName: 'Sparkles',
+  },
+};
+
+/**
+ * Mengambil / menghitung status optimal ('optimal' | 'belum_optimal') guru pada salah satu dari 4 indikator
+ * untuk tahap 'selidiki' (kondisi awal) atau 'uji' (kondisi akhir).
+ */
+export function getTeacherIndikatorOptimalStatus(
+  supervision: Supervision,
+  stage: 'selidiki' | 'uji',
+  indikator: IndikatorKunciType
+): 'optimal' | 'belum_optimal' {
+  if (stage === 'selidiki') {
+    // 1. Cek explicit override yang disimpan pengawas
+    const explicit = supervision.sambung?.selidiki?.statusOptimalPerIndikator?.[indikator] ||
+      supervision.sambung?.selidiki?.matriksBefore?.statusOptimalPerIndikator?.[indikator];
+    if (explicit) return explicit;
+
+    // 2. Evaluasi otomatis kondisi awal (baseline)
+    const telaah = supervision.perangkatAjar?.telaahSummary?.finalScore ?? 84;
+    const obs = supervision.observasiKelas?.score ?? 76;
+    if (indikator === 'peranGuru') return (telaah >= 90 && obs >= 85) ? 'optimal' : 'belum_optimal';
+    if (indikator === 'aktivitasMurid') return obs >= 85 ? 'optimal' : 'belum_optimal';
+    if (indikator === 'konteksNyata') return telaah >= 88 ? 'optimal' : 'belum_optimal';
+    if (indikator === 'refleksiMurid') return obs >= 88 ? 'optimal' : 'belum_optimal';
+    return 'belum_optimal';
+  } else {
+    // stage === 'uji'
+    // 1. Cek explicit override yang disimpan pengawas
+    const explicit = supervision.sambung?.uji?.statusOptimalPerIndikator?.[indikator] ||
+      supervision.sambung?.uji?.matriksAfter?.statusOptimalPerIndikator?.[indikator];
+    if (explicit) return explicit;
+
+    // 2. Evaluasi otomatis kondisi akhir (post-supervisi Uji)
+    const comp = calculateSupervisionComprehensiveScore(supervision);
+    if (indikator === 'peranGuru') return (comp.akhirTelaah >= 85 && comp.akhirObservasi >= 82) ? 'optimal' : 'belum_optimal';
+    if (indikator === 'aktivitasMurid') return comp.akhirObservasi >= 80 ? 'optimal' : 'belum_optimal';
+    if (indikator === 'konteksNyata') return (comp.akhirTelaah >= 82 && comp.akhirObservasi >= 78) ? 'optimal' : 'belum_optimal';
+    if (indikator === 'refleksiMurid') return comp.finalComprehensiveScore >= 84 ? 'optimal' : 'belum_optimal';
+    return comp.statusOptimal;
+  }
+}
+
+export interface FourIndicatorsBreakdownItem {
+  key: IndikatorKunciType;
+  title: string;
+  subtitle: string;
+  shortTitle: string;
+  iconName: string;
+  selidiki: {
+    total: number;
+    optimalCount: number;
+    belumOptimalCount: number;
+    optimalPercentage: number;
+    belumOptimalPercentage: number;
+    optimalTeachers: TeacherMiniInfo[];
+    belumOptimalTeachers: TeacherMiniInfo[];
+  };
+  uji: {
+    total: number;
+    optimalCount: number;
+    belumOptimalCount: number;
+    optimalPercentage: number;
+    belumOptimalPercentage: number;
+    optimalTeachers: TeacherMiniInfo[];
+    belumOptimalTeachers: TeacherMiniInfo[];
+  };
+}
+
+/**
+ * 6. Agregasi multi-guru dari keempat indikator untuk Kesimpulan Selidiki & Kesimpulan Uji
+ */
+export function getFourIndicatorsOptimalBreakdown(
+  supervisions: Supervision[]
+): Record<IndikatorKunciType, FourIndicatorsBreakdownItem> {
+  const keys: IndikatorKunciType[] = ['peranGuru', 'aktivitasMurid', 'konteksNyata', 'refleksiMurid'];
+  const total = supervisions.length || 1;
+
+  const result = {} as Record<IndikatorKunciType, FourIndicatorsBreakdownItem>;
+
+  keys.forEach((key) => {
+    const sOpt: TeacherMiniInfo[] = [];
+    const sBelum: TeacherMiniInfo[] = [];
+    const uOpt: TeacherMiniInfo[] = [];
+    const uBelum: TeacherMiniInfo[] = [];
+
+    supervisions.forEach((sup) => {
+      const teacherInfo: TeacherMiniInfo = {
+        id: sup.id,
+        name: sup.teacherName,
+        teacherName: sup.teacherName,
+        school: sup.schoolName,
+        subject: sup.subject,
+      };
+
+      const sStatus = getTeacherIndikatorOptimalStatus(sup, 'selidiki', key);
+      if (sStatus === 'optimal') sOpt.push(teacherInfo);
+      else sBelum.push(teacherInfo);
+
+      const uStatus = getTeacherIndikatorOptimalStatus(sup, 'uji', key);
+      if (uStatus === 'optimal') uOpt.push(teacherInfo);
+      else uBelum.push(teacherInfo);
+    });
+
+    result[key] = {
+      key,
+      title: INDIKATOR_LABELS[key].title,
+      subtitle: INDIKATOR_LABELS[key].subtitle,
+      shortTitle: INDIKATOR_LABELS[key].shortTitle,
+      iconName: INDIKATOR_LABELS[key].iconName,
+      selidiki: {
+        total: supervisions.length,
+        optimalCount: sOpt.length,
+        belumOptimalCount: sBelum.length,
+        optimalPercentage: Math.round((sOpt.length / total) * 1000) / 10,
+        belumOptimalPercentage: Math.round((sBelum.length / total) * 1000) / 10,
+        optimalTeachers: sOpt,
+        belumOptimalTeachers: sBelum,
+      },
+      uji: {
+        total: supervisions.length,
+        optimalCount: uOpt.length,
+        belumOptimalCount: uBelum.length,
+        optimalPercentage: Math.round((uOpt.length / total) * 1000) / 10,
+        belumOptimalPercentage: Math.round((uBelum.length / total) * 1000) / 10,
+        optimalTeachers: uOpt,
+        belumOptimalTeachers: uBelum,
+      },
+    };
+  });
+
+  return result;
 }

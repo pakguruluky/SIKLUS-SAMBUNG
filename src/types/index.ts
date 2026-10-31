@@ -423,6 +423,7 @@ export interface SambungUjiData {
     kesulitanMurid: string;
   };
   matriksAfter?: SambungMatriksPerubahan;
+  statusOptimalPerIndikator?: Partial<Record<IndikatorKunciType, 'optimal' | 'belum_optimal'>>;
 }
 
 export interface SambungBeforeAfterItem {
@@ -432,11 +433,14 @@ export interface SambungBeforeAfterItem {
   buktiKode?: string;
 }
 
+export type IndikatorKunciType = 'peranGuru' | 'aktivitasMurid' | 'konteksNyata' | 'refleksiMurid';
+
 export interface SambungMatriksPerubahan {
   peranGuru: string;
   aktivitasMurid: string;
   konteksNyata: string;
   refleksiMurid: string;
+  statusOptimalPerIndikator?: Partial<Record<IndikatorKunciType, 'optimal' | 'belum_optimal'>>;
 }
 
 export interface SambungDataDampakItem {
@@ -510,6 +514,7 @@ export interface SambungData {
     items: SambungAspekPemetaan[];
     catatanPrioritas?: string;
     matriksBefore?: SambungMatriksPerubahan;
+    statusOptimalPerIndikator?: Partial<Record<IndikatorKunciType, 'optimal' | 'belum_optimal'>>;
   };
   // A - AMATI (Memilih fokus perbaikan dari empat indikator di Kesimpulan Selidiki)
   arahkan: {

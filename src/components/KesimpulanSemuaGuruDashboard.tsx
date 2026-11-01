@@ -15,6 +15,7 @@ import {
 } from '../utils/sambungCalculations';
 import { SambungPrintModal } from './SambungPrintModal';
 import { SambungPersentaseChart } from './SambungPersentaseChart';
+import { TabelDanGrafikKohorBerpasangan } from './TabelDanGrafikKohorBerpasangan';
 import { 
   Sparkles, 
   TrendingUp, 
@@ -562,9 +563,9 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
             }`}
           >
             <BarChart3 className="w-4 h-4 text-emerald-300" />
-            <span>1. Grafik Persentase Before (Selidiki) vs After (Uji)</span>
+            <span>1. Rekapitulasi &amp; Grafik Komparasi Kohor</span>
             <span className="text-[10px] bg-emerald-400 text-slate-900 px-1.5 py-0.5 rounded font-black uppercase">
-              Grafik Utama
+              Tabel &amp; Grafik
             </span>
           </button>
 
@@ -643,15 +644,31 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
       </div>
 
       {/* ========================================================================= */}
-      {/* TAB 0: GRAFIK KESIMPULAN PERSENTASE BEFORE (SELIDIKI) VS AFTER (UJI)       */}
+      {/* TAB 1: TABEL REKAPITULASI KOMPARASI KOHOR & GRAFIK PERSENTASE              */}
       {/* ========================================================================= */}
       {activeMainTab === 'grafik_kesimpulan_persentase' && (
-        <SambungPersentaseChart
-          supervisions={filteredSupervisions}
-          selectedSchool={selectedSchool}
-          onOpenTeacher={onOpenSambungTeacher}
-          showTeacherTable={true}
-        />
+        <div className="space-y-8">
+          {/* Tabel Rekapitulasi Komparasi Kohor Berpasangan & Grafiknya */}
+          <TabelDanGrafikKohorBerpasangan
+            supervisions={filteredSupervisions}
+            selectedSchool={selectedSchool}
+            onOpenTeacher={onOpenSambungTeacher}
+            onOpenPrint={(sup) => {
+              if (sup) setPrintSupervision(sup);
+              else if (filteredSupervisions.length > 0) setPrintSupervision(filteredSupervisions[0]);
+            }}
+          />
+
+          {/* Eksplorasi Rinci Per Guru Binaan & Diagram Persentase Tambahan */}
+          <div className="border-t border-slate-200/80 pt-4">
+            <SambungPersentaseChart
+              supervisions={filteredSupervisions}
+              selectedSchool={selectedSchool}
+              onOpenTeacher={onOpenSambungTeacher}
+              showTeacherTable={true}
+            />
+          </div>
+        </div>
       )}
 
       {/* ========================================================================= */}

@@ -39,6 +39,7 @@ import { PerangkatAjarModal } from './forms/PerangkatAjarModal';
 import { PraObservasiModal } from './forms/PraObservasiModal';
 import { ObservasiKelasModal } from './forms/ObservasiKelasModal';
 import { PascaObservasiModal } from './forms/PascaObservasiModal';
+import { TabelDanGrafikKohorBerpasangan } from './TabelDanGrafikKohorBerpasangan';
 import { 
   CheckCircle2, 
   Search, 
@@ -196,6 +197,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
     key: IndikatorKunciType;
     filter: 'all' | 'optimal' | 'belum_optimal';
   } | null>(null);
+  const [showKohorModal, setShowKohorModal] = useState(false);
 
   // Cross-teacher aggregation for the 4 indicators in Kesimpulan Selidiki and Kesimpulan Uji
   const fourIndicatorsBreakdown = useMemo(() => {
@@ -6145,16 +6147,28 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
         {activeTab === 'N' && (
           <fieldset disabled={!canEdit} className="contents border-0 p-0 m-0">
             <div className="space-y-6">
-            <div className="border-b border-slate-200 pb-4">
-              <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-md bg-rose-100 text-rose-800 text-xs font-bold mb-1">
-                TAHAP N &bull; NYATAKAN
+            <div className="border-b border-slate-200 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-md bg-rose-100 text-rose-800 text-xs font-bold mb-1">
+                  TAHAP N &bull; NYATAKAN
+                </div>
+                <h3 className="text-lg font-bold text-slate-900">
+                  Perubahan Pembelajaran (Before&ndash;After)
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Setiap perubahan harus disertai bukti konkret dari pembelajaran guru {currentSupervision.teacherName}.
+                </p>
               </div>
-              <h3 className="text-lg font-bold text-slate-900">
-                Perubahan Pembelajaran (Before&ndash;After)
-              </h3>
-              <p className="text-xs text-slate-500">
-                Setiap perubahan harus disertai bukti konkret dari pembelajaran guru {currentSupervision.teacherName}.
-              </p>
+
+              <button
+                type="button"
+                onClick={() => setShowKohorModal(true)}
+                className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white text-xs font-bold flex items-center gap-2 transition-all shadow-sm cursor-pointer self-start sm:self-auto"
+                title="Buka Tabel Rekapitulasi Komparasi Kohor Berpasangan & Grafik"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-amber-300" />
+                <span>Lihat Rekap Komparasi Kohor &amp; Grafik &rarr;</span>
+              </button>
             </div>
 
             {/* Tabel Perubahan (Before–After) */}
@@ -8245,6 +8259,45 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
           </div>
         );
       })()}
+
+      {/* MODAL TABEL REKAPITULASI KOMPARASI KOHOR BERPASANGAN & GRAFIK */}
+      {showKohorModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 animate-fade-in">
+          <div className="bg-white w-full max-w-6xl rounded-3xl shadow-2xl p-6 sm:p-7 max-h-[90vh] overflow-y-auto space-y-4 border border-slate-200 relative">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold">
+                  <FileSpreadsheet className="w-5 h-5 text-indigo-700" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-slate-900">
+                    Tabel Rekapitulasi Komparasi Kohor Berpasangan &amp; Grafik
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Dihitung otomatis dari data optimal seluruh {availableSupervisions.length} guru binaan
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowKohorModal(false)}
+                className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <TabelDanGrafikKohorBerpasangan
+              supervisions={availableSupervisions}
+              selectedSchool={currentSupervision.schoolName}
+              onOpenTeacher={(id) => {
+                setSelectedId(id);
+                setShowKohorModal(false);
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

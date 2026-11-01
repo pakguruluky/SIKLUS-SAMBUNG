@@ -3,8 +3,12 @@ import { Supervision, IndikatorKunciType } from '../types';
 import { 
   getFourIndicatorsOptimalBreakdown, 
   FourIndicatorsBreakdownItem,
-  INDIKATOR_LABELS 
+  INDIKATOR_LABELS,
+  isTeacherPairedCohortValid,
+  filterPairedCohortSupervisions,
+  getTeacherIndikatorOptimalStatus
 } from '../utils/sambungCalculations';
+import { saveSupervision } from '../services/firebase';
 import { 
   FileSpreadsheet, 
   BarChart3, 
@@ -24,7 +28,10 @@ import {
   SlidersHorizontal, 
   Layers,
   Award,
-  Info
+  Info,
+  ShieldCheck,
+  Check,
+  RefreshCw
 } from 'lucide-react';
 
 interface TabelDanGrafikKohorBerpasanganProps {
@@ -32,6 +39,7 @@ interface TabelDanGrafikKohorBerpasanganProps {
   selectedSchool?: string;
   onOpenTeacher?: (supervisionId: string) => void;
   onOpenPrint?: (supervision?: Supervision) => void;
+  onUpdateSupervision?: (updated: Supervision) => void;
   className?: string;
 }
 
@@ -40,20 +48,44 @@ export const TabelDanGrafikKohorBerpasangan: React.FC<TabelDanGrafikKohorBerpasa
   selectedSchool = 'all',
   onOpenTeacher,
   onOpenPrint,
+  onUpdateSupervision,
   className = '',
 }) => {
   const [activeViewTab, setActiveViewTab] = useState<'both' | 'chart_only' | 'table_only'>('both');
   const [chartStyle, setChartStyle] = useState<'vertical_bars' | 'horizontal_bars' | 'growth_trajectory'>('vertical_bars');
   const [expandedRow, setExpandedRow] = useState<IndikatorKunciType | null>(null);
+  
+  // Strict paired cohort filter mode: default to paired_only per methodology requirement
+  const [filterMode, setFilterMode] = useState<'paired_only' | 'all_supervisions'>('paired_only');
+  const [showExcludedModal, setShowExcludedModal] = useState<boolean>(false);
+  const [saveToast, setSaveToast] = useState<string | null>(null);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState<string | null>(null);
 
-  // 1. Calculate the dynamic 4-indicators breakdown from the live cohort supervisions
-  const breakdown = useMemo(() => {
-    return getFourIndicatorsOptimalBreakdown(supervisions);
+  // 1. Strict Paired Cohort Filtering:
+  // Hanya guru yang memiliki data tersimpan lengkap dan valid pada KEDUA tahap (SELIDIKI & UJI)
+  // yang diikutsertakan dalam perbandingan agregat.
+  const pairedSupervisions = useMemo(() => {
+    return filterPairedCohortSupervisions(supervisions);
   }, [supervisions]);
 
-  const totalKohor = supervisions.length;
+  const excludedSupervisions = useMemo(() => {
+    return supervisions.filter(s => !isTeacherPairedCohortValid(s));
+  }, [supervisions]);
 
-  // 2. Structured rows for the 4 transformation indicators
+  // Target cohort group: strictly pairedSupervisions when in paired_only mode
+  const activeCohort = useMemo(() => {
+    return filterMode === 'paired_only' ? pairedSupervisions : supervisions;
+  }, [filterMode, pairedSupervisions, supervisions]);
+
+  const totalKohor = activeCohort.length;
+
+  // 2. Dynamic 4-indicators breakdown: calculated strictly from activeCohort
+  // Dengan demikian, persentase awal (BEFORE) dan akhir (AFTER) dihitung dari kelompok guru yang persis sama.
+  const breakdown = useMemo(() => {
+    return getFourIndicatorsOptimalBreakdown(activeCohort, false);
+  }, [activeCohort]);
+
+  // 3. Structured rows for the 4 transformation indicators
   const indicatorKeys: IndikatorKunciType[] = ['peranGuru', 'aktivitasMurid', 'konteksNyata', 'refleksiMurid'];
 
   const rows = useMemo(() => {
@@ -103,7 +135,7 @@ export const TabelDanGrafikKohorBerpasangan: React.FC<TabelDanGrafikKohorBerpasa
     });
   }, [breakdown, totalKohor]);
 
-  // 3. Aggregate statistics across the cohort
+  // 4. Aggregate statistics across the cohort
   const cohortStats = useMemo(() => {
     if (rows.length === 0) return { avgBefore: 0, avgAfter: 0, avgDelta: 0, topIndicator: '' };
     const avgBefore = Math.round((rows.reduce((sum, r) => sum + r.beforePct, 0) / rows.length) * 10) / 10;
@@ -119,6 +151,60 @@ export const TabelDanGrafikKohorBerpasangan: React.FC<TabelDanGrafikKohorBerpasa
       topIndicator: top ? `${top.shortTitle} (+${top.deltaPp} pp)` : '-',
     };
   }, [rows]);
+
+  // Toggle teacher optimal status directly from the drilldown and save to Backend/Firebase
+  const handleToggleOptimalStatus = async (
+    supervisionId: string,
+    stage: 'selidiki' | 'uji',
+    indKey: IndikatorKunciType
+  ) => {
+    const target = supervisions.find(s => s.id === supervisionId);
+    if (!target) return;
+
+    setIsUpdatingStatus(`${supervisionId}-${stage}-${indKey}`);
+    try {
+      const currentStatus = getTeacherIndikatorOptimalStatus(target, stage, indKey);
+      const newStatus = currentStatus === 'optimal' ? 'belum_optimal' : 'optimal';
+
+      // Deep clone target to prevent unintended direct state mutation
+      const updated: Supervision = JSON.parse(JSON.stringify(target));
+      if (!updated.sambung) updated.sambung = {} as any;
+      const sObj = updated.sambung!;
+
+      if (stage === 'selidiki') {
+        if (!sObj.selidiki) sObj.selidiki = {} as any;
+        if (!sObj.selidiki.statusOptimalPerIndikator) {
+          sObj.selidiki.statusOptimalPerIndikator = {};
+        }
+        sObj.selidiki.statusOptimalPerIndikator[indKey] = newStatus;
+      } else {
+        if (!sObj.uji) sObj.uji = {} as any;
+        if (!sObj.uji.statusOptimalPerIndikator) {
+          sObj.uji.statusOptimalPerIndikator = {};
+        }
+        sObj.uji.statusOptimalPerIndikator[indKey] = newStatus;
+      }
+
+      // 1. Save to Firebase & backend API
+      await saveSupervision(updated);
+
+      // 2. Propagate to parent state
+      onUpdateSupervision?.(updated);
+
+      setSaveToast(
+        `Status ${INDIKATOR_LABELS[indKey].shortTitle} guru ${target.teacherName} pada tahap ${
+          stage === 'selidiki' ? 'Selidiki (Before)' : 'Uji (After)'
+        } berhasil diubah ke "${newStatus === 'optimal' ? 'Sudah Optimal' : 'Belum Optimal'}" dan tersimpan permanen di Backend & Firebase.`
+      );
+      setTimeout(() => setSaveToast(null), 4000);
+    } catch (err: any) {
+      console.error('Error saving status update:', err);
+      setSaveToast('Gagal menyimpan perubahan ke database. Silakan coba kembali.');
+      setTimeout(() => setSaveToast(null), 4000);
+    } finally {
+      setIsUpdatingStatus(null);
+    }
+  };
 
   // Export table to CSV
   const handleExportCSV = () => {
@@ -137,7 +223,7 @@ export const TabelDanGrafikKohorBerpasangan: React.FC<TabelDanGrafikKohorBerpasa
     const csvRows = [
       ['Tabel Rekapitulasi Komparasi Kohor Berpasangan'],
       ['Kriteria Optimal: Status Optimal pada 4 Indikator Transformasi Pembelajaran (Selidiki vs Uji)'],
-      [`Total Kohor: ${totalKohor} Guru | Sekolah: ${selectedSchool === 'all' ? 'Semua Sekolah' : selectedSchool}`],
+      [`Total Kohor: ${totalKohor} Guru (Paired Cohort Valid) | Filter: ${filterMode === 'paired_only' ? 'Hanya Kohor Berpasangan Valid' : 'Semua Guru'}`],
       [],
       headers,
       ...rows.map(r => [
@@ -165,11 +251,30 @@ export const TabelDanGrafikKohorBerpasangan: React.FC<TabelDanGrafikKohorBerpasa
 
   return (
     <div className={`space-y-6 ${className}`}>
+      {/* Toast Notification for Persistence */}
+      {saveToast && (
+        <div className="fixed bottom-6 right-6 z-50 max-w-md bg-slate-900 text-white p-4 rounded-2xl shadow-2xl border border-emerald-500/50 flex items-start gap-3 animate-fade-in">
+          <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+          <div className="text-xs leading-relaxed flex-1">
+            <span className="font-bold text-emerald-300 block mb-0.5">Tersimpan di Backend &amp; Firebase</span>
+            {saveToast}
+          </div>
+          <button
+            type="button"
+            onClick={() => setSaveToast(null)}
+            className="text-slate-400 hover:text-white text-xs"
+          >
+            &times;
+          </button>
+        </div>
+      )}
+
       {/* ========================================================================= */}
-      {/* 1. KONTROL TAMPILAN & AKSI EKSPOR                                         */}
+      {/* 1. KONTROL TAMPILAN, FILTER KOHOR BERPASANGAN, & AKSI EKSPOR              */}
       {/* ========================================================================= */}
       <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
+          {/* Main View Mode */}
           <div className="inline-flex items-center p-1 rounded-xl bg-slate-100 border border-slate-200 text-xs font-bold">
             <button
               type="button"
@@ -203,6 +308,7 @@ export const TabelDanGrafikKohorBerpasangan: React.FC<TabelDanGrafikKohorBerpasa
             </button>
           </div>
 
+          {/* Chart Style Switcher */}
           {(activeViewTab === 'both' || activeViewTab === 'chart_only') && (
             <div className="inline-flex items-center p-1 rounded-xl bg-slate-100 border border-slate-200 text-xs font-semibold">
               <button
@@ -211,6 +317,7 @@ export const TabelDanGrafikKohorBerpasangan: React.FC<TabelDanGrafikKohorBerpasa
                 className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
                   chartStyle === 'vertical_bars' ? 'bg-white text-indigo-900 font-extrabold shadow-2xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
+                title="Tampilkan grafik batang berdiri tegak"
               >
                 Grafik Berdiri (Batang Tegak)
               </button>
@@ -220,8 +327,9 @@ export const TabelDanGrafikKohorBerpasangan: React.FC<TabelDanGrafikKohorBerpasa
                 className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
                   chartStyle === 'horizontal_bars' ? 'bg-white text-indigo-900 font-extrabold shadow-2xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
+                title="Tampilkan grafik mendatar"
               >
-                Grafik Mendatar (Horizontal)
+                Grafik Mendatar
               </button>
               <button
                 type="button"
@@ -229,14 +337,55 @@ export const TabelDanGrafikKohorBerpasangan: React.FC<TabelDanGrafikKohorBerpasa
                 className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
                   chartStyle === 'growth_trajectory' ? 'bg-white text-indigo-900 font-extrabold shadow-2xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
+                title="Tampilkan trajektori pertumbuhan"
               >
-                Trajektori Pertumbuhan
+                Trajektori
               </button>
             </div>
           )}
+
+          {/* Paired Cohort Strict Filter Pill */}
+          <div className="inline-flex items-center p-1 rounded-xl bg-indigo-50 border border-indigo-200 text-xs font-bold">
+            <button
+              type="button"
+              onClick={() => setFilterMode('paired_only')}
+              className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
+                filterMode === 'paired_only' ? 'bg-indigo-600 text-white shadow-xs' : 'text-indigo-900 hover:bg-indigo-100'
+              }`}
+              title="Hanya guru yang memiliki data tersimpan lengkap dan valid pada kedua tahap (SELIDIKI & UJI)"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-amber-300" />
+              <span>Kohor Berpasangan Lengkap ({pairedSupervisions.length} Guru)</span>
+            </button>
+            {excludedSupervisions.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setFilterMode('all_supervisions')}
+                className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
+                  filterMode === 'all_supervisions' ? 'bg-slate-700 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-200'
+                }`}
+                title="Tampilkan semua data guru termasuk yang belum lengkap tahap Uji"
+              >
+                <span>Semua Data ({supervisions.length})</span>
+              </button>
+            )}
+          </div>
         </div>
 
+        {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-2">
+          {excludedSupervisions.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowExcludedModal(true)}
+              className="px-2.5 py-1.5 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
+              title="Lihat guru yang disaring keluar dari kohor berpasangan"
+            >
+              <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
+              <span>{excludedSupervisions.length} Guru Belum Lengkap</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={handleExportCSV}
@@ -256,6 +405,24 @@ export const TabelDanGrafikKohorBerpasangan: React.FC<TabelDanGrafikKohorBerpasa
               <span>Cetak Rekap</span>
             </button>
           )}
+        </div>
+      </div>
+
+      {/* Metodologi Info Banner */}
+      <div className="bg-gradient-to-r from-indigo-50/90 via-blue-50/70 to-indigo-50/90 rounded-2xl p-4 border border-indigo-200/80 shadow-2xs flex items-start gap-3">
+        <div className="w-7 h-7 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 mt-0.5">
+          <CheckCircle2 className="w-4 h-4 text-white" />
+        </div>
+        <div className="text-xs space-y-0.5">
+          <h5 className="font-extrabold text-indigo-950 flex items-center gap-2">
+            <span>Perbandingan Kohor Berpasangan (Paired Cohort):</span>
+            <span className="text-[10px] font-black px-2 py-0.2 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300">
+              Valid: {totalKohor} Guru
+            </span>
+          </h5>
+          <p className="text-slate-600 leading-relaxed text-[11px]">
+            Hanya guru yang memiliki data tersimpan lengkap dan valid pada kedua tahap (SELIDIKI &amp; UJI) yang diikutsertakan dalam perbandingan agregat. Dengan demikian, persentase awal (BEFORE) dan akhir (AFTER) dihitung dari kelompok guru yang persis sama ({totalKohor} guru dalam kohor berpasangan).
+          </p>
         </div>
       </div>
 
@@ -329,7 +496,7 @@ export const TabelDanGrafikKohorBerpasangan: React.FC<TabelDanGrafikKohorBerpasa
                           isExpanded ? 'bg-indigo-50/20' : ''
                         }`}
                         onClick={() => setExpandedRow(isExpanded ? null : row.key)}
-                        title="Klik untuk melihat rincian nama guru pada indikator ini"
+                        title="Klik untuk melihat rincian nama guru dan mengubah status langsung"
                       >
                         {/* 1. No */}
                         <td className="py-4 px-4 text-center font-bold text-slate-400">
@@ -384,71 +551,167 @@ export const TabelDanGrafikKohorBerpasangan: React.FC<TabelDanGrafikKohorBerpasa
                         </td>
                       </tr>
 
-                      {/* Baris Rincian Guru Terbuka (Drilldown) */}
+                      {/* Baris Rincian Guru Terbuka (Drilldown dengan kemampuan Simpan Status) */}
                       {isExpanded && (
                         <tr className="bg-slate-50/90">
-                          <td colSpan={9} className="py-3 px-6 border-y border-indigo-100 animate-fade-in">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-1 text-xs">
-                              {/* Before Drilldown */}
-                              <div className="bg-white p-3.5 rounded-xl border border-slate-200 space-y-2">
-                                <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
-                                  <span className="font-extrabold text-slate-700 flex items-center gap-1.5">
-                                    <span className="w-2 h-2 rounded-full bg-slate-400" />
-                                    <span>Guru Optimal di Tahap Selidiki (Baseline):</span>
-                                  </span>
-                                  <span className="font-black px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 text-[11px]">
-                                    {row.beforeCount} dari {row.totalKohor} Guru ({row.beforePct}%)
-                                  </span>
-                                </div>
-                                {row.item.selidiki.optimalTeachers.length > 0 ? (
-                                  <div className="flex flex-wrap gap-1.5">
-                                    {row.item.selidiki.optimalTeachers.map((t) => (
-                                      <button
-                                        key={t.id}
-                                        type="button"
-                                        onClick={() => onOpenTeacher && onOpenTeacher(t.id)}
-                                        className="px-2 py-1 rounded-lg bg-slate-50 hover:bg-indigo-50 text-slate-800 text-[11px] font-semibold border border-slate-200 transition-colors flex items-center gap-1 cursor-pointer"
-                                        title={`Buka supervisi ${t.teacherName} (${t.subject})`}
-                                      >
-                                        <span>{t.teacherName}</span>
-                                        <ExternalLink className="w-2.5 h-2.5 text-slate-400" />
-                                      </button>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  <span className="text-slate-400 italic text-[11px]">Belum ada guru optimal di tahap awal.</span>
-                                )}
+                          <td colSpan={9} className="py-4 px-6 border-y border-indigo-100 animate-fade-in">
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between text-xs border-b border-slate-200 pb-2">
+                                <span className="font-extrabold text-indigo-950 flex items-center gap-1.5">
+                                  <Sparkles className="w-4 h-4 text-amber-500" />
+                                  <span>Rincian &amp; Penetapan Status Optimal Guru pada {row.title}</span>
+                                </span>
+                                <span className="text-[11px] text-slate-500">
+                                  Klik tombol status untuk mengubah &amp; menyimpan langsung ke Firebase
+                                </span>
                               </div>
 
-                              {/* After Drilldown */}
-                              <div className="bg-white p-3.5 rounded-xl border border-emerald-200 space-y-2">
-                                <div className="flex items-center justify-between border-b border-emerald-100 pb-1.5">
-                                  <span className="font-extrabold text-emerald-900 flex items-center gap-1.5">
-                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                                    <span>Guru Optimal di Tahap Uji (Pasca Pendampingan):</span>
-                                  </span>
-                                  <span className="font-black px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[11px]">
-                                    {row.afterCount} dari {row.totalKohor} Guru ({row.afterPct}%)
-                                  </span>
-                                </div>
-                                {row.item.uji.optimalTeachers.length > 0 ? (
-                                  <div className="flex flex-wrap gap-1.5">
-                                    {row.item.uji.optimalTeachers.map((t) => (
-                                      <button
-                                        key={t.id}
-                                        type="button"
-                                        onClick={() => onOpenTeacher && onOpenTeacher(t.id)}
-                                        className="px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-900 text-[11px] font-bold border border-emerald-300 transition-colors flex items-center gap-1 cursor-pointer"
-                                        title={`Buka supervisi ${t.teacherName} (${t.subject})`}
-                                      >
-                                        <span>{t.teacherName}</span>
-                                        <ExternalLink className="w-2.5 h-2.5 text-emerald-600" />
-                                      </button>
-                                    ))}
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                                {/* Before Drilldown */}
+                                <div className="bg-white p-4 rounded-2xl border border-slate-200 space-y-3">
+                                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                                    <span className="font-extrabold text-slate-700 flex items-center gap-1.5">
+                                      <span className="w-2.5 h-2.5 rounded-full bg-slate-500" />
+                                      <span>Kondisi Awal (Tahap Selidiki / Baseline):</span>
+                                    </span>
+                                    <span className="font-black px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 text-[11px]">
+                                      {row.beforeCount} dari {row.totalKohor} Guru ({row.beforePct}%)
+                                    </span>
                                   </div>
-                                ) : (
-                                  <span className="text-slate-400 italic text-[11px]">Belum ada guru optimal di tahap uji.</span>
-                                )}
+
+                                  <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                                    {activeCohort.map((t) => {
+                                      const status = getTeacherIndikatorOptimalStatus(t, 'selidiki', row.key);
+                                      const isOptimal = status === 'optimal';
+                                      const isLoading = isUpdatingStatus === `${t.id}-selidiki-${row.key}`;
+
+                                      return (
+                                        <div
+                                          key={t.id}
+                                          className="p-2.5 rounded-xl border border-slate-100 bg-slate-50/60 flex items-center justify-between gap-2 hover:bg-slate-50 transition-colors"
+                                        >
+                                          <div>
+                                            <span className="font-extrabold text-slate-800 block text-xs">{t.teacherName}</span>
+                                            <span className="text-[10px] text-slate-400">{t.subject} &bull; {t.schoolName}</span>
+                                          </div>
+
+                                          <div className="flex items-center gap-1.5 shrink-0">
+                                            <button
+                                              type="button"
+                                              disabled={isLoading}
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleToggleOptimalStatus(t.id, 'selidiki', row.key);
+                                              }}
+                                              className={`px-2.5 py-1 rounded-lg text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer ${
+                                                isOptimal
+                                                  ? 'bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border border-emerald-300'
+                                                  : 'bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300'
+                                              }`}
+                                              title="Klik untuk mengubah dan menyimpan status optimal Selidiki"
+                                            >
+                                              {isLoading ? (
+                                                <RefreshCw className="w-3 h-3 animate-spin text-slate-600" />
+                                              ) : isOptimal ? (
+                                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                              ) : (
+                                                <AlertCircle className="w-3 h-3 text-amber-600" />
+                                              )}
+                                              <span>{isOptimal ? 'Sudah Optimal' : 'Belum Optimal'}</span>
+                                            </button>
+
+                                            {onOpenTeacher && (
+                                              <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  onOpenTeacher(t.id);
+                                                }}
+                                                className="p-1 rounded-lg hover:bg-indigo-50 text-indigo-600 transition-colors cursor-pointer"
+                                                title="Buka Portofolio Guru"
+                                              >
+                                                <ExternalLink className="w-3.5 h-3.5" />
+                                              </button>
+                                            )}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+
+                                {/* After Drilldown */}
+                                <div className="bg-white p-4 rounded-2xl border border-emerald-200 space-y-3">
+                                  <div className="flex items-center justify-between border-b border-emerald-100 pb-2">
+                                    <span className="font-extrabold text-emerald-900 flex items-center gap-1.5">
+                                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                                      <span>Hasil Akhir (Tahap Uji / Pasca Pendampingan):</span>
+                                    </span>
+                                    <span className="font-black px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-900 text-[11px]">
+                                      {row.afterCount} dari {row.totalKohor} Guru ({row.afterPct}%)
+                                    </span>
+                                  </div>
+
+                                  <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                                    {activeCohort.map((t) => {
+                                      const status = getTeacherIndikatorOptimalStatus(t, 'uji', row.key);
+                                      const isOptimal = status === 'optimal';
+                                      const isLoading = isUpdatingStatus === `${t.id}-uji-${row.key}`;
+
+                                      return (
+                                        <div
+                                          key={t.id}
+                                          className="p-2.5 rounded-xl border border-emerald-100/80 bg-emerald-50/30 flex items-center justify-between gap-2 hover:bg-emerald-50/60 transition-colors"
+                                        >
+                                          <div>
+                                            <span className="font-extrabold text-slate-800 block text-xs">{t.teacherName}</span>
+                                            <span className="text-[10px] text-slate-400">{t.subject} &bull; {t.schoolName}</span>
+                                          </div>
+
+                                          <div className="flex items-center gap-1.5 shrink-0">
+                                            <button
+                                              type="button"
+                                              disabled={isLoading}
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleToggleOptimalStatus(t.id, 'uji', row.key);
+                                              }}
+                                              className={`px-2.5 py-1 rounded-lg text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer ${
+                                                isOptimal
+                                                  ? 'bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border border-emerald-300'
+                                                  : 'bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300'
+                                              }`}
+                                              title="Klik untuk mengubah dan menyimpan status optimal Uji"
+                                            >
+                                              {isLoading ? (
+                                                <RefreshCw className="w-3 h-3 animate-spin text-slate-600" />
+                                              ) : isOptimal ? (
+                                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                              ) : (
+                                                <AlertCircle className="w-3 h-3 text-amber-600" />
+                                              )}
+                                              <span>{isOptimal ? 'Sudah Optimal' : 'Belum Optimal'}</span>
+                                            </button>
+
+                                            {onOpenTeacher && (
+                                              <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  onOpenTeacher(t.id);
+                                                }}
+                                                className="p-1 rounded-lg hover:bg-indigo-50 text-indigo-600 transition-colors cursor-pointer"
+                                                title="Buka Portofolio Guru"
+                                              >
+                                                <ExternalLink className="w-3.5 h-3.5" />
+                                              </button>
+                                            )}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
                               </div>
                             </div>
                           </td>
@@ -466,7 +729,7 @@ export const TabelDanGrafikKohorBerpasangan: React.FC<TabelDanGrafikKohorBerpasa
             <div className="flex items-center gap-2 text-slate-600 font-semibold">
               <span className="inline-block w-2 h-2 rounded-full bg-emerald-500" />
               <span>
-                Kohor Berpasangan: <strong>{totalKohor} Guru Terbina</strong> pada instrumen supervisi yang sama.
+                Kohor Berpasangan: <strong>{totalKohor} Guru Terbina</strong> dihitung dari kelompok guru yang persis sama pada kedua tahap (Selidiki &amp; Uji).
               </span>
             </div>
             <div className="flex items-center gap-3">
@@ -502,7 +765,7 @@ export const TabelDanGrafikKohorBerpasangan: React.FC<TabelDanGrafikKohorBerpasa
             {/* Legend */}
             <div className="flex flex-wrap items-center gap-3 text-xs font-bold shrink-0">
               <div className="flex items-center gap-1.5">
-                <span className="w-3.5 h-3.5 rounded bg-slate-400 border border-slate-500/30" />
+                <span className="w-3.5 h-3.5 rounded bg-slate-500 border border-slate-600/30" />
                 <span className="text-slate-600">Before (Selidiki)</span>
               </div>
               <div className="flex items-center gap-1.5">
@@ -550,21 +813,6 @@ export const TabelDanGrafikKohorBerpasangan: React.FC<TabelDanGrafikKohorBerpasa
           {/* ========================================================================= */}
           {chartStyle === 'vertical_bars' && (
             <div className="space-y-6 pt-2">
-              {/* Paired Cohort Info Banner */}
-              <div className="bg-gradient-to-r from-indigo-50/90 via-blue-50/70 to-indigo-50/90 rounded-2xl p-4 border border-indigo-200/80 shadow-2xs flex items-start gap-3">
-                <div className="w-7 h-7 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 mt-0.5">
-                  <CheckCircle2 className="w-4 h-4 text-white" />
-                </div>
-                <div className="text-xs space-y-0.5">
-                  <h5 className="font-extrabold text-indigo-950">
-                    Perbandingan Kohor Berpasangan (Paired Cohort):
-                  </h5>
-                  <p className="text-slate-600 leading-relaxed text-[11px]">
-                    Hanya guru yang memiliki data tersimpan lengkap dan valid pada kedua tahap (SELIDIKI &amp; UJI) yang diikutsertakan dalam perbandingan agregat. Dengan demikian, persentase awal (BEFORE) dan akhir (AFTER) dihitung dari kelompok guru yang persis sama ({totalKohor} guru dalam kohor berpasangan).
-                  </p>
-                </div>
-              </div>
-
               {/* Main Vertical Chart Area */}
               <div className="bg-slate-50/80 rounded-3xl p-5 sm:p-7 border border-slate-200 shadow-2xs space-y-6">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/80 pb-3">
@@ -778,7 +1026,7 @@ export const TabelDanGrafikKohorBerpasangan: React.FC<TabelDanGrafikKohorBerpasa
             </div>
           )}
 
-          {/* Render Mode B: Trajectory Growth Slope */}
+          {/* Render Mode C: Trajectory Growth Slope */}
           {chartStyle === 'growth_trajectory' && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
               {rows.map((row) => (
@@ -838,6 +1086,74 @@ export const TabelDanGrafikKohorBerpasangan: React.FC<TabelDanGrafikKohorBerpasa
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* MODAL GURU YANG DISARING KELUAR (BELUM LENGKAP KEDUA TAHAP) */}
+      {showExcludedModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 animate-fade-in">
+          <div className="bg-white w-full max-w-xl rounded-3xl shadow-2xl p-6 border border-slate-200 relative space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold">
+                  <AlertCircle className="w-4 h-4 text-amber-700" />
+                </div>
+                <div>
+                  <h4 className="font-extrabold text-slate-900 text-sm">
+                    Guru Disaring dari Kohor Berpasangan
+                  </h4>
+                  <p className="text-[11px] text-slate-500">
+                    Sesuai metodologi, hanya guru dengan data lengkap di SELIDIKI &amp; UJI yang diikutsertakan
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowExcludedModal(false)}
+                className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 transition-colors cursor-pointer"
+              >
+                &times;
+              </button>
+            </div>
+
+            <div className="space-y-2 max-h-60 overflow-y-auto pr-1 text-xs">
+              {excludedSupervisions.map((t) => (
+                <div key={t.id} className="p-3 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between gap-2">
+                  <div>
+                    <span className="font-bold text-slate-900 block">{t.teacherName}</span>
+                    <span className="text-[10px] text-slate-500">{t.subject} &bull; {t.schoolName}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 text-[10px] font-bold block mb-1">
+                      Perlu Lengkapi Uji
+                    </span>
+                    {onOpenTeacher && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowExcludedModal(false);
+                          onOpenTeacher(t.id);
+                        }}
+                        className="text-[11px] text-indigo-700 font-bold hover:underline"
+                      >
+                        Buka Supervisi &rarr;
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-2 border-t border-slate-100 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowExcludedModal(false)}
+                className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-colors cursor-pointer"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

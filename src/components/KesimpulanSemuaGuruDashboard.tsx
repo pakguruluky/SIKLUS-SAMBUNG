@@ -657,6 +657,7 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
               if (sup) setPrintSupervision(sup);
               else if (filteredSupervisions.length > 0) setPrintSupervision(filteredSupervisions[0]);
             }}
+            onUpdateSupervision={onUpdateSupervision}
           />
 
           {/* Eksplorasi Rinci Per Guru Binaan & Diagram Persentase Tambahan */}

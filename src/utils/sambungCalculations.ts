@@ -445,13 +445,57 @@ export interface FourIndicatorsBreakdownItem {
 }
 
 /**
- * 6. Agregasi multi-guru dari keempat indikator untuk Kesimpulan Selidiki & Kesimpulan Uji
+ * 6. Kriteria Validitas Kohor Berpasangan (Paired Cohort):
+ * Hanya guru yang memiliki data tersimpan lengkap dan valid pada KEDUA tahap (SELIDIKI & UJI)
+ * yang diikutsertakan dalam perbandingan agregat.
+ * Dengan demikian, persentase awal (BEFORE) dan akhir (AFTER) dihitung dari kelompok guru yang persis sama.
+ */
+export function isTeacherPairedCohortValid(s: Supervision): boolean {
+  if (!s) return false;
+
+  // 1. Validitas Tahap SELIDIKI (Baseline)
+  const hasSelidikiTelaah = typeof s.perangkatAjar?.telaahSummary?.finalScore === 'number' && s.perangkatAjar.telaahSummary.finalScore > 0;
+  const hasSelidikiScores = Boolean(s.perangkatAjar?.telaahScores && Object.keys(s.perangkatAjar.telaahScores).length > 0);
+  const hasSelidikiObservasi = typeof s.observasiKelas?.score === 'number' && s.observasiKelas.score > 0;
+  const hasSelidikiMatriks = Boolean(s.sambung?.selidiki?.matriksBefore?.peranGuru && s.sambung.selidiki.matriksBefore.peranGuru.trim() !== '');
+  const hasSelidikiStatus = Boolean(s.sambung?.selidiki?.statusOptimalPerIndikator && Object.keys(s.sambung.selidiki.statusOptimalPerIndikator).length > 0);
+
+  const isSelidikiValid = hasSelidikiTelaah || hasSelidikiScores || hasSelidikiObservasi || hasSelidikiMatriks || hasSelidikiStatus;
+
+  // 2. Validitas Tahap UJI (Hasil Intervensi Pasca Pembinaan)
+  const hasUjiObservasi = typeof s.sambung?.uji?.observasiPelaksanaan?.persentaseCapaian === 'number' && s.sambung.uji.observasiPelaksanaan.persentaseCapaian > 0;
+  const hasUjiObsItems = Boolean(s.sambung?.uji?.observasiPelaksanaan?.items && Object.keys(s.sambung.uji.observasiPelaksanaan.items).length > 0);
+  const hasUjiPerbaikanObs = typeof s.observasiKelasPerbaikan?.score === 'number' && s.observasiKelasPerbaikan.score > 0;
+  const hasUjiPerbaikanTelaah = typeof s.perangkatAjarPerbaikan?.telaahSummary?.finalScore === 'number' && s.perangkatAjarPerbaikan.telaahSummary.finalScore > 0;
+  const hasUjiMatriks = Boolean(s.sambung?.uji?.matriksAfter?.peranGuru && s.sambung.uji.matriksAfter.peranGuru.trim() !== '');
+  const hasUjiStatus = Boolean(s.sambung?.uji?.statusOptimalPerIndikator && Object.keys(s.sambung.uji.statusOptimalPerIndikator).length > 0);
+  const hasNyatakanBeforeAfter = Boolean(s.sambung?.nyatakan?.beforeAfter && s.sambung.nyatakan.beforeAfter.length >= 4);
+
+  const isUjiValid = hasUjiObservasi || hasUjiObsItems || hasUjiPerbaikanObs || hasUjiPerbaikanTelaah || hasUjiMatriks || hasUjiStatus || hasNyatakanBeforeAfter;
+
+  // Harus valid dan tersimpan pada KEDUA tahap (berpasangan)
+  return isSelidikiValid && isUjiValid;
+}
+
+export function filterPairedCohortSupervisions(supervisions: Supervision[]): Supervision[] {
+  return supervisions.filter(isTeacherPairedCohortValid);
+}
+
+/**
+ * 7. Agregasi multi-guru dari keempat indikator untuk Kesimpulan Selidiki & Kesimpulan Uji
+ * Jika requirePairedCohort bernilai true (default), hanya guru yang memiliki data valid
+ * pada KEDUA tahap (SELIDIKI & UJI) yang diikutsertakan.
  */
 export function getFourIndicatorsOptimalBreakdown(
-  supervisions: Supervision[]
+  supervisions: Supervision[],
+  requirePairedCohort: boolean = false
 ): Record<IndikatorKunciType, FourIndicatorsBreakdownItem> {
+  const targetSupervisions = requirePairedCohort 
+    ? filterPairedCohortSupervisions(supervisions) 
+    : supervisions;
+
   const keys: IndikatorKunciType[] = ['peranGuru', 'aktivitasMurid', 'konteksNyata', 'refleksiMurid'];
-  const total = supervisions.length || 1;
+  const total = targetSupervisions.length || 1;
 
   const result = {} as Record<IndikatorKunciType, FourIndicatorsBreakdownItem>;
 
@@ -461,7 +505,7 @@ export function getFourIndicatorsOptimalBreakdown(
     const uOpt: TeacherMiniInfo[] = [];
     const uBelum: TeacherMiniInfo[] = [];
 
-    supervisions.forEach((sup) => {
+    targetSupervisions.forEach((sup) => {
       const teacherInfo: TeacherMiniInfo = {
         id: sup.id,
         name: sup.teacherName,
@@ -486,7 +530,7 @@ export function getFourIndicatorsOptimalBreakdown(
       shortTitle: INDIKATOR_LABELS[key].shortTitle,
       iconName: INDIKATOR_LABELS[key].iconName,
       selidiki: {
-        total: supervisions.length,
+        total: targetSupervisions.length,
         optimalCount: sOpt.length,
         belumOptimalCount: sBelum.length,
         optimalPercentage: Math.round((sOpt.length / total) * 1000) / 10,
@@ -495,7 +539,7 @@ export function getFourIndicatorsOptimalBreakdown(
         belumOptimalTeachers: sBelum,
       },
       uji: {
-        total: supervisions.length,
+        total: targetSupervisions.length,
         optimalCount: uOpt.length,
         belumOptimalCount: uBelum.length,
         optimalPercentage: Math.round((uOpt.length / total) * 1000) / 10,

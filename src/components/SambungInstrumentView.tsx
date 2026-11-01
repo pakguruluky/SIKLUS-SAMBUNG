@@ -8294,6 +8294,12 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                 setSelectedId(id);
                 setShowKohorModal(false);
               }}
+              onUpdateSupervision={(upd) => {
+                onUpdateSupervision(upd);
+                if (upd.id === currentSupervision.id) {
+                  setSambungDraft(upd.sambung ? JSON.parse(JSON.stringify(upd.sambung)) : null);
+                }
+              }}
             />
           </div>
         </div>

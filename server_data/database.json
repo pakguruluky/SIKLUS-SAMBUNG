@@ -130,7 +130,7 @@
       "supervisorName": "Kusnandar, M.Si",
       "supervisorRole": "admin",
       "createdAt": "2025-08-15T08:30:00.000Z",
-      "updatedAt": "2026-10-31T07:47:58.866Z",
+      "updatedAt": "2026-11-02T06:09:02.937Z",
       "sambung": {
         "selidiki": {
           "tanggal": "2025-08-10",
@@ -188,7 +188,7 @@
             "refleksiMurid": "Sama sekali tidak ada alokasi waktu refleksi di akhir jam belajar."
           },
           "statusOptimalPerIndikator": {
-            "peranGuru": "belum_optimal",
+            "peranGuru": "optimal",
             "aktivitasMurid": "belum_optimal",
             "konteksNyata": "belum_optimal",
             "refleksiMurid": "belum_optimal"
@@ -15965,5 +15965,5 @@
   "deletedSupervisionIds": [],
   "deletedUserIds": [],
   "deletedUserNames": [],
-  "lastUpdated": "2026-10-31T07:47:58.866Z"
+  "lastUpdated": "2026-11-02T06:09:02.937Z"
 }

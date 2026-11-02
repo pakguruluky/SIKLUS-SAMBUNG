@@ -177,12 +177,24 @@ export const TabelDanGrafikKohorBerpasangan: React.FC<TabelDanGrafikKohorBerpasa
           sObj.selidiki.statusOptimalPerIndikator = {};
         }
         sObj.selidiki.statusOptimalPerIndikator[indKey] = newStatus;
+        if (sObj.selidiki.matriksBefore) {
+          if (!sObj.selidiki.matriksBefore.statusOptimalPerIndikator) {
+            sObj.selidiki.matriksBefore.statusOptimalPerIndikator = {};
+          }
+          sObj.selidiki.matriksBefore.statusOptimalPerIndikator[indKey] = newStatus;
+        }
       } else {
         if (!sObj.uji) sObj.uji = {} as any;
         if (!sObj.uji.statusOptimalPerIndikator) {
           sObj.uji.statusOptimalPerIndikator = {};
         }
         sObj.uji.statusOptimalPerIndikator[indKey] = newStatus;
+        if (sObj.uji.matriksAfter) {
+          if (!sObj.uji.matriksAfter.statusOptimalPerIndikator) {
+            sObj.uji.matriksAfter.statusOptimalPerIndikator = {};
+          }
+          sObj.uji.matriksAfter.statusOptimalPerIndikator[indKey] = newStatus;
+        }
       }
 
       // 1. Save to Firebase & backend API

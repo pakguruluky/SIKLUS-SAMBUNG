@@ -116,7 +116,7 @@ export function cleanForFirestore<T>(obj: T): T {
     }
     const cleaned: Record<string, any> = {};
     for (const [key, val] of Object.entries(obj)) {
-      if (val !== undefined) {
+      if (val !== undefined && typeof val !== 'function') {
         cleaned[key] = cleanForFirestore(val);
       }
     }
@@ -128,7 +128,7 @@ export function cleanForFirestore<T>(obj: T): T {
 // Safe timeout wrapper for all Firestore network promises to guarantee UI never freezes or hangs
 export async function withFirestoreTimeout<T>(
   promise: Promise<T>,
-  timeoutMs = 800,
+  timeoutMs = 3500,
   fallbackValue?: T
 ): Promise<T> {
   let timer: any;
@@ -977,7 +977,7 @@ export async function ensureInitialSupervisions(): Promise<Supervision[]> {
 
     // First time bootstrap: seed SAMPLE_SUPERVISIONS to Firestore
     for (const sup of SAMPLE_SUPERVISIONS) {
-      await setDoc(doc(db, 'supervisions', sup.id), sup, { merge: true });
+      await setDoc(doc(db, 'supervisions', sup.id), cleanForFirestore(sup), { merge: true });
     }
     saveLocalSupervisions(SAMPLE_SUPERVISIONS);
     return SAMPLE_SUPERVISIONS;
@@ -1007,7 +1007,7 @@ export async function fetchSupervisions(userProfile?: UserProfile | null): Promi
     // 2. Non-blocking Firestore sync (if available and newer)
     try {
       const q = collection(db, 'supervisions');
-      const snap = await withFirestoreTimeout(getDocs(q), 600, null);
+      const snap = await withFirestoreTimeout(getDocs(q), 3500, null);
       if (snap && !snap.empty) {
         const firestoreSups = snap.docs.map(d => normalizeSupervisionData({ id: d.id, ...d.data() } as Supervision));
         results = mergeSupervisionsByTimestamp(results, firestoreSups);
@@ -1154,11 +1154,11 @@ export async function saveSupervision(supervision: Partial<Supervision> & { id?:
     console.warn('Backend API save supervision notice:', apiErr);
   }
 
-  // 3. Persist to Firebase Firestore without blocking UI
+  // 3. Persist to Firebase Firestore
   try {
     const docRef = doc(db, 'supervisions', targetId);
     const cleaned = cleanForFirestore(fullData);
-    withFirestoreTimeout(setDoc(docRef, cleaned, { merge: true }), 600).catch(() => {});
+    await withFirestoreTimeout(setDoc(docRef, cleaned, { merge: true }), 4500);
     return targetId;
   } catch (err) {
     console.warn('Firestore write notice (saved in local and backend storage):', err);
@@ -1232,8 +1232,8 @@ export async function syncAllInitialDataToFirestore() {
 
     // 2. Ensure default users exist in Firestore only if not present yet
     try {
-      const usersSnap = await getDocs(collection(db, 'users'));
-      const existingUserIds = new Set(usersSnap.docs.map(d => d.id));
+      const usersSnap = await withFirestoreTimeout(getDocs(collection(db, 'users')), 3500, null);
+      const existingUserIds = new Set(usersSnap?.docs.map(d => d.id) || []);
       for (const u of DEFAULT_USERS) {
         if (!existingUserIds.has(u.uid)) {
           await setDoc(doc(db, 'users', u.uid), cleanForFirestore(u), { merge: true });
@@ -1243,11 +1243,40 @@ export async function syncAllInitialDataToFirestore() {
       console.warn('Users bootstrap notice:', userErr);
     }
 
-    // 3. Ensure Supervisions exist in Firestore:
-    // If Firestore has data, ensureInitialSupervisions downloads and caches them locally!
-    // If Firestore is empty, it seeds SAMPLE_SUPERVISIONS once to Firestore.
-    // It will NEVER overwrite newer cloud data with older local storage on another device.
-    await ensureInitialSupervisions();
+    // 3. Ensure Supervisions exist in Firestore and sync bidirectionally with Backend API
+    try {
+      const backendSups = await apiFetchSupervisions();
+      const localSups = loadLocalSupervisions() || [];
+      const primarySups = backendSups && backendSups.length > 0 ? backendSups : (localSups.length > 0 ? localSups : SAMPLE_SUPERVISIONS);
+
+      const snap = await withFirestoreTimeout(getDocs(collection(db, 'supervisions')), 3500, null);
+      const existingFirestoreMap = new Map<string, any>();
+      if (snap && !snap.empty) {
+        snap.docs.forEach(d => existingFirestoreMap.set(d.id, d.data()));
+      }
+
+      // Sync any missing or newer from backend/local to Firestore
+      for (const sup of primarySups) {
+        const exist = existingFirestoreMap.get(sup.id);
+        const supTime = sup.updatedAt ? new Date(sup.updatedAt).getTime() : 0;
+        const existTime = exist?.updatedAt ? new Date(exist.updatedAt).getTime() : 0;
+        if (!exist || supTime > existTime) {
+          await setDoc(doc(db, 'supervisions', sup.id), cleanForFirestore(sup), { merge: true });
+        }
+      }
+
+      // Sync any from Firestore to backend API
+      if (snap && !snap.empty) {
+        for (const docSnap of snap.docs) {
+          const fsData = normalizeSupervisionData({ id: docSnap.id, ...docSnap.data() } as Supervision);
+          apiSaveSupervision(fsData).catch(() => {});
+        }
+      }
+    } catch (supErr) {
+      console.warn('Supervisions bootstrap notice:', supErr);
+      await ensureInitialSupervisions();
+    }
+
     console.log(`Firebase Firestore synchronized successfully with project: ${firebaseConfig.projectId}`);
   } catch (err) {
     console.warn('Notice during Firestore background sync:', err);

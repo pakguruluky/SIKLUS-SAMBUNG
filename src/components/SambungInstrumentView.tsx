@@ -452,10 +452,9 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
           sambung: sambungDraft,
           updatedAt: new Date().toISOString(),
         };
-        await saveSupervision(updated);
         onUpdateSupervision(updated);
       } catch (err) {
-        console.warn('Debounced cloud auto-save notice:', err);
+        console.warn('Debounced auto-save notice:', err);
       }
     }, 1500);
 

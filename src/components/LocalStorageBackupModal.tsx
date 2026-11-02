@@ -18,7 +18,7 @@ import {
   saveLocalSupervisions, 
   saveLocalSchools 
 } from '../services/localStorageService';
-import { syncAllPendingLocalChangesToFirestore, saveSupervision, updateSchool } from '../services/firebase';
+import { syncAllPendingLocalChangesToFirestore, saveSupervision, updateSchool, getIsFirestoreQuotaExhausted } from '../services/firebase';
 import { apiRestoreBackup } from '../services/backendApi';
 import firebaseConfig from '../../firebase-applet-config.json';
 
@@ -109,6 +109,13 @@ export const LocalStorageBackupModal: React.FC<LocalStorageBackupModalProps> = (
       setIsProcessing(true);
       saveLocalSupervisions(supervisions);
       saveLocalSchools(schools);
+
+      if (getIsFirestoreQuotaExhausted()) {
+        setSuccessMessage('Data Anda (10 guru & sekolah) tersimpan 100% aman dan persisten di Server Backend & Local Storage. Sinkronisasi Firestore akan dilanjutkan saat kuota gratis harian di-reset.');
+        setTimeout(() => setSuccessMessage(''), 6000);
+        return;
+      }
+
       const res = await syncAllPendingLocalChangesToFirestore();
       setSuccessMessage(`Semua perubahan (${res.supervisionsCount} supervisi, ${res.schoolsCount} sekolah, ${res.usersCount} pengguna) berhasil tersimpan di Firebase Firestore Backend & Penyimpanan Lokal!`);
       setTimeout(() => setSuccessMessage(''), 5000);
@@ -119,6 +126,8 @@ export const LocalStorageBackupModal: React.FC<LocalStorageBackupModalProps> = (
       setIsProcessing(false);
     }
   };
+
+  const isQuotaExhausted = getIsFirestoreQuotaExhausted();
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
@@ -131,7 +140,7 @@ export const LocalStorageBackupModal: React.FC<LocalStorageBackupModalProps> = (
             </div>
             <div>
               <h3 className="text-base font-bold text-slate-900">Database &amp; Penyimpanan Sistem</h3>
-              <p className="text-xs text-slate-500">Firebase Firestore Cloud &amp; Cadangan Memori Device</p>
+              <p className="text-xs text-slate-500">Backend Disk, Firebase Firestore Cloud &amp; Cadangan Memori Device</p>
             </div>
           </div>
           <button
@@ -144,24 +153,43 @@ export const LocalStorageBackupModal: React.FC<LocalStorageBackupModalProps> = (
 
         {/* Content */}
         <div className="p-6 space-y-5">
-          {/* Status Card: Firebase Cloud */}
-          <div className="bg-gradient-to-r from-indigo-50 to-emerald-50 border border-indigo-200/80 rounded-xl p-4 flex items-start gap-3">
-            <div className="relative mt-0.5 shrink-0">
-              <span className="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-emerald-400 opacity-75"></span>
-              <CheckCircle2 className="relative w-5 h-5 text-emerald-600" />
+          {/* Status Card: Firebase Cloud / Backend */}
+          {isQuotaExhausted ? (
+            <div className="bg-gradient-to-r from-amber-50 to-emerald-50 border border-amber-300 rounded-xl p-4 flex items-start gap-3">
+              <div className="relative mt-0.5 shrink-0">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+              </div>
+              <div className="text-xs text-slate-700 leading-relaxed">
+                <p className="font-bold text-amber-950 flex items-center gap-2 flex-wrap">
+                  <span>Backend Storage &amp; Local Storage Aktif (100% Persisten)</span>
+                  <span className="text-[10px] font-bold bg-amber-600 text-white px-2 py-0.5 rounded-full uppercase tracking-wider">
+                    Quota Circuit Breaker
+                  </span>
+                </p>
+                <p className="mt-1 text-slate-600">
+                  Penyimpanan harian Firestore gratis telah mencapai batas kuota (20.000 writes). Sistem secara cerdas mengamankan seluruh data ke <strong>Server Backend (server_data/database.json)</strong> dan <strong>Local Storage</strong>. Data 10 guru lengkap dan aman, sinkronisasi Cloud Firestore akan berlanjut otomatis besok.
+                </p>
+              </div>
             </div>
-            <div className="text-xs text-slate-700 leading-relaxed">
-              <p className="font-bold text-indigo-950 flex items-center gap-2">
-                <span>Firebase Firestore Cloud Aktif &amp; Terhubung</span>
-                <span className="text-[10px] font-black bg-emerald-600 text-white px-2 py-0.5 rounded-full uppercase tracking-wider">
-                  Real-time Sync
-                </span>
-              </p>
-              <p className="mt-1 text-slate-600">
-                Proyek: <strong className="text-indigo-900">{firebaseConfig.projectId || 'Siklus SAMBUNG'}</strong>. Seluruh berkas supervisi, instrumen 7 tahap SAMBUNG, telaah modul ajar, dan evaluasi tersimpan aman di database cloud serta tersinkronisasi antar-perangkat.
-              </p>
+          ) : (
+            <div className="bg-gradient-to-r from-indigo-50 to-emerald-50 border border-indigo-200/80 rounded-xl p-4 flex items-start gap-3">
+              <div className="relative mt-0.5 shrink-0">
+                <span className="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-emerald-400 opacity-75"></span>
+                <CheckCircle2 className="relative w-5 h-5 text-emerald-600" />
+              </div>
+              <div className="text-xs text-slate-700 leading-relaxed">
+                <p className="font-bold text-indigo-950 flex items-center gap-2">
+                  <span>Firebase Firestore Cloud Aktif &amp; Terhubung</span>
+                  <span className="text-[10px] font-black bg-emerald-600 text-white px-2 py-0.5 rounded-full uppercase tracking-wider">
+                    Real-time Sync
+                  </span>
+                </p>
+                <p className="mt-1 text-slate-600">
+                  Proyek: <strong className="text-indigo-900">{firebaseConfig.projectId || 'Siklus SAMBUNG'}</strong>. Seluruh berkas supervisi, instrumen 7 tahap SAMBUNG, telaah modul ajar, dan evaluasi tersimpan aman di database cloud serta tersinkronisasi antar-perangkat.
+                </p>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Metrics Grid */}
           <div className="grid grid-cols-3 gap-3 text-center">

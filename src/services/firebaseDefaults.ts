@@ -366,5 +366,20 @@ export const DEFAULT_USERS: UserProfile[] = [
     phone: '081267890123',
     approvalStatus: 'approved',
     createdAt: '2025-01-01T00:00:00.000Z'
+  },
+  {
+    uid: 'teacher-yanuarisnandar',
+    username: 'yanuarisnandar',
+    password: 'pakkus',
+    email: 'yanuarisnandar@siklus-sambung.sch.id',
+    displayName: 'Yanuarisnandar Mauludi, S.Pd.',
+    role: 'guru',
+    schoolId: 'sch-sman4',
+    schoolName: 'SMAN 4 Bogor',
+    subject: 'Bahasa Sunda',
+    nip: '19860111 201101 1 002',
+    phone: '081234567899',
+    approvalStatus: 'approved',
+    createdAt: '2026-11-02T06:05:38.367Z'
   }
 ];

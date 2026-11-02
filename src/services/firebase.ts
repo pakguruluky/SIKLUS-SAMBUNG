@@ -1026,20 +1026,12 @@ export async function fetchSupervisions(userProfile?: UserProfile | null): Promi
       (s.teacherId && deletedUids.has(s.teacherId)) ||
       (s.teacherName && deletedNames.has(s.teacherName.toLowerCase().trim()));
 
-    // Merge with SAMPLE_SUPERVISIONS to guarantee initial supervised teachers are available,
-    // excluding any that have been deleted via Kelola Pengguna
-    const map = new Map<string, Supervision>();
-    SAMPLE_SUPERVISIONS.forEach(s => {
-      if (!isSupDeleted(s)) {
-        map.set(s.id, s);
-      }
-    });
-    results.forEach(s => {
-      if (!isSupDeleted(s)) {
-        map.set(s.id, s);
-      }
-    });
-    results = Array.from(map.values()).filter(s => !isSupDeleted(s));
+    // Respect stored results from backend and Firestore; only fallback if completely empty
+    if (results.length === 0) {
+      results = SAMPLE_SUPERVISIONS.filter(s => !isSupDeleted(s));
+    } else {
+      results = results.filter(s => !isSupDeleted(s));
+    }
 
     // Role-based filtering
     if (userProfile?.role === 'guru') {

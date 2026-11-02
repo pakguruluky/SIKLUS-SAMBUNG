@@ -1647,3 +1647,108 @@ SAMPLE_SUPERVISIONS.forEach((sup) => {
     }
   }
 });
+
+// Guru ke-10 yang belum selesai supervisi (draft) di komputer admin
+const YANUAR_DRAFT_SUPERVISION: Supervision = {
+  id: 'sup-1793599538368',
+  schoolId: 'sch-sman4',
+  schoolName: 'SMAN 4 Bogor',
+  teacherId: 'teacher-yanuarisnandar',
+  teacherName: 'Yanuarisnandar Mauludi, S.Pd.',
+  teacherNip: '198601112011011002',
+  subject: 'Bahasa Sunda',
+  classGrade: 'Fase E / Kelas XII',
+  semester: 'Ganjil',
+  schoolYear: '2025/2026',
+  lessonTitle: 'Carita wayang',
+  status: 'draft',
+  supervisorId: 'admin-kusnandar',
+  supervisorName: 'Kusnandar, M.Si',
+  supervisorRole: 'admin',
+  createdAt: '2026-11-02T06:05:38.367Z',
+  updatedAt: '2026-11-02T06:05:38.455Z',
+  perangkatAjar: {
+    driveLinks: {
+      cpTpAtpUrl: '',
+      modulAjarUrl: 'https://drive.google.com/file/d/drive_1793599538367_RPP_Bahasa%20Sunda/view?usp=sharing'
+    },
+    telaahScores: {},
+    telaahComments: {},
+    telaahSummary: {
+      totalScore: 0,
+      maxPossibleScore: 44,
+      finalScore: 0,
+      predicate: 'Belum Dinilai'
+    },
+    feedback: { kelebihan: '', perbaikan: '', rekomendasi: '' }
+  },
+  praObservasi: {
+    interviewDurationMinutes: 30,
+    q1_kd_indikator: '',
+    q2_metode: '',
+    q3_alat_bahan: '',
+    q4_tahapan: '',
+    q5_persiapan: '',
+    q6_materi_sulit: '',
+    q7_target_kompetensi: '',
+    q8_perhatian_khusus: '',
+    supervisorNotes: ''
+  },
+  observasiKelas: {
+    items: {},
+    totalYa: 0,
+    totalAspek: 25,
+    totalSkor: 0,
+    score: 0,
+    predicate: 'Perlu Perbaikan',
+    feedbackNotes: ''
+  },
+  pascaObservasi: {
+    q1_kesan: '',
+    q2_sesuai_rencana: '',
+    q3_hal_memuaskan: '',
+    q4_hal_kurang: '',
+    q5_ketercapaian_tujuan: '',
+    q6_kesulitan_siswa: '',
+    q7_alternatif_solusi: '',
+    q8_rencana_tindak_lanjut: '',
+    q9_pengembangan_diri: '',
+    generalImpression: '',
+    recommendations: ''
+  },
+  evaluasiTahunan: {
+    hasilBelajar: { evidence: '', note: '', score: 0 },
+    administrasi: { evidence: '', note: '', score: 0 },
+    pengembanganDiri: { evidence: '', note: '', score: 0 },
+    kedisiplinan: { evidence: '', note: '', score: 0 },
+    rekomendasi: { notes: '', tindakLanjut: '', score: 0 },
+    finalAverageScore: 0,
+    finalGrade: 'Belum Dinilai',
+    summaryNotes: ''
+  }
+};
+
+const TARGET_10_IDS = new Set([
+  'sup-demo-01',
+  'sup-demo-05',
+  'sup-demo-02',
+  'sup-demo-rimba-atik',
+  'sup-demo-04',
+  'sup-demo-06',
+  'sup-demo-ummul-kirana',
+  'sup-demo-ummul-sani',
+  'sup-demo-ananda-saulina',
+  'sup-1793599538368',
+]);
+
+if (!SAMPLE_SUPERVISIONS.some(s => s.id === 'sup-1793599538368')) {
+  SAMPLE_SUPERVISIONS.push(YANUAR_DRAFT_SUPERVISION);
+}
+
+// Batasi SAMPLE_SUPERVISIONS persis pada 10 guru (9 selesai supervisi, 1 belum)
+for (let i = SAMPLE_SUPERVISIONS.length - 1; i >= 0; i--) {
+  if (!TARGET_10_IDS.has(SAMPLE_SUPERVISIONS[i].id)) {
+    SAMPLE_SUPERVISIONS.splice(i, 1);
+  }
+}
+

@@ -27,6 +27,7 @@ import {
   fetchSupervisions, 
   saveSupervision, 
   deleteSupervision, 
+  purgeTeacherDataCompletely,
   updateSchool, 
   updateUserApprovalStatus, 
   syncAllInitialDataToFirestore, 
@@ -417,7 +418,12 @@ export default function App() {
                 onNavigateKesimpulan={() => setActiveTab('kesimpulan-sambung')}
                 onUpdateSupervision={handleUpdateSupervision}
                 onDeleteSupervision={async (deletedId) => {
-                  await deleteSupervision(deletedId);
+                  const target = supervisions.find(s => s.id === deletedId);
+                  await purgeTeacherDataCompletely({
+                    id: deletedId,
+                    teacherId: target?.teacherId,
+                    teacherName: target?.teacherName,
+                  });
                   const updated = await fetchSupervisions();
                   setSupervisions(filterValidSupervisions(updated));
                 }}
@@ -435,7 +441,12 @@ export default function App() {
                 initialSupervisionId={selectedSambungId}
                 onUpdateSupervision={handleUpdateSupervision}
                 onDeleteSupervision={async (deletedId) => {
-                  await deleteSupervision(deletedId);
+                  const target = supervisions.find(s => s.id === deletedId);
+                  await purgeTeacherDataCompletely({
+                    id: deletedId,
+                    teacherId: target?.teacherId,
+                    teacherName: target?.teacherName,
+                  });
                   const updated = await fetchSupervisions();
                   setSupervisions(filterValidSupervisions(updated));
                 }}

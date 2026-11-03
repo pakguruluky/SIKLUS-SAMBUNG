@@ -181,18 +181,21 @@ export function getAllSupervisions(): Supervision[] {
   const deletedUids = new Set(db.deletedUserIds);
   const deletedNames = new Set(db.deletedUserNames.map(n => n.toLowerCase().trim()));
 
-  return db.supervisions.filter(s => {
-    if (deletedIds.has(s.id)) return false;
-    if (s.teacherId && deletedUids.has(s.teacherId)) return false;
-    if (s.teacherName && deletedNames.has(s.teacherName.toLowerCase().trim())) return false;
-    return true;
-  });
+  return db.supervisions
+    .filter(s => {
+      if (deletedIds.has(s.id)) return false;
+      if (s.teacherId && deletedUids.has(s.teacherId)) return false;
+      if (s.teacherName && deletedNames.has(s.teacherName.toLowerCase().trim())) return false;
+      return true;
+    })
+    .map(s => ({ ...s, isValidData: true }));
 }
 
 export function getSupervisionById(id: string): Supervision | null {
   const db = loadDatabase();
   if (db.deletedSupervisionIds.includes(id)) return null;
-  return db.supervisions.find(s => s.id === id) || null;
+  const found = db.supervisions.find(s => s.id === id);
+  return found ? { ...found, isValidData: true } : null;
 }
 
 export function saveSupervisionRecord(sup: Partial<Supervision> & { id?: string }): Supervision {
@@ -203,6 +206,7 @@ export function saveSupervisionRecord(sup: Partial<Supervision> & { id?: string 
   const fullSupervision: Supervision = {
     ...sup,
     id: targetId,
+    isValidData: true,
     createdAt: (sup as any).createdAt || now,
     updatedAt: now,
   } as Supervision;
@@ -221,14 +225,98 @@ export function saveSupervisionRecord(sup: Partial<Supervision> & { id?: string 
   return fullSupervision;
 }
 
-export function deleteSupervisionById(id: string): boolean {
+export function deleteTeacherCompletely(payload: {
+  teacherName?: string;
+  teacherId?: string;
+  supervisionId?: string;
+}): boolean {
   const db = loadDatabase();
-  if (!db.deletedSupervisionIds.includes(id)) {
-    db.deletedSupervisionIds.push(id);
+  const cleanName = (payload.teacherName || '').toLowerCase().trim();
+  const targetId = payload.supervisionId;
+  let teacherId = payload.teacherId;
+
+  // If teacherId or cleanName not directly provided, find from existing records
+  if ((!teacherId || !cleanName) && targetId) {
+    const existing = db.supervisions.find(s => s.id === targetId);
+    if (existing) {
+      if (!cleanName && existing.teacherName) {
+        payload.teacherName = existing.teacherName;
+      }
+      if (!teacherId && existing.teacherId) {
+        teacherId = existing.teacherId;
+      }
+    }
   }
-  db.supervisions = db.supervisions.filter(s => s.id !== id);
+
+  const effectiveCleanName = (payload.teacherName || '').toLowerCase().trim();
+
+  // 1. Collect all matching supervision IDs
+  const matchedSupervisionIds = new Set<string>();
+  if (targetId) matchedSupervisionIds.add(targetId);
+
+  db.supervisions.forEach(s => {
+    if (targetId && s.id === targetId) matchedSupervisionIds.add(s.id);
+    if (teacherId && s.teacherId === teacherId) matchedSupervisionIds.add(s.id);
+    if (effectiveCleanName && s.teacherName && s.teacherName.toLowerCase().trim() === effectiveCleanName) {
+      matchedSupervisionIds.add(s.id);
+    }
+  });
+
+  // 2. Collect all matching user UIDs & display names
+  const matchedUserUids = new Set<string>();
+  if (teacherId) matchedUserUids.add(teacherId);
+
+  db.users.forEach(u => {
+    if (teacherId && u.uid === teacherId) matchedUserUids.add(u.uid);
+    if (effectiveCleanName && u.displayName && u.displayName.toLowerCase().trim() === effectiveCleanName) {
+      matchedUserUids.add(u.uid);
+    }
+  });
+
+  // 3. Add to tracking deleted lists
+  matchedSupervisionIds.forEach(id => {
+    if (!db.deletedSupervisionIds.includes(id)) {
+      db.deletedSupervisionIds.push(id);
+    }
+  });
+
+  matchedUserUids.forEach(uid => {
+    if (!db.deletedUserIds.includes(uid)) {
+      db.deletedUserIds.push(uid);
+    }
+  });
+
+  if (effectiveCleanName && !db.deletedUserNames.map(n => n.toLowerCase().trim()).includes(effectiveCleanName)) {
+    db.deletedUserNames.push(effectiveCleanName);
+  }
+
+  // 4. Remove matching records completely from db.supervisions
+  db.supervisions = db.supervisions.filter(s => {
+    if (matchedSupervisionIds.has(s.id)) return false;
+    if (teacherId && s.teacherId === teacherId) return false;
+    if (effectiveCleanName && s.teacherName && s.teacherName.toLowerCase().trim() === effectiveCleanName) return false;
+    return true;
+  });
+
+  // 5. Remove matching user accounts completely from db.users
+  db.users = db.users.filter(u => {
+    if (matchedUserUids.has(u.uid)) return false;
+    if (effectiveCleanName && u.displayName && u.displayName.toLowerCase().trim() === effectiveCleanName) return false;
+    return true;
+  });
+
   saveDatabase(db);
   return true;
+}
+
+export function deleteSupervisionById(id: string): boolean {
+  const db = loadDatabase();
+  const target = db.supervisions.find(s => s.id === id);
+  return deleteTeacherCompletely({
+    supervisionId: id,
+    teacherId: target?.teacherId,
+    teacherName: target?.teacherName,
+  });
 }
 
 // Users Operations
@@ -291,35 +379,10 @@ export function saveUserRecord(user: UserProfile): UserProfile {
 export function deleteUserRecord(uid: string): boolean {
   const db = loadDatabase();
   const target = db.users.find(u => u.uid === uid);
-  if (target?.displayName) {
-    const cleanName = target.displayName.toLowerCase().trim();
-    if (!db.deletedUserNames.includes(cleanName)) {
-      db.deletedUserNames.push(cleanName);
-    }
-  }
-
-  if (!db.deletedUserIds.includes(uid)) {
-    db.deletedUserIds.push(uid);
-  }
-
-  db.users = db.users.filter(u => u.uid !== uid);
-
-  // Cascade delete supervisions
-  const toDelete = db.supervisions.filter(s => 
-    s.teacherId === uid || 
-    (target?.displayName && s.teacherName?.toLowerCase().trim() === target.displayName.toLowerCase().trim()) ||
-    (target?.username && s.id.includes(target.username))
-  );
-
-  for (const sup of toDelete) {
-    if (!db.deletedSupervisionIds.includes(sup.id)) {
-      db.deletedSupervisionIds.push(sup.id);
-    }
-  }
-
-  db.supervisions = db.supervisions.filter(s => !toDelete.some(del => del.id === s.id));
-  saveDatabase(db);
-  return true;
+  return deleteTeacherCompletely({
+    teacherId: uid,
+    teacherName: target?.displayName,
+  });
 }
 
 // Bulk Sync & Restore Operations

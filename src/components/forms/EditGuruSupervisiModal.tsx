@@ -15,7 +15,8 @@ import {
   CheckCircle2,
   AlertCircle,
   ExternalLink,
-  Printer
+  Printer,
+  Trash2
 } from 'lucide-react';
 import { saveSupervision, updateUserAccount, fetchAllUsers } from '../../services/firebase';
 import { getSupervisionSambungProgress } from '../../utils/sambungProgress';
@@ -28,6 +29,7 @@ interface EditGuruSupervisiModalProps {
   schools: School[];
   currentUser: UserProfile;
   onSaved: (updated: Supervision) => void;
+  onDelete?: (supervision: Supervision) => void;
   onOpenStageForm?: (supervision: Supervision, stage: 'perangkat' | 'pra' | 'observasi' | 'pasca' | 'evaluasi') => void;
   onOpenSambung?: (supervisionId: string) => void;
   onOpenPrint?: (supervision: Supervision) => void;
@@ -40,6 +42,7 @@ export const EditGuruSupervisiModal: React.FC<EditGuruSupervisiModalProps> = ({
   schools,
   currentUser,
   onSaved,
+  onDelete,
   onOpenStageForm,
   onOpenSambung,
   onOpenPrint,
@@ -815,14 +818,33 @@ export const EditGuruSupervisiModal: React.FC<EditGuruSupervisiModalProps> = ({
 
           {/* Form Actions Footer */}
           <div className="pt-4 border-t border-slate-200 flex flex-col-reverse sm:flex-row items-center justify-between gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isSaving}
-              className="w-full sm:w-auto px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs font-bold transition-colors"
-            >
-              Tutup
-            </button>
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={isSaving}
+                className="w-full sm:w-auto px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs font-bold transition-colors"
+              >
+                Tutup
+              </button>
+
+              {onDelete && (currentUser.role === 'admin' || currentUser.role === 'pengawas' || (currentUser.role as any) === 'supervisor') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm(`Hapus data guru "${supervision.teacherName}" (${supervision.subject} - ${supervision.schoolName}) secara permanen?\n\nPERINGATAN: Seluruh rekaman supervisi, instrumen SAMBUNG, akun pengguna, dan data terkait akan terhapus bersih dari database.`)) {
+                      onDelete(supervision);
+                    }
+                  }}
+                  disabled={isSaving}
+                  className="w-full sm:w-auto px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 hover:text-rose-700 border border-rose-200 text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
+                  title="Hapus guru dan seluruh datanya secara permanen"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                  <span>Hapus Guru</span>
+                </button>
+              )}
+            </div>
 
             <button
               type="submit"

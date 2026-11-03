@@ -64,6 +64,7 @@ export interface Supervision {
   createdAt: string;
   updatedAt: string;
   isNewSupervision?: boolean;
+  isValidData?: boolean;
   statusOptimal?: 'optimal' | 'belum_optimal';
   nilaiAkhirKomprehensif?: number;
 

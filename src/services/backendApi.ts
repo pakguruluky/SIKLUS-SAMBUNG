@@ -179,6 +179,25 @@ export async function apiDeleteUser(uid: string): Promise<boolean> {
   }
 }
 
+export async function apiPurgeTeacher(payload: {
+  teacherName: string;
+  teacherId?: string;
+  supervisionId?: string;
+}): Promise<boolean> {
+  try {
+    const res = await fetch(`${API_BASE}/teachers/purge`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(4000),
+    });
+    return res.ok;
+  } catch (err) {
+    console.warn('Backend API purge teacher failed:', err);
+    return false;
+  }
+}
+
 // Bulk Sync & Restore API
 export async function apiSyncAll(payload: {
   schools?: School[];

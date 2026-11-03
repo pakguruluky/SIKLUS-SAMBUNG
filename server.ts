@@ -19,6 +19,7 @@ import {
   getAllUsers,
   saveUserRecord,
   deleteUserRecord,
+  deleteTeacherCompletely,
   bulkSync,
   restoreBackupData,
 } from './src/server/db';
@@ -209,6 +210,16 @@ async function startServer() {
   app.delete('/api/users/:uid', (req, res) => {
     try {
       const ok = deleteUserRecord(req.params.uid);
+      res.json({ success: ok });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // Purge Teacher Completely (all supervisions, user profile, and related records)
+  app.post('/api/teachers/purge', (req, res) => {
+    try {
+      const ok = deleteTeacherCompletely(req.body);
       res.json({ success: ok });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });

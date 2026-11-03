@@ -1296,6 +1296,22 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                                           <span>Cetak Laporan Supervisi</span>
                                         </button>
                                       )}
+
+                                      {isAdmin && onDeleteSupervision && (
+                                        <button
+                                          type="button"
+                                          onClick={async () => {
+                                            setActiveMenuId(null);
+                                            if (window.confirm(`Hapus data guru "${sup.teacherName}" (${sup.subject} - ${sup.schoolName}) secara permanen?\n\nTindakan ini akan menghapus bersih seluruh data guru, akun, berkas instrumen SAMBUNG, dan rekaman supervisinya dari database Firebase & sistem.`)) {
+                                              await onDeleteSupervision(sup.id);
+                                            }
+                                          }}
+                                          className="w-full px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2 font-bold border-t border-slate-100"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                                          <span>Hapus Guru &amp; Seluruh Data</span>
+                                        </button>
+                                      )}
                                     </div>
                                   </>
                                 )}
@@ -1428,6 +1444,21 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                           title="Cetak Berkas"
                         >
                           <Printer className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+
+                      {isAdmin && onDeleteSupervision && (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (window.confirm(`Hapus data guru "${sup.teacherName}" (${sup.subject} - ${sup.schoolName}) secara permanen?\n\nTindakan ini akan menghapus bersih seluruh data guru, akun, berkas instrumen SAMBUNG, dan rekaman supervisinya dari database Firebase & sistem.`)) {
+                              await onDeleteSupervision(sup.id);
+                            }
+                          }}
+                          className="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 hover:text-rose-700 border border-rose-200 transition-colors"
+                          title="Hapus Guru & Seluruh Data dari Database"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       )}
                     </div>
@@ -2044,6 +2075,10 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             }
             setEditingTeacher(null);
           }}
+          onDelete={onDeleteSupervision ? async (supToDelete) => {
+            await onDeleteSupervision(supToDelete.id);
+            setEditingTeacher(null);
+          } : undefined}
           onOpenStageForm={onOpenForm}
           onOpenSambung={onOpenSambung}
           onOpenPrint={onOpenPrint}

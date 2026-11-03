@@ -32,7 +32,8 @@ import {
   saveLocalSupervisions, 
   saveLocalSchools, 
   loadLocalSupervisions, 
-  loadLocalSchools 
+  loadLocalSchools,
+  clearFormDraft
 } from './localStorageService';
 import { SAMPLE_SUPERVISIONS } from '../data/seedData';
 import { generateTeacherMaknaiData, generateAmatiData, generateBerdayakanTelaahPerbaikanData, generateUjiData, getTeacherAutoFillData } from '../data/autoFillData';
@@ -51,6 +52,7 @@ import {
   apiFetchUsers,
   apiSaveUser,
   apiDeleteUser,
+  apiPurgeTeacher,
   apiSyncAll,
   apiRestoreBackup,
 } from './backendApi';
@@ -340,8 +342,8 @@ function normalizeSupervisionData(sup: Supervision): Supervision {
     schoolName = 'SMAS IT Ummul Quro';
   }
 
-  const normalized: Supervision = { ...sup, teacherName, schoolName, subject, lessonTitle };
-  const isSeedSupervision = Boolean(sup.id && sup.id.startsWith('sup-demo-'));
+  const normalized: Supervision = { ...sup, teacherName, schoolName, subject, lessonTitle, isValidData: true };
+  const isSeedSupervision = Boolean(sup.id && (sup.id.startsWith('sup-demo-') || sup.isValidData || normalized.isValidData));
 
   if (!normalized.sambung) {
     if (isSeedSupervision) {
@@ -352,8 +354,8 @@ function normalizeSupervisionData(sup: Supervision): Supervision {
     }
   }
 
-  // If this is a user-created new supervision, preserve all empty instruments as completely blank (belum terisi)
-  if (!isSeedSupervision || (sup as any).isNewSupervision) {
+  // If this is an explicitly newly created empty supervision, preserve blank instruments
+  if ((sup as any).isNewSupervision) {
     return normalized;
   }
 
@@ -792,56 +794,181 @@ export function addDeletedUserName(name: string) {
   } catch {}
 }
 
-export async function deleteUserAccount(uid: string): Promise<void> {
-  addDeletedUserId(uid);
-  const allUsers = getStoredUsers();
-  const targetUser = allUsers.find(u => u.uid === uid);
-  if (targetUser?.displayName) {
-    addDeletedUserName(targetUser.displayName);
-  }
-  const current = allUsers.filter(u => u.uid !== uid);
-  saveStoredUsers(current);
+export async function purgeTeacherDataCompletely(target: {
+  id?: string;
+  teacherId?: string;
+  teacherName?: string;
+}): Promise<void> {
+  const cleanName = (target.teacherName || '').toLowerCase().trim();
+  const targetId = target.id;
+  let teacherId = target.teacherId;
 
-  try {
-    await apiDeleteUser(uid);
-  } catch {}
-
-  if (!isFirestoreQuotaExceeded) {
-    try {
-      withFirestoreTimeout(deleteDoc(doc(db, 'users', uid)), 600).catch((err) => {
-        if (isQuotaError(err)) markQuotaExceeded(err);
-      });
-    } catch (err) {
-      if (isQuotaError(err)) markQuotaExceeded(err);
-      console.warn('Notice deleting user from Firestore:', err);
+  // If teacherId or teacherName not directly provided, find from local supervisions or users
+  if (!teacherId || !cleanName) {
+    if (targetId) {
+      const localSups = loadLocalSupervisions() || [];
+      const found = localSups.find(s => s.id === targetId);
+      if (found) {
+        if (!cleanName && found.teacherName) {
+          target.teacherName = found.teacherName;
+        }
+        if (!teacherId && found.teacherId) {
+          teacherId = found.teacherId;
+        }
+      }
+    }
+    if (!cleanName && teacherId) {
+      const foundUser = getStoredUsers().find(u => u.uid === teacherId);
+      if (foundUser?.displayName) {
+        target.teacherName = foundUser.displayName;
+      }
     }
   }
 
-  // Also cascade delete all supervisions belonging to this deleted user/teacher
+  const effectiveCleanName = (target.teacherName || '').toLowerCase().trim();
+
+  // 1. Record in local deleted tracking sets so they are permanently excluded
+  if (targetId) {
+    addDeletedSupervisionId(targetId);
+    clearFormDraft(targetId);
+  }
+  if (effectiveCleanName) {
+    addDeletedUserName(effectiveCleanName);
+  }
+  if (teacherId) {
+    addDeletedUserId(teacherId);
+    clearFormDraft(teacherId);
+  }
+
+  // 2. Clear any cached form drafts matching this teacher or supervision
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith('siklus_sambung_draft_')) {
+          if (targetId && k.includes(targetId)) keysToRemove.push(k);
+          if (teacherId && k.includes(teacherId)) keysToRemove.push(k);
+          try {
+            const val = localStorage.getItem(k);
+            if (val && effectiveCleanName && val.toLowerCase().includes(effectiveCleanName)) {
+              keysToRemove.push(k);
+            }
+          } catch {}
+        }
+      }
+      keysToRemove.forEach(k => localStorage.removeItem(k));
+    }
+  } catch (err) {
+    console.warn('Notice clearing local drafts:', err);
+  }
+
+  // 3. Remove all matching supervisions from local storage
   try {
     const localSups = loadLocalSupervisions() || [];
-    const targetName = targetUser?.displayName?.toLowerCase().trim();
-    const supsToDelete = localSups.filter(s => 
-      s.teacherId === uid || 
-      (targetName && s.teacherName?.toLowerCase().trim() === targetName) ||
-      (targetUser?.username && s.id.includes(targetUser.username))
-    );
+    const matchedSupIds = new Set<string>();
+    if (targetId) matchedSupIds.add(targetId);
 
-    for (const sup of supsToDelete) {
-      addDeletedSupervisionId(sup.id);
-      apiDeleteSupervision(sup.id).catch(() => {});
-      if (!isFirestoreQuotaExceeded) {
-        withFirestoreTimeout(deleteDoc(doc(db, 'supervisions', sup.id)), 500).catch((err) => {
+    localSups.forEach(s => {
+      if (targetId && s.id === targetId) matchedSupIds.add(s.id);
+      if (teacherId && s.teacherId === teacherId) matchedSupIds.add(s.id);
+      if (effectiveCleanName && s.teacherName && s.teacherName.toLowerCase().trim() === effectiveCleanName) {
+        matchedSupIds.add(s.id);
+      }
+    });
+    matchedSupIds.forEach(id => addDeletedSupervisionId(id));
+
+    const remainingSups = localSups.filter(s => !matchedSupIds.has(s.id));
+    saveLocalSupervisions(remainingSups);
+  } catch (err) {
+    console.warn('Notice cleaning local supervisions:', err);
+  }
+
+  // 4. Remove all matching users from local storage
+  try {
+    const allUsers = getStoredUsers();
+    const matchedUserUids = new Set<string>();
+    if (teacherId) matchedUserUids.add(teacherId);
+
+    allUsers.forEach(u => {
+      if (teacherId && u.uid === teacherId) matchedUserUids.add(u.uid);
+      if (effectiveCleanName && u.displayName && u.displayName.toLowerCase().trim() === effectiveCleanName) {
+        matchedUserUids.add(u.uid);
+      }
+    });
+    matchedUserUids.forEach(uid => addDeletedUserId(uid));
+
+    const remainingUsers = allUsers.filter(u => !matchedUserUids.has(u.uid));
+    saveStoredUsers(remainingUsers);
+  } catch (err) {
+    console.warn('Notice cleaning local users:', err);
+  }
+
+  // 5. Backend Server API Purge
+  try {
+    await apiPurgeTeacher({
+      teacherName: target.teacherName || '',
+      teacherId: teacherId,
+      supervisionId: target.id,
+    });
+  } catch (err) {
+    console.warn('Notice calling backend purge:', err);
+  }
+
+  // 6. Delete clean from Firebase Firestore
+  if (!isFirestoreQuotaExceeded) {
+    try {
+      if (targetId) {
+        withFirestoreTimeout(deleteDoc(doc(db, 'supervisions', targetId)), 600).catch((err) => {
           if (isQuotaError(err)) markQuotaExceeded(err);
         });
       }
-    }
 
-    const remainingSups = localSups.filter(s => !supsToDelete.some(del => del.id === s.id));
-    saveLocalSupervisions(remainingSups);
-  } catch (err) {
-    console.warn('Notice cleaning up supervisions for deleted user:', err);
+      if (teacherId) {
+        withFirestoreTimeout(deleteDoc(doc(db, 'users', teacherId)), 600).catch((err) => {
+          if (isQuotaError(err)) markQuotaExceeded(err);
+        });
+      }
+
+      if (effectiveCleanName && target.teacherName) {
+        withFirestoreTimeout(
+          getDocs(query(collection(db, 'supervisions'), where('teacherName', '==', target.teacherName))),
+          800
+        ).then(snap => {
+          snap.forEach(d => {
+            deleteDoc(doc(db, 'supervisions', d.id)).catch(() => {});
+          });
+        }).catch(() => {});
+
+        withFirestoreTimeout(
+          getDocs(query(collection(db, 'users'), where('displayName', '==', target.teacherName))),
+          800
+        ).then(snap => {
+          snap.forEach(d => {
+            deleteDoc(doc(db, 'users', d.id)).catch(() => {});
+          });
+        }).catch(() => {});
+      }
+    } catch (err) {
+      if (isQuotaError(err)) markQuotaExceeded(err);
+      console.warn('Notice deleting teacher data from Firestore:', err);
+    }
   }
+
+  markDataModifiedLocally();
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('pakkus-local-supervisions-updated'));
+    window.dispatchEvent(new CustomEvent('pakkus-local-data-modified'));
+  }
+}
+
+export async function deleteUserAccount(uid: string): Promise<void> {
+  const allUsers = getStoredUsers();
+  const targetUser = allUsers.find(u => u.uid === uid);
+  await purgeTeacherDataCompletely({
+    teacherId: uid,
+    teacherName: targetUser?.displayName,
+  });
 }
 
 export async function getUserProfile(uid: string): Promise<UserProfile | null> {
@@ -1336,26 +1463,18 @@ export async function saveSupervision(
   return targetId;
 }
 
-export async function deleteSupervision(id: string): Promise<void> {
-  addDeletedSupervisionId(id);
-  const localList = (loadLocalSupervisions() || []).filter(s => s.id !== id);
-  saveLocalSupervisions(localList);
-
-  try {
-    await apiDeleteSupervision(id);
-  } catch {}
-
-  markDataModifiedLocally();
-
-  if (!isFirestoreQuotaExceeded) {
-    try {
-      withFirestoreTimeout(deleteDoc(doc(db, 'supervisions', id)), 600).catch((err) => {
-        if (isQuotaError(err)) markQuotaExceeded(err);
-      });
-    } catch (err) {
-      if (isQuotaError(err)) markQuotaExceeded(err);
+export async function deleteSupervision(id: string, teacherName?: string, teacherId?: string): Promise<void> {
+  let name = teacherName;
+  let tId = teacherId;
+  if (!name || !tId) {
+    const local = loadLocalSupervisions() || [];
+    const found = local.find(s => s.id === id);
+    if (found) {
+      if (!name) name = found.teacherName;
+      if (!tId) tId = found.teacherId;
     }
   }
+  await purgeTeacherDataCompletely({ id, teacherName: name, teacherId: tId });
 }
 
 // Synchronize all pending local data (users, schools, supervisions) to Firebase Firestore

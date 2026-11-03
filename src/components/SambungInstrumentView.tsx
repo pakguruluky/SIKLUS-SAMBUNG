@@ -32,7 +32,7 @@ import {
   getFourIndicatorsOptimalBreakdown,
   INDIKATOR_LABELS
 } from '../utils/sambungCalculations';
-import { saveSupervision, deleteSupervision, deleteUserAccount, getDeletedUserIds, getDeletedSupervisionIds, getDeletedUserNames } from '../services/firebase';
+import { saveSupervision, deleteSupervision, deleteUserAccount, purgeTeacherDataCompletely, getDeletedUserIds, getDeletedSupervisionIds, getDeletedUserNames } from '../services/firebase';
 import { analyzeTelaahRppWithAI } from '../services/aiService';
 import { SambungPrintModal } from './SambungPrintModal';
 import { PerangkatAjarModal } from './forms/PerangkatAjarModal';
@@ -212,38 +212,33 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
 
   const handleDeleteSupervision = async (target: Supervision) => {
     if (!canEdit) return;
-    const confirmMsg = `Hapus data supervisi guru "${target.teacherName}" (${target.subject} - ${target.schoolName})?\n\nTindakan ini akan menghapus data supervisi dan seluruh instrumennya secara permanen dari database Firebase.`;
+    const confirmMsg = `Hapus data guru "${target.teacherName}" (${target.subject} - ${target.schoolName}) secara permanen?\n\nTindakan ini akan menghapus bersih seluruh data guru, akun, berkas instrumen SAMBUNG, dan rekaman supervisinya dari database Firebase & sistem.`;
     if (!window.confirm(confirmMsg)) return;
 
     try {
       setIsDeleting(true);
 
-      // 1. Delete supervision from Firebase Firestore and LocalStorage
-      await deleteSupervision(target.id);
+      // Purge completely from Firestore, LocalStorage, and Backend Database
+      await purgeTeacherDataCompletely({
+        id: target.id,
+        teacherId: target.teacherId,
+        teacherName: target.teacherName,
+      });
 
-      // 2. Cascade delete teacher account if associated to ensure synchronized users collection
-      if (target.teacherId && !target.teacherId.startsWith('usr-admin') && target.teacherId !== currentUser.uid) {
-        try {
-          await deleteUserAccount(target.teacherId);
-        } catch (uErr) {
-          console.warn('Notice removing teacher user record:', uErr);
-        }
-      }
-
-      // 3. Immediately switch selectedId to remaining teacher
-      const remaining = availableSupervisions.filter(s => s.id !== target.id);
+      // Immediately switch selectedId to remaining teacher
+      const remaining = availableSupervisions.filter(s => s.id !== target.id && s.teacherName !== target.teacherName);
       if (remaining.length > 0) {
         setSelectedId(remaining[0].id);
       } else {
         setSelectedId('');
       }
 
-      // 4. Notify parent
+      // Notify parent
       if (onDeleteSupervision) {
         await onDeleteSupervision(target.id);
       }
 
-      setSaveToast(`Supervisi guru ${target.teacherName} berhasil dihapus dari Firebase.`);
+      setSaveToast(`Data guru ${target.teacherName} dan seluruh instrumennya berhasil dihapus bersih dari database.`);
       setTimeout(() => setSaveToast(null), 3500);
     } catch (err: any) {
       console.error('Error deleting supervision:', err);
@@ -301,14 +296,14 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
       }
       lastLoadedSupervisionIdRef.current = currentSupervision.id;
 
-      const isSeedSupervision = Boolean(currentSupervision.id && currentSupervision.id.startsWith('sup-demo-'));
+      const isSeedSupervision = Boolean(currentSupervision.id && (currentSupervision.id.startsWith('sup-demo-') || currentSupervision.isValidData));
       const isNew = Boolean((currentSupervision as any).isNewSupervision);
 
       if (currentSupervision.sambung) {
         const cloned: SambungData = JSON.parse(JSON.stringify(currentSupervision.sambung));
 
-        // If it is a newly added / custom supervision, preserve its blank instruments exactly without injecting demo mock text
-        if (isNew || !isSeedSupervision) {
+        // If it is an explicitly newly created blank supervision without filled data, preserve its blank instruments
+        if (isNew) {
           setSambungDraft(cloned);
           return;
         }

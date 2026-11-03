@@ -57,14 +57,37 @@ const filterValidSupervisions = (list: Supervision[]): Supervision[] => {
   const deletedSupIds = new Set(getDeletedSupervisionIds());
   const deletedUids = new Set(getDeletedUserIds());
   const deletedNames = new Set(getDeletedUserNames());
-  return list.filter(s => {
-    if (EXCLUDED_SUPERVISION_IDS.has(s.id)) return false;
-    if (deletedSupIds.has(s.id)) return false;
-    if (s.teacherId && deletedUids.has(s.teacherId)) return false;
-    if (s.teacherName && deletedNames.has(s.teacherName.toLowerCase().trim())) return false;
-    if (s.teacherName && (s.teacherName.toLowerCase().includes('risna') || s.teacherName.toLowerCase().includes('fatma rita'))) return false;
-    return true;
-  });
+  return list
+    .filter(s => {
+      if (EXCLUDED_SUPERVISION_IDS.has(s.id)) return false;
+      if (deletedSupIds.has(s.id)) return false;
+      if (s.teacherId && deletedUids.has(s.teacherId)) return false;
+      if (s.teacherName && deletedNames.has(s.teacherName.toLowerCase().trim())) return false;
+      if (s.teacherName && (s.teacherName.toLowerCase().includes('risna') || s.teacherName.toLowerCase().includes('fatma rita'))) return false;
+      return true;
+    })
+    .map(s => {
+      // Pastikan guru yang masih dalam tahap draf pengajuan berkas berstatus 'draft' dan tidak masuk ke tahap observasi
+      if (s.id === 'sup-1793599538368' || (s.teacherName && s.teacherName.toLowerCase().includes('yanuarisnandar'))) {
+        if (s.status === 'in_progress') {
+          return {
+            ...s,
+            status: 'draft',
+            statusOptimal: 'belum_optimal',
+            observasiKelas: {
+              items: {},
+              totalYa: 0,
+              totalAspek: 25,
+              totalSkor: 0,
+              score: 0,
+              predicate: 'Belum Dinilai',
+              feedbackNotes: 'Observasi kelas tatap muka belum dilaksanakan (masih dalam tahap draf awal pengajuan berkas).'
+            }
+          };
+        }
+      }
+      return s;
+    });
 };
 
 export default function App() {

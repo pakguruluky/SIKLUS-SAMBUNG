@@ -174,6 +174,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   const submittedSupervisions = mySupervisions.filter(s => s.status === 'submitted' || s.status === 'draft').length;
 
   const validScores = mySupervisions
+    .filter(s => s.status !== 'draft')
     .map(s => s.observasiKelas?.score)
     .filter((s): s is number => typeof s === 'number' && s > 0);
   const avgObsScore = validScores.length > 0 
@@ -243,6 +244,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
         const avgObsPerSchool = targetSchools.map(sch => {
           const match = supervisions.filter(s => 
             (s.schoolId === sch.id || s.schoolName === sch.name) &&
+            s.status !== 'draft' &&
             s.observasiKelas?.score &&
             s.observasiKelas.score > 0
           );
@@ -865,8 +867,12 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                 <p className="text-xl font-black text-emerald-800 mt-0.5">{completedSupervisions} Guru</p>
               </div>
               <div className="p-3 rounded-2xl bg-amber-50/60 border border-amber-100">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700">Dalam Observasi</p>
-                <p className="text-xl font-black text-amber-800 mt-0.5">{inProgressSupervisions} Guru</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700">
+                  {inProgressSupervisions > 0 ? 'Dalam Observasi' : 'Draf Supervisi'}
+                </p>
+                <p className="text-xl font-black text-amber-800 mt-0.5">
+                  {inProgressSupervisions > 0 ? `${inProgressSupervisions} Guru` : `${submittedSupervisions} Guru`}
+                </p>
               </div>
               <button
                 type="button"
@@ -1093,14 +1099,20 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 
                             <td className="py-3.5 px-4 text-center">
                               <div className="inline-flex flex-col items-center">
-                                <span className="font-black text-emerald-600 text-xs">
-                                  {sup.observasiKelas?.score ? `${sup.observasiKelas.score}%` : '-'}
+                                <span className={`text-xs ${
+                                  sup.status === 'draft' || !sup.observasiKelas?.score
+                                    ? 'text-slate-400 font-medium italic text-[11px]'
+                                    : 'font-black text-emerald-600'
+                                }`}>
+                                  {sup.status === 'draft' || !sup.observasiKelas?.score
+                                    ? 'Belum Diobservasi (Draf)'
+                                    : `${sup.observasiKelas.score}%`}
                                 </span>
-                                {sup.observasiKelas?.predicate && (
+                                {sup.status !== 'draft' && sup.observasiKelas?.predicate && sup.observasiKelas?.score ? (
                                   <span className="text-[9px] font-bold text-slate-500">
                                     {sup.observasiKelas.predicate}
                                   </span>
-                                )}
+                                ) : null}
                               </div>
                             </td>
 
@@ -1228,7 +1240,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                                             className="w-full px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"
                                           >
                                             <FileText className="w-3.5 h-3.5 text-slate-400" />
-                                            <span>Edit Observasi Kelas (24 Aspek)</span>
+                                            <span>{sup.status === 'draft' ? 'Mulai Observasi Kelas (25 Aspek)' : 'Edit Observasi Kelas (25 Aspek)'}</span>
                                           </button>
                                           <button
                                             type="button"
@@ -1362,7 +1374,11 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                             <div className="p-2 rounded-xl bg-purple-50/70 border border-purple-100 text-center">
                               <span className="text-[9px] font-bold text-purple-800 block">Observasi</span>
                               <span className="text-sm font-black text-purple-600">
-                                {sup.observasiKelas?.score ? `${sup.observasiKelas.score}%` : '-'}
+                                {sup.status === 'draft' || !sup.observasiKelas?.score ? (
+                                  <span className="text-[10px] text-slate-400 font-normal italic">Belum Ada</span>
+                                ) : (
+                                  `${sup.observasiKelas.score}%`
+                                )}
                               </span>
                             </div>
                             <div className={`p-2 rounded-xl border text-center ${

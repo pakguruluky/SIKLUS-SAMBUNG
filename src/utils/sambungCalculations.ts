@@ -286,13 +286,17 @@ export function calculateSupervisionComprehensiveScore(s: Supervision): Comprehe
     aspekOptimal.push('Pengelolaan Kelas & Keterlibatan Murid Aktif (≥ 85%)');
   } else {
     const def = Math.round((85.0 - akhirObservasi) * 10) / 10;
-    aspekBelumOptimal.push(`Pengelolaan Kelas & Inkuiri Aktif (Nilai: ${akhirObservasi}% < 85%, Defisit: -${def}%)`);
+    aspekBelumOptimal.push(
+      akhirObservasi === 0
+        ? 'Observasi Kelas belum dilaksanakan (Status Draf Awal)'
+        : `Pengelolaan Kelas & Inkuiri Aktif (Nilai: ${akhirObservasi}% < 85%, Defisit: -${def}%)`
+    );
     komponenDefisitList.push({
       nama: 'Observasi Kelas',
       capaian: akhirObservasi,
       target: 85.0,
       defisit: def,
-      keterangan: `Kurang ${def}% untuk mencapai batas tuntas 85.0%`,
+      keterangan: akhirObservasi === 0 ? 'Observasi kelas belum dilaksanakan (Status Draf Awal)' : `Kurang ${def}% untuk mencapai batas tuntas 85.0%`,
     });
   }
 
@@ -455,7 +459,7 @@ export function calculateSupervisionComprehensiveScore(s: Supervision): Comprehe
       score: akhirObservasi,
       target: 85,
       isFulfilled: isObservasiOptimal,
-      keterangan: isObservasiOptimal ? 'Tuntas (≥85%)' : `Belum Tuntas (${akhirObservasi}% < 85%, Defisit: -${Math.round((85 - akhirObservasi) * 10) / 10}%)`,
+      keterangan: isObservasiOptimal ? 'Tuntas (≥85%)' : akhirObservasi === 0 ? 'Belum Terlaksana (Status Draf Awal)' : `Belum Tuntas (${akhirObservasi}% < 85%, Defisit: -${Math.round((85 - akhirObservasi) * 10) / 10}%)`,
     },
     nilaiAkhir: {
       nama: 'Nilai Akhir Komprehensif',

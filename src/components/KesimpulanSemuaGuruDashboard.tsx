@@ -61,6 +61,14 @@ interface KesimpulanSemuaGuruDashboardProps {
 }
 
 const getPredicateTag = (s: Supervision): string | null => {
+  if (s.status === 'draft') {
+    const t = s.perangkatAjar?.telaahSummary?.predicate;
+    const isC = t && t.toLowerCase().includes('cukup');
+    const isB = t && t.toLowerCase().includes('baik') && !t.toLowerCase().includes('sangat');
+    const isSB = t && (t.toLowerCase().includes('sangat') || t.toLowerCase().includes('amat'));
+    const tagT = isSB ? 'SB' : isB ? 'B' : isC ? 'C' : null;
+    return tagT ? `[${tagT} - Draf]` : '[Draf]';
+  }
   const t = s.perangkatAjar?.telaahSummary?.predicate;
   const o = s.observasiKelas?.predicate;
   const isSB = (str?: string) => str && (str.toLowerCase().includes('sangat') || str.toLowerCase().includes('amat'));
@@ -336,8 +344,9 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
       : 92.4;
 
     const observasiScores = list
+      .filter(s => s.status !== 'draft')
       .map(s => s.observasiKelas?.score)
-      .filter((s): s is number => typeof s === 'number' && !isNaN(s));
+      .filter((s): s is number => typeof s === 'number' && !isNaN(s) && s > 0);
     const avgObservasi = observasiScores.length > 0
       ? Math.round((observasiScores.reduce((a, b) => a + b, 0) / observasiScores.length) * 10) / 10
       : 93.8;
@@ -1153,11 +1162,15 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
                                   Telaah: {tScore}
                                 </span>
                               )}
-                              {oScore && (
-                                <span className="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-200 font-semibold">
-                                  Obs: {oScore}
+                              {sup.status === 'draft' ? (
+                                <span className="bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded border border-indigo-200 font-bold">
+                                  Draf Awal
                                 </span>
-                              )}
+                              ) : oScore ? (
+                                <span className="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-200 font-semibold">
+                                  Obs: {oScore}%
+                                </span>
+                              ) : null}
                             </div>
                             <div className="pt-1">
                               <button

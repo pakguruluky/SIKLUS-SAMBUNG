@@ -9881,12 +9881,12 @@
       "teacherId": "teacher-1793599538367",
       "observasiKelas": {
         "items": {},
-        "totalYa": 19,
+        "totalYa": 0,
         "totalAspek": 25,
-        "totalSkor": 38,
-        "score": 76,
-        "predicate": "Cukup (C)",
-        "feedbackNotes": "Interaksi kelas cukup baik, murid mendengarkan cerita wayang namun inisiatif dialog dan diskusi masih dominan dipandu guru."
+        "totalSkor": 0,
+        "score": 0,
+        "predicate": "Belum Dinilai",
+        "feedbackNotes": "Observasi kelas tatap muka belum dilaksanakan (masih dalam tahap draf awal pengajuan berkas)."
       },
       "semester": "Ganjil",
       "perangkatAjar": {
@@ -9983,7 +9983,7 @@
       },
       "supervisorName": "Kusnandar, M.Si",
       "supervisorId": "user-pengawas-kusnandar",
-      "status": "in_progress",
+      "status": "draft",
       "updatedAt": "2026-11-02T06:05:38.455Z",
       "statusOptimal": "belum_optimal"
     }

@@ -44,6 +44,7 @@ export function saveLocalSupervisions(supervisions: Supervision[]): void {
   try {
     localStorage.setItem(STORAGE_KEYS.SUPERVISIONS, JSON.stringify(supervisions));
     localStorage.setItem(STORAGE_KEYS.LAST_SYNC, new Date().toISOString());
+    window.dispatchEvent(new CustomEvent('pakkus-local-supervisions-updated'));
   } catch (err) {
     console.warn('[LocalStorage] Error saving supervisions:', err);
   }

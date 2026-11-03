@@ -743,15 +743,23 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
                   <span className="text-2xl font-black text-amber-300 mt-0.5 block">
                     {optimalAggregates.belumOptimalCount} Guru
                   </span>
-                  <span className="text-[10px] text-amber-200 font-bold">
-                    {optimalAggregates.belumOptimalPercentage}% (Perlu Bimbingan)
+                  <span className="text-[10px] text-amber-200 font-bold block">
+                    {optimalAggregates.belumOptimalPercentage}% (Rata-rata: {optimalAggregates.averageScoreBelumOptimal}%)
                   </span>
+                  {optimalAggregates.averageDefisitBelumOptimal > 0 && (
+                    <span className="text-[9px] text-amber-200/90 font-medium block mt-0.5">
+                      Defisit rata-rata: -{optimalAggregates.averageDefisitBelumOptimal}% dari target 85%
+                    </span>
+                  )}
                 </div>
 
                 <div className="bg-white/10 rounded-2xl p-3.5 border border-white/10">
                   <span className="text-[10px] text-indigo-200 font-semibold block uppercase">Rata-rata Skor Capaian</span>
                   <span className="text-2xl font-black text-white mt-0.5 block">{optimalAggregates.averageScore}%</span>
-                  <span className="text-[10px] text-emerald-300">Peningkatan +{optimalAggregates.averageDelta}%</span>
+                  <div className="text-[10px] text-indigo-200 space-y-0.5">
+                    <span className="text-emerald-300 block">Optimal: {optimalAggregates.averageScoreOptimal}%</span>
+                    <span className="text-amber-300 block">Belum Optimal: {optimalAggregates.averageScoreBelumOptimal}%</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -803,7 +811,7 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
                 </div>
 
                 <div className="text-xs text-slate-500">
-                  Kriteria: <strong>Optimal (&ge; 85%)</strong> &bull; <strong>Belum Optimal (&lt; 85%)</strong>
+                  Kriteria: <strong className="text-emerald-700">Optimal = Semua Komponen Nilai Terpenuhi (&ge;85%)</strong> &bull; <strong className="text-amber-700">Belum Optimal = Ada Komponen Belum Tuntas</strong>
                 </div>
               </div>
 
@@ -816,9 +824,9 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
                       <th className="py-3 px-3 text-left w-56">Nama Guru &amp; NIP</th>
                       <th className="py-3 px-3 text-left w-48">Satuan Pendidikan &amp; Mapel</th>
                       <th className="py-3 px-3 text-center w-24">Baseline (S)</th>
-                      <th className="py-3 px-3 text-center w-24">Akhir (U &amp; B)</th>
+                      <th className="py-3 px-3 text-center w-28">Akhir (U &amp; B)</th>
                       <th className="py-3 px-3 text-center w-20">Selisih</th>
-                      <th className="py-3 px-3 text-center w-36">Status Ketercapaian</th>
+                      <th className="py-3 px-3 text-center w-44">Status Ketercapaian</th>
                       <th className="py-3 px-3 text-left">Arahan Pengawas Pembina Kusnandar, M.Si</th>
                       <th className="py-3 px-3 text-center w-28">Aksi</th>
                     </tr>
@@ -842,30 +850,46 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
                           <td className="py-3 px-3 text-center font-semibold text-slate-600 bg-slate-50/40">
                             {r.baselineAverage}%
                           </td>
-                          <td className="py-3 px-3 text-center font-black text-slate-900 bg-slate-50/60">
-                            {r.finalComprehensiveScore}%
+                          <td className="py-3 px-3 text-center bg-slate-50/60">
+                            <div className="flex flex-col items-center gap-0.5">
+                              <span className={`font-black text-xs sm:text-sm ${r.statusOptimal === 'optimal' ? 'text-slate-900' : 'text-amber-900 font-black'}`}>
+                                {r.finalComprehensiveScore}%
+                              </span>
+                              {r.statusOptimal === 'belum_optimal' && r.defisitMenujuOptimal > 0 && (
+                                <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300">
+                                  Defisit -{r.defisitMenujuOptimal}%
+                                </span>
+                              )}
+                            </div>
                           </td>
-                          <td className="py-3 px-3 text-center font-black text-emerald-700 bg-emerald-50/30">
-                            +{r.deltaPeningkatan}%
+                          <td className={`py-3 px-3 text-center font-black ${r.deltaPeningkatan >= 0 ? 'text-emerald-700 bg-emerald-50/30' : 'text-rose-700 bg-rose-50/30'}`}>
+                            {r.deltaPeningkatan > 0 ? `+${r.deltaPeningkatan}%` : `${r.deltaPeningkatan}%`}
                           </td>
                           <td className="py-3 px-3 text-center">
-                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${
-                              r.statusOptimal === 'optimal'
-                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                                : 'bg-amber-100 text-amber-800 border border-amber-300'
-                            }`}>
-                              {r.statusOptimal === 'optimal' ? (
-                                <>
+                            {r.statusOptimal === 'optimal' ? (
+                              <div className="flex flex-col items-center gap-0.5">
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-800 border border-emerald-300">
                                   <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                                  <span>Sudah Optimal</span>
-                                </>
-                              ) : (
-                                <>
+                                  <span>Optimal</span>
+                                </span>
+                                <span className="text-[9px] text-emerald-700 font-bold">
+                                  Semua Komponen Terpenuhi
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="flex flex-col items-center gap-0.5">
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-amber-100 text-amber-800 border border-amber-300">
                                   <AlertCircle className="w-3 h-3 text-amber-600" />
                                   <span>Belum Optimal</span>
-                                </>
-                              )}
-                            </span>
+                                </span>
+                                <span className="text-[9px] text-amber-800 font-bold">
+                                  {r.komponenDefisitList.length > 0 ? `${r.komponenDefisitList.length} Komponen Perlu Perbaikan` : 'Komponen Belum Tuntas'}
+                                </span>
+                                <span className="text-[9px] text-slate-500 font-mono">
+                                  Target Tuntas: 85.0%
+                                </span>
+                              </div>
+                            )}
                           </td>
                           <td className="py-3 px-3 text-[11px] leading-snug">
                             {r.statusOptimal === 'optimal' ? (
@@ -874,10 +898,17 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
                                 {r.aspekOptimal[0] || 'Peran fasilitator & inkuiri aktif'}. Siap diseminasi Kombel &amp; MGMP.
                               </p>
                             ) : (
-                              <p className="text-amber-950 font-medium">
-                                <span className="font-bold text-amber-800 block">! Perlu Penguatan:</span>
-                                {r.aspekBelumOptimal[0] || 'Diferensiasi proses & pertanyaan inkuiri'}. Pendampingan klinis lanjutan.
-                              </p>
+                              <div className="space-y-1">
+                                <p className="text-amber-950 font-medium">
+                                  <span className="font-bold text-amber-800 block">! Komponen Belum Tuntas:</span>
+                                  {r.komponenDefisitList.length > 0
+                                    ? r.komponenDefisitList.slice(0, 2).map(k => `${k.nama} (${k.capaian}%, -${k.defisit}%)`).join(' • ')
+                                    : (r.aspekBelumOptimal[0] || 'Perlu pembinaan klinis')}
+                                </p>
+                                <span className="inline-block text-[10px] text-slate-600 font-medium">
+                                  Pendampingan klinis terjadwal oleh Pengawas Pembina Kusnandar, M.Si.
+                                </span>
+                              </div>
                             )}
                           </td>
                           <td className="py-3 px-3 text-center">

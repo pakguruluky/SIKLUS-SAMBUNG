@@ -116,6 +116,9 @@ interface SambungInstrumentViewProps {
   onUpdateSupervision: (updated: Supervision) => void;
   onDeleteSupervision?: (id: string) => Promise<void> | void;
   initialSupervisionId?: string;
+  onSyncToFirebase?: () => Promise<void> | void;
+  isSyncing?: boolean;
+  hasPendingSync?: boolean;
 }
 
 type TabType = 'S' | 'A' | 'M' | 'B' | 'U' | 'N' | 'G';
@@ -127,6 +130,9 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
   onUpdateSupervision,
   onDeleteSupervision,
   initialSupervisionId,
+  onSyncToFirebase,
+  isSyncing,
+  hasPendingSync,
 }) => {
   const canEdit = !currentUser || currentUser.role !== 'guru';
 
@@ -1703,14 +1709,35 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
             </button>
 
             {canEdit ? (
-              <button
-                onClick={handleSave}
-                disabled={isSaving}
-                className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-400 hover:bg-amber-300 text-slate-950 rounded-xl text-xs font-bold shadow-md shadow-amber-400/20 transition-colors"
-              >
-                <Save className="w-4 h-4" />
-                <span>{isSaving ? 'Menyimpan...' : 'Simpan Perubahan'}</span>
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-400 hover:bg-amber-300 text-slate-950 rounded-xl text-xs font-bold shadow-md shadow-amber-400/20 transition-colors cursor-pointer"
+                  title="Simpan perubahan data instrumen ini ke penyimpanan lokal & server"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>{isSaving ? 'Menyimpan...' : 'Simpan Lokal'}</span>
+                </button>
+
+                {onSyncToFirebase && (
+                  <button
+                    type="button"
+                    onClick={onSyncToFirebase}
+                    disabled={isSyncing}
+                    className={`inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md ${
+                      hasPendingSync
+                        ? 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-emerald-500/25 ring-2 ring-emerald-300'
+                        : 'bg-white/15 hover:bg-white/25 text-white border border-white/20'
+                    } ${isSyncing ? 'opacity-70 cursor-wait' : 'cursor-pointer'}`}
+                    title="Simpan seluruh berkas instrumen dan supervisi ke database Firebase"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                    <span>{isSyncing ? 'Menyinkronkan...' : hasPendingSync ? 'Sinkronisasi ke Cloud' : 'Cloud Sinkron'}</span>
+                  </button>
+                )}
+              </div>
             ) : (
               <div className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white/15 text-white text-xs font-bold border border-white/20 shadow-xs">
                 <Lock className="w-3.5 h-3.5 text-amber-300" />
@@ -1718,6 +1745,23 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
               </div>
             )}
           </div>
+        </div>
+
+        {/* Local Storage Status indicator */}
+        <div className="mt-3 pt-3 border-t border-indigo-700/50 flex flex-wrap items-center justify-between text-[11px] text-indigo-200">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Seluruh pengisian instrumen tersimpan otomatis di <strong>Penyimpanan Lokal &amp; Server</strong>.</span>
+          </div>
+          {hasPendingSync ? (
+            <span className="font-semibold text-amber-300 bg-amber-400/15 px-2 py-0.5 rounded border border-amber-300/30">
+              Ada perubahan lokal &bull; Klik &apos;Sinkronisasi ke Cloud&apos; untuk menyimpan ke Firebase
+            </span>
+          ) : (
+            <span className="text-emerald-300">
+              Semua data telah tersimpan sinkron dengan Firebase
+            </span>
+          )}
         </div>
       </div>
 
@@ -7646,13 +7690,20 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                             <span className="text-3xl sm:text-4xl font-black text-white block">
                               {compResult.finalComprehensiveScore}%
                             </span>
-                            <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full inline-block mt-1 ${
-                              compResult.statusOptimal === 'optimal'
-                                ? 'bg-emerald-500/30 text-emerald-200 border border-emerald-400/50'
-                                : 'bg-amber-500/30 text-amber-200 border border-amber-400/50'
-                            }`}>
-                              Predikat: {compResult.predicate} (+{compResult.deltaPeningkatan}%)
-                            </span>
+                            <div className="flex flex-col items-end gap-1 mt-1">
+                              <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full inline-block ${
+                                compResult.statusOptimal === 'optimal'
+                                  ? 'bg-emerald-500/30 text-emerald-200 border border-emerald-400/50'
+                                  : 'bg-amber-500/30 text-amber-200 border border-amber-400/50'
+                              }`}>
+                                Predikat: {compResult.predicate} ({compResult.deltaPeningkatan > 0 ? `+${compResult.deltaPeningkatan}%` : `${compResult.deltaPeningkatan}%`})
+                              </span>
+                              {compResult.statusOptimal === 'belum_optimal' && compResult.defisitMenujuOptimal > 0 && (
+                                <span className="text-[10px] font-extrabold text-amber-950 bg-amber-400 px-2 py-0.5 rounded-full shadow-2xs">
+                                  Defisit: -{compResult.defisitMenujuOptimal}% menuju target tuntas 85.0%
+                                </span>
+                              )}
+                            </div>
                           </div>
 
                           {canEdit && (
@@ -7679,24 +7730,26 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                           <span className="text-[10px] text-slate-300 uppercase font-semibold block">1. Telaah Modul (RPP)</span>
                           <div className="flex items-baseline gap-1.5 mt-0.5">
                             <span className="text-lg font-black text-white">{compResult.akhirTelaah}%</span>
-                            <span className="text-[10px] text-emerald-300">dari {compResult.baselineTelaah}%</span>
+                            <span className="text-[10px] text-slate-300">dari {compResult.baselineTelaah}%</span>
                           </div>
-                          <span className="text-[10px] text-slate-300">22 Aspek Instrumen</span>
+                          <span className="text-[10px] text-slate-300">Target &ge;85% ({compResult.akhirTelaah >= 85 ? 'Tuntas' : `Defisit -${Math.round((85 - compResult.akhirTelaah) * 10) / 10}%`})</span>
                         </div>
 
                         <div className="bg-white/10 backdrop-blur-xs rounded-xl p-3 border border-white/10">
                           <span className="text-[10px] text-slate-300 uppercase font-semibold block">2. Observasi Kelas</span>
                           <div className="flex items-baseline gap-1.5 mt-0.5">
                             <span className="text-lg font-black text-white">{compResult.akhirObservasi}%</span>
-                            <span className="text-[10px] text-emerald-300">dari {compResult.baselineObservasi}%</span>
+                            <span className="text-[10px] text-slate-300">dari {compResult.baselineObservasi}%</span>
                           </div>
-                          <span className="text-[10px] text-slate-300">25 Indikator Kelas</span>
+                          <span className="text-[10px] text-slate-300">Target &ge;85% ({compResult.akhirObservasi >= 85 ? 'Tuntas' : `Defisit -${Math.round((85 - compResult.akhirObservasi) * 10) / 10}%`})</span>
                         </div>
 
                         <div className="bg-white/10 backdrop-blur-xs rounded-xl p-3 border border-white/10">
                           <span className="text-[10px] text-slate-300 uppercase font-semibold block">3. Lompatan Mutu (&Delta;)</span>
                           <div className="flex items-baseline gap-1.5 mt-0.5">
-                            <span className="text-lg font-black text-emerald-300">+{compResult.deltaPeningkatan}%</span>
+                            <span className={`text-lg font-black ${compResult.deltaPeningkatan >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
+                              {compResult.deltaPeningkatan > 0 ? `+${compResult.deltaPeningkatan}%` : `${compResult.deltaPeningkatan}%`}
+                            </span>
                           </div>
                           <span className="text-[10px] text-slate-300">Selidiki &rarr; Uji &amp; Nyatakan</span>
                         </div>
@@ -7708,9 +7761,82 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                               {compResult.statusOptimal === 'optimal' ? 'Optimal (Tuntas)' : 'Belum Optimal'}
                             </span>
                           </div>
-                          <span className="text-[10px] text-slate-300">Batas Tuntas &ge; 85.0%</span>
+                          <span className="text-[10px] text-slate-300">
+                            {compResult.statusOptimal === 'optimal' ? 'Semua Komponen &ge; 85%' : `${compResult.komponenDefisitList.length} Komponen Belum Tuntas`}
+                          </span>
                         </div>
                       </div>
+
+                      {/* CHECKLIST KOMPONEN NILAI OPTIMAL */}
+                      {compResult.komponenStatus && (
+                        <div className="pt-3 mt-3 border-t border-white/10">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2">
+                            <span className="text-[11px] font-bold text-white/90 flex items-center gap-1.5">
+                              <span>Keterpenuhan Komponen Nilai Supervisi:</span>
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold ${
+                                compResult.statusOptimal === 'optimal'
+                                  ? 'bg-emerald-400 text-emerald-950'
+                                  : 'bg-amber-400 text-amber-950'
+                              }`}>
+                                {compResult.statusOptimal === 'optimal' ? '✓ Seluruh Komponen Terpenuhi' : '⚠ Belum Semua Komponen Terpenuhi'}
+                              </span>
+                            </span>
+                            <span className="text-[10px] text-white/70">
+                              Syarat Status Optimal: Seluruh komponen nilai wajib mencapai batas tuntas (&ge;85%)
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+                            {/* Telaah */}
+                            <div className={`p-2 rounded-lg border flex items-center justify-between ${
+                              compResult.komponenStatus.telaahModul.isFulfilled
+                                ? 'bg-emerald-500/20 border-emerald-400/40 text-emerald-100'
+                                : 'bg-amber-500/20 border-amber-400/40 text-amber-100'
+                            }`}>
+                              <span className="font-semibold">Modul Ajar ({compResult.akhirTelaah}%)</span>
+                              <span className="text-[10px] font-bold">
+                                {compResult.komponenStatus.telaahModul.isFulfilled ? '✓ Tuntas' : '! < 85%'}
+                              </span>
+                            </div>
+
+                            {/* Observasi */}
+                            <div className={`p-2 rounded-lg border flex items-center justify-between ${
+                              compResult.komponenStatus.observasiKelas.isFulfilled
+                                ? 'bg-emerald-500/20 border-emerald-400/40 text-emerald-100'
+                                : 'bg-amber-500/20 border-amber-400/40 text-amber-100'
+                            }`}>
+                              <span className="font-semibold">Observasi Kelas ({compResult.akhirObservasi}%)</span>
+                              <span className="text-[10px] font-bold">
+                                {compResult.komponenStatus.observasiKelas.isFulfilled ? '✓ Tuntas' : '! < 85%'}
+                              </span>
+                            </div>
+
+                            {/* Nilai Akhir */}
+                            <div className={`p-2 rounded-lg border flex items-center justify-between ${
+                              compResult.komponenStatus.nilaiAkhir.isFulfilled
+                                ? 'bg-emerald-500/20 border-emerald-400/40 text-emerald-100'
+                                : 'bg-amber-500/20 border-amber-400/40 text-amber-100'
+                            }`}>
+                              <span className="font-semibold">Nilai Akhir ({compResult.finalComprehensiveScore}%)</span>
+                              <span className="text-[10px] font-bold">
+                                {compResult.komponenStatus.nilaiAkhir.isFulfilled ? '✓ Tuntas' : '! < 85%'}
+                              </span>
+                            </div>
+
+                            {/* 4 Indikator */}
+                            <div className={`p-2 rounded-lg border flex items-center justify-between ${
+                              compResult.komponenStatus.indikatorKunci.isFulfilled
+                                ? 'bg-emerald-500/20 border-emerald-400/40 text-emerald-100'
+                                : 'bg-amber-500/20 border-amber-400/40 text-amber-100'
+                            }`}>
+                              <span className="font-semibold">4 Indikator SAMBUNG</span>
+                              <span className="text-[10px] font-bold">
+                                {compResult.komponenStatus.indikatorKunci.isFulfilled ? '✓ 4/4 Optimal' : '! Belum 4/4'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* 2. DUA KARTU ANALISIS KEKUATAN & AREA PEMBINAAN */}

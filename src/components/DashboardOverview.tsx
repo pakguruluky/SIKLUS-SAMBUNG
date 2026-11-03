@@ -31,7 +31,8 @@ import {
   MoreVertical,
   X,
   FileText,
-  Trash2
+  Trash2,
+  RefreshCw
 } from 'lucide-react';
 import { EditGuruSupervisiModal } from './forms/EditGuruSupervisiModal';
 import { KesimpulanSemuaGuruDashboard } from './KesimpulanSemuaGuruDashboard';
@@ -82,6 +83,9 @@ interface DashboardOverviewProps {
   onUpdateSupervision?: (updated: Supervision) => void;
   onDeleteSupervision?: (id: string) => Promise<void> | void;
   users?: UserProfile[];
+  onSyncToFirebase?: () => Promise<void> | void;
+  isSyncing?: boolean;
+  hasPendingSync?: boolean;
 }
 
 export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
@@ -100,6 +104,9 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   onUpdateSupervision,
   onDeleteSupervision,
   users = [],
+  onSyncToFirebase,
+  isSyncing,
+  hasPendingSync,
 }) => {
   const getPredicateTag = (s: Supervision): string | null => {
     if (s.teacherName.includes('Hilmia')) return '[B, SB]';
@@ -679,6 +686,23 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                 <span>Instrumen SAMBUNG</span>
               </button>
             )}
+            {onSyncToFirebase && (
+              <button
+                type="button"
+                onClick={onSyncToFirebase}
+                disabled={isSyncing}
+                title={hasPendingSync ? "Ada data lokal belum disinkronkan ke Firebase" : "Semua data lokal telah tersimpan sinkron di Firebase"}
+                className={`px-3.5 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 shadow-xs ${
+                  hasPendingSync 
+                    ? 'bg-amber-500 hover:bg-amber-400 text-white shadow-amber-500/25 ring-2 ring-amber-300 animate-pulse' 
+                    : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                } ${isSyncing ? 'opacity-70 cursor-wait' : 'cursor-pointer'}`}
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                <span>{isSyncing ? 'Menyinkronkan...' : hasPendingSync ? 'Sinkronisasi (Siap Sync)' : 'Cloud Sinkron'}</span>
+              </button>
+            )}
+
             {onOpenStorageModal && (
               <button
                 onClick={onOpenStorageModal}

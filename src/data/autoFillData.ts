@@ -27,6 +27,7 @@ import {
   DEFAULT_MATRIKS_AFTER,
   createDefaultSambungForTeacher
 } from './sambungSeed';
+import { calculateTelaahSummary } from '../utils/sambungCalculations';
 
 /**
  * Database Auto-Fill Instrumen Selidiki (Telaah RPP 22 Aspek, Pra-Observasi 8 Pertanyaan, Observasi 25 Aspek,
@@ -1277,11 +1278,20 @@ export function generateBerdayakanTelaahPerbaikanData(
   const tanggalTelaah = supervision.sambung?.berdayakan?.tanggalTelaah || new Date().toISOString().split('T')[0];
   const namaPenelaah = supervision.sambung?.berdayakan?.namaPenelaah || supervision.supervisorName || 'Kusnandar, M.Si';
 
-  // 3. Skor 22 Aspek Telaah Perencanaan Pembelajaran Perbaikan (Skor optimal 2 untuk seluruh aspek)
-  const telaahScores: Record<number, number | 'NA'> = {
-    1: 2, 2: 2, 3: 2, 4: 2, 5: 2, 6: 2, 7: 2, 8: 2, 9: 2, 10: 2, 11: 2,
-    12: 2, 13: 2, 14: 2, 15: 2, 16: 2, 17: 2, 18: 2, 19: 2, 20: 2, 21: 2, 22: 2
-  };
+  // 3. Skor 22 Aspek Telaah Perencanaan Pembelajaran Perbaikan
+  // Jika guru belum optimal atau baseline di bawah 85%, kalibrasi nilai telaah agar sesuai capaian riil
+  const isBelumOptimal = supervision.statusOptimal === 'belum_optimal' || (supervision.perangkatAjar?.telaahSummary?.finalScore !== undefined && supervision.perangkatAjar.telaahSummary.finalScore < 85);
+  const baselineTelaahScore = supervision.perangkatAjar?.telaahSummary?.finalScore || 84.1;
+
+  const telaahScores: Record<number, number | 'NA'> = isBelumOptimal
+    ? {
+        1: 2, 2: 2, 3: 2, 4: 2, 5: 1, 6: 2, 7: 2, 8: 1, 9: 2, 10: 2, 11: 2,
+        12: 1, 13: 2, 14: 1, 15: 2, 16: 2, 17: 2, 18: 2, 19: 1, 20: 2, 21: 1, 22: 1
+      }
+    : {
+        1: 2, 2: 2, 3: 2, 4: 2, 5: 2, 6: 2, 7: 2, 8: 2, 9: 2, 10: 2, 11: 2,
+        12: 2, 13: 2, 14: 2, 15: 2, 16: 2, 17: 2, 18: 2, 19: 2, 20: 2, 21: 2, 22: 2
+      };
 
   // 4. Komentar Kritis Spesifik yang Menghubungkan Selidiki, Amati, Maknai, dan Hasil Kesimpulan
   let telaahComments: Record<number, string> = {};
@@ -1431,10 +1441,7 @@ export function generateBerdayakanTelaahPerbaikanData(
     telaahScores,
     telaahComments,
     telaahSummary: {
-      totalScore: 44,
-      maxPossibleScore: 44,
-      finalScore: 100,
-      predicate: 'Sangat Baik',
+      ...calculateTelaahSummary(telaahScores),
       kategoriDeskripsi,
     },
     feedback,
@@ -1607,23 +1614,36 @@ export function generateUjiData(supervision: Supervision): SambungUjiData {
     '25': `Guru menunjukkan komitmen tinggi terhadap perbaikan berkelanjutan melalui refleksi mendalam pasca-observasi.`,
   };
 
-  OBSERVASI_ITEMS.forEach(it => {
+  const isBelumOptimalObs = supervision.statusOptimal === 'belum_optimal' || (supervision.observasiKelas?.score !== undefined && supervision.observasiKelas.score < 85);
+  let totalSkorUji = 0;
+
+  OBSERVASI_ITEMS.forEach((it, idx) => {
+    // Jika belum optimal, sebagian aspek bernilai 1 untuk merefleksikan capaian riil (< 85%)
+    const itemScore = isBelumOptimalObs ? (idx % 3 === 0 ? 1 : 2) : 2;
+    totalSkorUji += itemScore;
     observasiItems[it.id] = {
-      score: 2,
-      note: defaultNotesFor25[it.id] || `Pelaksanaan pembelajaran pada aspek ${it.category} teramati terlaksana optimal dan membudaya di kelas ${teacherName}.`,
+      score: itemScore,
+      note: itemScore === 2
+        ? (defaultNotesFor25[it.id] || `Pelaksanaan pembelajaran pada aspek ${it.category} teramati terlaksana optimal di kelas ${teacherName}.`)
+        : `Aspek ${it.category} mulai berkembang, masih memerlukan pendampingan penguatan fasilitasi.`,
     };
   });
+
+  const persentaseCapaianUji = Math.round((totalSkorUji / 50) * 1000) / 10;
+  const predikatUji = persentaseCapaianUji >= 91 ? 'Sangat Baik' : persentaseCapaianUji >= 81 ? 'Baik' : persentaseCapaianUji >= 71 ? 'Cukup' : 'Perlu Perbaikan';
 
   const observasiPelaksanaan: SambungUjiObservasiPelaksanaan = {
     tanggal: today,
     hariTanggal: new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
     kelas: supervision.classGrade || 'Fase F / Kelas XI',
     items: observasiItems,
-    totalSkor: 50,
+    totalSkor: totalSkorUji,
     maxPossibleScore: 50,
-    persentaseCapaian: 100,
-    predicate: 'Sangat Baik',
-    kategoriMakna: 'Pembelajaran Sangat Berkembang (SB) & Berpusat Penuh Pada Pengalaman Murid',
+    persentaseCapaian: persentaseCapaianUji,
+    predicate: predikatUji,
+    kategoriMakna: persentaseCapaianUji >= 85
+      ? 'Pembelajaran Sangat Berkembang (SB) & Berpusat Penuh Pada Pengalaman Murid'
+      : 'Pembelajaran Mulai Berkembang (B) - Memerlukan Penguatan Diferensiasi & Refleksi Mandiri',
     feedback: {
       kelebihan: `Transformasi praktik mengajar Ibu/Bapak ${teacherName} sangat nyata dan inspiratif! Guru berhasil beralih dari instruktur dominan menjadi fasilitator yang hangat dan memberdayakan. Murid terlibat aktif 100% dalam investigasi kelompok, diferensiasi proses terwujud nyata, dan iklim saling memuliakan di kelas sangat kental terasa.`,
       perbaikan: `Pengelolaan alokasi waktu saat sesi tanya jawab antarkelompok dapat diefisiensikan lebih lanjut dengan penetapan batasan waktu juru bicara, sehingga porsi penarikan simpulan mandiri oleh murid semakin mendalam.`,

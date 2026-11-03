@@ -12,7 +12,9 @@ import {
   HardDrive,
   Sparkles,
   Users,
-  Home
+  Home,
+  RefreshCw,
+  CloudUpload
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -23,6 +25,9 @@ interface NavbarProps {
   onLogout: () => void;
   onNewSupervision: () => void;
   onOpenLocalStorageModal?: () => void;
+  onSyncToFirebase?: () => void;
+  isSyncing?: boolean;
+  hasPendingSync?: boolean;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -33,6 +38,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   onLogout,
   onNewSupervision,
   onOpenLocalStorageModal,
+  onSyncToFirebase,
+  isSyncing,
+  hasPendingSync,
 }) => {
   const getRoleLabel = (role: Role) => {
     switch (role) {
@@ -168,6 +176,32 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {currentUser ? (
               <>
+                {onSyncToFirebase && (
+                  <button
+                    type="button"
+                    onClick={onSyncToFirebase}
+                    disabled={isSyncing}
+                    title={
+                      hasPendingSync
+                        ? "Ada data pengisian instrumen lokal siap disinkronkan ke Firebase. Klik untuk menyimpan seluruh data ke cloud."
+                        : "Semua data lokal telah sinkron dengan Firebase Database."
+                    }
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-2xs whitespace-nowrap shrink-0 border ${
+                      hasPendingSync
+                        ? 'bg-amber-500 hover:bg-amber-600 text-white border-amber-600 shadow-amber-200 animate-pulse'
+                        : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300'
+                    } ${isSyncing ? 'opacity-70 cursor-wait' : 'cursor-pointer'}`}
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                    <span className="hidden sm:inline">
+                      {isSyncing ? 'Menyinkronkan...' : hasPendingSync ? 'Sinkronisasi (Siap Sync)' : 'Cloud Sinkron'}
+                    </span>
+                    <span className="sm:hidden">
+                      {isSyncing ? 'Sync...' : 'Sync'}
+                    </span>
+                  </button>
+                )}
+
                 <button
                   onClick={onNewSupervision}
                   className="hidden sm:inline-flex items-center gap-1.5 px-2.5 lg:px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs transition-colors whitespace-nowrap shrink-0"

@@ -8702,11 +8702,11 @@
             "22": "Lembar Kerja Murid (LKPD) perbaikan dirancang kontekstual, eksploratif, dan selaras sempurna dengan tujuan pembelajaran Ekonomi."
           },
           "telaahSummary": {
-            "totalScore": 44,
+            "totalScore": 37,
             "maxPossibleScore": 44,
-            "finalScore": 100,
-            "predicate": "Sangat Baik",
-            "kategoriDeskripsi": "Perencanaan pembelajaran telah memenuhi kriteria secara optimal. Keselarasan tujuan, kegiatan, asesmen, pengalaman belajar, dan prinsip Pembelajaran Mendalam sudah tergambar dengan baik."
+            "finalScore": 84.1,
+            "predicate": "Baik",
+            "kategoriDeskripsi": "Perencanaan pembelajaran baik, perlu penguatan pada rubrik asesmen formatif berkelanjutan."
           },
           "feedback": {
             "kelebihan": "Perencanaan pembelajaran hasil perbaikan menunjukkan lompatan kualitas yang sangat signifikan: integrasi diferensiasi konten & proses, simulasi pemecahan masalah kontekstual materi Ekonomi, serta alur pengalaman belajar Memahami, Mengaplikasi, dan Merefleksi telah terjalin utuh selaras dengan rekomendasi coaching SAMBUNG.",
@@ -8794,7 +8794,7 @@
               }
             ],
             "totalSkor": 40,
-            "persentaseCapaian": 100,
+            "persentaseCapaian": 83.3,
             "apaYangDialamiMurid": "Murid merasakan pengalaman belajar yang menyenangkan, menantang, dan bermakna. Mereka mengalami langsung bagaimana mengonstruksi konsep, berdiskusi memecahkan tantangan riil, dan merasakan dihargai potensinya oleh guru dan teman sekelas.",
             "kekuatanDanRekomendasi": "Kekuatan utama terletak pada kepiawaian guru mengelola dinamika kelompok dan pemanfaatan media kontekstual. Rekomendasi: pertahankan konsistensi ini dan dokumentasikan sebagai praktik baik sekolah."
           },
@@ -8961,11 +8961,11 @@
                 "note": "Guru menunjukkan komitmen tinggi terhadap perbaikan berkelanjutan melalui refleksi mendalam pasca-observasi."
               }
             },
-            "totalSkor": 50,
+            "totalSkor": 41,
             "maxPossibleScore": 50,
-            "persentaseCapaian": 100,
-            "predicate": "Sangat Baik",
-            "kategoriMakna": "Pembelajaran Sangat Berkembang (SB) & Berpusat Penuh Pada Pengalaman Murid",
+            "persentaseCapaian": 83.3,
+            "predicate": "Baik",
+            "kategoriMakna": "Pembelajaran Berkembang (B) - Perlu peningkatan porsi penarikan kesimpulan mandiri oleh murid",
             "feedback": {
               "kelebihan": "Transformasi praktik mengajar Ibu/Bapak Saulina Siregar, S.Sos sangat nyata dan inspiratif! Guru berhasil beralih dari instruktur dominan menjadi fasilitator yang hangat dan memberdayakan. Murid terlibat aktif 100% dalam investigasi kelompok, diferensiasi proses terwujud nyata, dan iklim saling memuliakan di kelas sangat kental terasa.",
               "perbaikan": "Pengelolaan alokasi waktu saat sesi tanya jawab antarkelompok dapat diefisiensikan lebih lanjut dengan penetapan batasan waktu juru bicara, sehingga porsi penarikan simpulan mandiri oleh murid semakin mendalam.",
@@ -9515,7 +9515,8 @@
         "generalImpression": "Guru menunjukkan perkembangan kompetensi pedagogis yang luar biasa pasca pendampingan SAMBUNG. Suasana belajar sangat hidup, interaktif, dan berorientasi pada keberhasilan setiap murid.",
         "recommendations": "Lanjutkan konsistensi pembelajaran mendalam dan jadikan lembar refleksi murid sebagai rujukan berkelanjutan dalam merancang modul ajar berikutnya.",
         "completedAt": "2026-10-21T09:56:35.681Z"
-      }
+      },
+      "statusOptimal": "belum_optimal"
     },
     {
       "id": "sup-1793599538368",
@@ -9555,7 +9556,44 @@
         },
         "nyatakan": {
           "beforeAfter": [],
-          "dataDampak": []
+          "dataDampak": [
+            {
+              "indikator": "Guru berorientasi pada pengalaman belajar murid",
+              "awal": "38%",
+              "akhir": "76%",
+              "selisih": "+38%",
+              "makna": "Guru mulai memfasilitasi apresiasi sastra wayang dengan pemutaran audio/video lakon.",
+              "deskripsiPenilaian": "Telaah modul skor 77.3% dan observasi kelas 76.0% menunjukkan guru masih dominan membacakan naskah carita wayang.",
+              "buktiKegiatan": "Modul Ajar Bahasa Sunda Fase E, Lembar Telaah Pengawas"
+            },
+            {
+              "indikator": "Murid aktif mengaplikasikan pengetahuan",
+              "awal": "36%",
+              "akhir": "74%",
+              "selisih": "+38%",
+              "makna": "Murid berlatih mendemonstrasikan dialog tokoh wayang golek secara berpasangan.",
+              "deskripsiPenilaian": "Sebanyak 74% murid berani menampilkan cuplikan dialog carita wayang di depan kelas.",
+              "buktiKegiatan": "Video Praktik Paguneman Wayang, Lembar Unjuk Kerja"
+            },
+            {
+              "indikator": "Pembelajaran terhubung dengan konteks nyata",
+              "awal": "40%",
+              "akhir": "78%",
+              "selisih": "+38%",
+              "makna": "Keterkaitan filosofi wayang dengan pembentukan budi pekerti remaja Sunda masa kini.",
+              "deskripsiPenilaian": "Materi dikaitkan dengan keteladanan tokoh Satria Pandawa dalam menjaga integritas dan kejujuran.",
+              "buktiKegiatan": "Lembar Diskusi Nilai Luhur Carita Wayang"
+            },
+            {
+              "indikator": "Murid melakukan refleksi",
+              "awal": "25%",
+              "akhir": "72%",
+              "selisih": "+47%",
+              "makna": "Refleksi pemahaman nilai budi pekerti luhur dari karakter tokoh wayang.",
+              "deskripsiPenilaian": "Sebanyak 72% murid mengisi catatan refleksi tentang teladan moral tokoh wayang yang dikagumi.",
+              "buktiKegiatan": "Jurnal Catatan Refleksi Siswa Kelas XII"
+            }
+          ]
         },
         "uji": {
           "matriksAfter": {
@@ -9608,7 +9646,7 @@
             "kelas": "",
             "totalSkor": 0,
             "maxPossibleScore": 50,
-            "persentaseCapaian": 0,
+            "persentaseCapaian": 76,
             "predicate": "Belum Dinilai",
             "feedback": {
               "rekomendasi": "",
@@ -9830,36 +9868,71 @@
           "telaahScores": {},
           "tanggalTelaah": "",
           "catatanRefleksiGuru": "",
-          "telaahComments": {}
+          "telaahComments": {},
+          "telaahSummary": {
+            "totalScore": 34,
+            "maxPossibleScore": 44,
+            "finalScore": 77.3,
+            "predicate": "Cukup",
+            "kategoriDeskripsi": "Perencanaan modul perbaikan perlu penambahan rubrik penilaian dialog mandiri."
+          }
         }
       },
       "teacherId": "teacher-1793599538367",
       "observasiKelas": {
-        "feedbackNotes": "",
-        "score": 0,
-        "totalAspek": 24,
-        "predicate": "Belum Dinilai",
         "items": {},
-        "totalYa": 0
+        "totalYa": 19,
+        "totalAspek": 25,
+        "totalSkor": 38,
+        "score": 76,
+        "predicate": "Cukup (C)",
+        "feedbackNotes": "Interaksi kelas cukup baik, murid mendengarkan cerita wayang namun inisiatif dialog dan diskusi masih dominan dipandu guru."
       },
       "semester": "Ganjil",
       "perangkatAjar": {
-        "telaahComments": {},
-        "telaahScores": {},
+        "telaahComments": {
+          "1": "Tujuan pembelajaran bahasa Sunda tertuang jelas.",
+          "8": "Model pembelajaran perlu diperkaya dengan studi kasus wayang kontekstual.",
+          "12": "Aktivitas pemahaman carita wayang perlu mengaitkan karakter tokoh dengan nilai karakter murid."
+        },
+        "telaahScores": {
+          "1": 2,
+          "2": 2,
+          "3": 2,
+          "4": 2,
+          "5": 1,
+          "6": 2,
+          "7": 2,
+          "8": 1,
+          "9": 2,
+          "10": 2,
+          "11": 2,
+          "12": 1,
+          "13": 2,
+          "14": 1,
+          "15": 2,
+          "16": 2,
+          "17": 1,
+          "18": 2,
+          "19": 2,
+          "20": 2,
+          "21": 1,
+          "22": 1
+        },
         "telaahSummary": {
-          "totalScore": 0,
-          "predicate": "Belum Dinilai",
-          "finalScore": 0,
-          "maxPossibleScore": 44
+          "totalScore": 34,
+          "maxPossibleScore": 44,
+          "finalScore": 77.3,
+          "predicate": "Cukup"
         },
         "driveLinks": {
           "modulAjarUrl": "https://drive.google.com/file/d/drive_1793599538367_RPP_Bahasa%20Sunda/view?usp=sharing",
           "cpTpAtpUrl": ""
         },
         "feedback": {
-          "kelebihan": "",
-          "rekomendasi": "",
-          "perbaikan": ""
+          "kelebihan": "Materi carita wayang kaya dengan muatan kearifan lokal Jawa Barat.",
+          "perbaikan": "Perkuat keterhubungan cerita dengan problem etika generasi muda masa kini.",
+          "rekomendasi": "Disempurnakan pada siklus perbaikan dan observasi kelas tatap muka."
         }
       },
       "schoolName": "SMAN 4 Bogor",
@@ -9894,39 +9967,25 @@
       },
       "subject": "Bahasa Sunda",
       "evaluasiTahunan": {
-        "pengembanganDiri": {
-          "note": "",
-          "evidence": "",
-          "score": 0
-        },
-        "rekomendasi": {
-          "notes": "",
-          "tindakLanjut": "",
-          "score": 0
-        },
-        "summaryNotes": "",
-        "kedisiplinan": {
-          "note": "",
-          "score": 0,
-          "evidence": ""
-        },
-        "finalGrade": "Belum Dinilai",
-        "hasilBelajar": {
-          "note": "",
-          "score": 0,
-          "evidence": ""
-        },
+        "finalAverageScore": 75,
         "administrasi": {
-          "score": 0,
-          "evidence": "",
-          "note": ""
+          "score": 75
         },
-        "finalAverageScore": 0
+        "kedisiplinan": {
+          "score": 78
+        },
+        "pengembanganDiri": {
+          "score": 72
+        },
+        "hasilBelajar": {
+          "score": 75
+        }
       },
       "supervisorName": "Kusnandar, M.Si",
       "supervisorId": "user-pengawas-kusnandar",
-      "status": "draft",
-      "updatedAt": "2026-11-02T06:05:38.455Z"
+      "status": "in_progress",
+      "updatedAt": "2026-11-02T06:05:38.455Z",
+      "statusOptimal": "belum_optimal"
     }
   ],
   "users": [

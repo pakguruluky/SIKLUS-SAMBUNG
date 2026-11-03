@@ -125,70 +125,99 @@ export function cleanForFirestore<T>(obj: T): T {
   return obj;
 }
 
-// ==========================================
-// FIRESTORE QUOTA CIRCUIT BREAKER
-// ==========================================
-const QUOTA_STORAGE_KEY = 'firestore_quota_exhausted_timestamp';
-let isFirestoreQuotaExhausted = false;
-
-// Check if quota exhaustion was flagged in the last 12 hours (both sessionStorage & localStorage)
+// Quota exhaustion tracking and handling
+const TODAY_KEY = new Date().toISOString().slice(0, 10);
+let isFirestoreQuotaExceeded = false;
 try {
-  const stored = typeof window !== 'undefined'
-    ? (window.sessionStorage?.getItem(QUOTA_STORAGE_KEY) || window.localStorage?.getItem(QUOTA_STORAGE_KEY))
-    : null;
-  if (stored) {
-    const elapsed = Date.now() - parseInt(stored, 10);
-    if (elapsed < 12 * 60 * 60 * 1000) {
-      isFirestoreQuotaExhausted = true;
+  if (typeof window !== 'undefined') {
+    if (localStorage.getItem('firestore_quota_exceeded_date') === TODAY_KEY || sessionStorage.getItem('firestore_quota_exceeded') === 'true') {
+      isFirestoreQuotaExceeded = true;
     }
   }
 } catch {}
 
-export function isQuotaExceededError(err: any): boolean {
+export function isQuotaExceeded(): boolean {
+  return isFirestoreQuotaExceeded;
+}
+
+export const getIsFirestoreQuotaExhausted = isQuotaExceeded;
+
+export function getQuotaConsoleUrl(): string {
+  const proj = firebaseConfig.projectId;
+  const dbId = (firebaseConfig as any).firestoreDatabaseId || '(default)';
+  return `https://console.firebase.google.com/project/${proj}/firestore/databases/${dbId}/data?openUpgradeDialog=true`;
+}
+
+export function isQuotaError(err: any): boolean {
   if (!err) return false;
   const code = err?.code || '';
-  const msg = typeof err === 'string' ? err : (err?.message || '');
+  const msg = (err?.message || String(err)).toLowerCase();
   return (
     code === 'resource-exhausted' ||
     msg.includes('resource-exhausted') ||
-    msg.includes('Quota limit exceeded') ||
-    msg.includes('Quota exceeded') ||
-    msg.includes('Free daily write units') ||
-    msg.includes('Free daily read units') ||
+    msg.includes('quota limit exceeded') ||
+    msg.includes('quota exceeded') ||
+    msg.includes('daily write units') ||
+    msg.includes('daily read units') ||
     msg.includes('maximum backoff delay')
   );
 }
 
-export function tripFirestoreQuotaBreaker(err?: any) {
-  if (!isFirestoreQuotaExhausted) {
-    isFirestoreQuotaExhausted = true;
-    try {
-      if (typeof window !== 'undefined') {
-        const nowStr = Date.now().toString();
-        window.sessionStorage?.setItem(QUOTA_STORAGE_KEY, nowStr);
-        window.localStorage?.setItem(QUOTA_STORAGE_KEY, nowStr);
-      }
-    } catch {}
-    console.warn(
-      '⚠️ [Firestore Quota Circuit Breaker Activated]: Batas kuota gratis harian Firestore (read/write units) telah tercapai. ' +
-      'Operasi jaringan Firebase dialihkan sepenuhnya ke penyimpanan backend persisten (server_data/database.json) dan localStorage. ' +
-      'Seluruh 10 data guru & sekolah tetap 100% aman, persisten, dan sinkron tanpa galat.'
+export function markQuotaExceeded(err?: any) {
+  isFirestoreQuotaExceeded = true;
+  try {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('firestore_quota_exceeded_date', TODAY_KEY);
+      sessionStorage.setItem('firestore_quota_exceeded', 'true');
+    }
+  } catch {}
+  console.warn(
+    '⚠️ [Firestore Quota Notice] Free daily write/read quota reached. Switched gracefully to Backend Server & Local storage mode.',
+    err?.message || err
+  );
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(
+      new CustomEvent('firestore-quota-exceeded', {
+        detail: {
+          projectId: firebaseConfig.projectId,
+          databaseId: (firebaseConfig as any).firestoreDatabaseId,
+          error: err?.message || 'Quota limit exceeded',
+          url: getQuotaConsoleUrl(),
+        },
+      })
     );
   }
 }
 
-export function getIsFirestoreQuotaExhausted(): boolean {
-  return isFirestoreQuotaExhausted;
-}
+// Local sync tracking flags
+const HAS_UNSYNCED_KEY = 'pakkus_has_unsynced_changes';
+const LAST_SYNC_TIME_KEY = 'pakkus_last_sync_time';
 
-export function resetFirestoreQuotaBreaker() {
-  isFirestoreQuotaExhausted = false;
+export function markDataModifiedLocally() {
   try {
     if (typeof window !== 'undefined') {
-      window.sessionStorage?.removeItem(QUOTA_STORAGE_KEY);
-      window.localStorage?.removeItem(QUOTA_STORAGE_KEY);
+      localStorage.setItem(HAS_UNSYNCED_KEY, 'true');
+      window.dispatchEvent(new CustomEvent('pakkus-local-data-modified'));
     }
   } catch {}
+}
+
+export function getHasPendingSync(): boolean {
+  try {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem(HAS_UNSYNCED_KEY) === 'true';
+    }
+  } catch {}
+  return false;
+}
+
+export function getLastSyncTime(): string | null {
+  try {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem(LAST_SYNC_TIME_KEY);
+    }
+  } catch {}
+  return null;
 }
 
 // Safe timeout wrapper for all Firestore network promises to guarantee UI never freezes or hangs
@@ -197,7 +226,8 @@ export async function withFirestoreTimeout<T>(
   timeoutMs = 3500,
   fallbackValue?: T
 ): Promise<T> {
-  if (isFirestoreQuotaExhausted) {
+  // If quota is already known to be exceeded, do not attempt to contact Firestore
+  if (isFirestoreQuotaExceeded) {
     return fallbackValue as T;
   }
 
@@ -214,23 +244,23 @@ export async function withFirestoreTimeout<T>(
     return res;
   } catch (err: any) {
     clearTimeout(timer);
-    if (isQuotaExceededError(err)) {
-      tripFirestoreQuotaBreaker(err);
-      return fallbackValue as T;
+    if (isQuotaError(err)) {
+      markQuotaExceeded(err);
+    } else {
+      console.warn('Notice from Firestore operation (data safely stored in backend/local):', err?.message || err);
     }
-    console.warn('Notice from Firestore operation (data safely stored in backend/local):', err?.message || err);
     return fallbackValue as T;
   }
 }
 
-// Connection verification test per Firebase skill guidelines
-async function testConnection() {
-  if (isFirestoreQuotaExhausted) return;
+// Connection verification test per Firebase skill guidelines (passive, only runs when needed)
+export async function testConnection() {
+  if (isFirestoreQuotaExceeded) return;
   try {
     await withFirestoreTimeout(getDocFromServer(doc(db, 'test', 'connection')), 1500, null);
   } catch (error) {
-    if (isQuotaExceededError(error)) {
-      tripFirestoreQuotaBreaker(error);
+    if (isQuotaError(error)) {
+      markQuotaExceeded(error);
       return;
     }
     if (error instanceof Error && error.message.includes('the client is offline')) {
@@ -238,7 +268,6 @@ async function testConnection() {
     }
   }
 }
-testConnection();
 
 // DEFAULT_SCHOOLS and DEFAULT_USERS are imported and re-exported from firebaseDefaults.ts
 
@@ -501,33 +530,26 @@ export async function authenticateRealUser(
     return matchedDefault;
   }
 
-  // 3. Check Firestore `users` collection (only if quota is not exhausted)
-  if (!isFirestoreQuotaExhausted) {
-    try {
-      const usersSnap = await withFirestoreTimeout(getDocs(collection(db, 'users')), 1200, null);
-      if (usersSnap) {
-        for (const d of usersSnap.docs) {
-          const u = d.data() as UserProfile;
-          if (
-            (u.username?.toLowerCase() === cleaned || u.email.toLowerCase() === cleaned) &&
-            (u.password === passwordInput || passwordInput === 'pakkus')
-          ) {
-            return { ...u, uid: d.id };
-          }
-        }
+  // 3. Check Firestore `users` collection
+  try {
+    const usersSnap = await getDocs(collection(db, 'users'));
+    for (const d of usersSnap.docs) {
+      const u = d.data() as UserProfile;
+      if (
+        (u.username?.toLowerCase() === cleaned || u.email.toLowerCase() === cleaned) &&
+        (u.password === passwordInput || passwordInput === 'pakkus')
+      ) {
+        return { ...u, uid: d.id };
       }
-    } catch (err) {
-      if (isQuotaExceededError(err)) tripFirestoreQuotaBreaker(err);
-      console.warn('Firestore user lookup warning:', err);
     }
+  } catch (err) {
+    console.warn('Firestore user lookup warning:', err);
   }
 
   // 4. Fallback: if username is 'pengawas' and password is 'pakkus'
   if (cleaned === 'pengawas' && passwordInput === 'pakkus') {
     const adminUser = DEFAULT_USERS[0];
-    if (!isFirestoreQuotaExhausted) {
-      withFirestoreTimeout(setDoc(doc(db, 'users', adminUser.uid), adminUser, { merge: true }), 500).catch(() => {});
-    }
+    setDoc(doc(db, 'users', adminUser.uid), adminUser, { merge: true }).catch(() => {});
     return adminUser;
   }
 
@@ -574,22 +596,19 @@ export async function fetchAllUsers(): Promise<UserProfile[]> {
     console.warn('Backend API users notice:', err);
   }
 
-  // 2. Non-blocking Firestore sync (only if quota not exhausted)
-  if (!isFirestoreQuotaExhausted) {
-    try {
-      const snap = await withFirestoreTimeout(getDocs(collection(db, 'users')), 600, null);
-      if (snap && !snap.empty) {
-        const firestoreUsers = snap.docs.map(d => ({ ...d.data(), uid: d.id } as UserProfile));
-        const map = new Map<string, UserProfile>();
-        currentUsers.forEach(u => map.set(u.uid, u));
-        firestoreUsers.forEach(u => map.set(u.uid, u));
-        currentUsers = Array.from(map.values());
-        saveStoredUsers(currentUsers);
-      }
-    } catch (err) {
-      if (isQuotaExceededError(err)) tripFirestoreQuotaBreaker(err);
-      console.warn('Notice fetching users from Firestore (using backend/local):', err);
+  // 2. Non-blocking Firestore sync
+  try {
+    const snap = await withFirestoreTimeout(getDocs(collection(db, 'users')), 600, null);
+    if (snap && !snap.empty) {
+      const firestoreUsers = snap.docs.map(d => ({ ...d.data(), uid: d.id } as UserProfile));
+      const map = new Map<string, UserProfile>();
+      currentUsers.forEach(u => map.set(u.uid, u));
+      firestoreUsers.forEach(u => map.set(u.uid, u));
+      currentUsers = Array.from(map.values());
+      saveStoredUsers(currentUsers);
     }
+  } catch (err) {
+    console.warn('Notice fetching users from Firestore (using backend/local):', err);
   }
 
   const deletedUids = new Set(getDeletedUserIds());
@@ -624,17 +643,12 @@ export async function addUserAccount(user: UserProfile): Promise<UserProfile> {
     console.warn('Backend API save user notice:', apiErr);
   }
 
-  // 3. Save to Firestore (only if quota not exhausted)
-  if (!isFirestoreQuotaExhausted) {
-    try {
-      const cleaned = cleanForFirestore(completeUser);
-      withFirestoreTimeout(setDoc(doc(db, 'users', uid), cleaned, { merge: true }), 600).catch(err => {
-        if (isQuotaExceededError(err)) tripFirestoreQuotaBreaker(err);
-      });
-    } catch (err) {
-      if (isQuotaExceededError(err)) tripFirestoreQuotaBreaker(err);
-      console.warn('Notice saving user to Firestore (saved in backend/local):', err);
-    }
+  // 3. Save to Firestore
+  try {
+    const cleaned = cleanForFirestore(completeUser);
+    withFirestoreTimeout(setDoc(doc(db, 'users', uid), cleaned, { merge: true }), 600).catch(() => {});
+  } catch (err) {
+    console.warn('Notice saving user to Firestore (saved in backend/local):', err);
   }
 
   return completeUser;
@@ -663,15 +677,15 @@ export async function updateUserAccount(user: UserProfile): Promise<UserProfile>
     console.warn('Backend API update user notice:', apiErr);
   }
 
-  // 3. Save to Firestore (only if quota not exhausted)
-  if (!isFirestoreQuotaExhausted) {
+  // 3. Save to Firestore (only if quota available)
+  if (!isFirestoreQuotaExceeded) {
     try {
       const cleaned = cleanForFirestore(completeUser);
-      withFirestoreTimeout(setDoc(doc(db, 'users', user.uid), cleaned, { merge: true }), 600).catch(err => {
-        if (isQuotaExceededError(err)) tripFirestoreQuotaBreaker(err);
+      withFirestoreTimeout(setDoc(doc(db, 'users', user.uid), cleaned, { merge: true }), 600).catch((err) => {
+        if (isQuotaError(err)) markQuotaExceeded(err);
       });
     } catch (err) {
-      if (isQuotaExceededError(err)) tripFirestoreQuotaBreaker(err);
+      if (isQuotaError(err)) markQuotaExceeded(err);
       console.warn('Notice updating user in Firestore (saved in backend/local):', err);
     }
   }
@@ -700,9 +714,9 @@ export async function updateUserAccount(user: UserProfile): Promise<UserProfile>
       for (const s of updatedSupervisions) {
         if (s.teacherId === user.uid || (user.username && s.teacherId === user.username)) {
           apiSaveSupervision(s).catch(() => {});
-          if (!isFirestoreQuotaExhausted) {
-            withFirestoreTimeout(setDoc(doc(db, 'supervisions', s.id), cleanForFirestore(s), { merge: true }), 500).catch(err => {
-              if (isQuotaExceededError(err)) tripFirestoreQuotaBreaker(err);
+          if (!isFirestoreQuotaExceeded) {
+            withFirestoreTimeout(setDoc(doc(db, 'supervisions', s.id), cleanForFirestore(s), { merge: true }), 500).catch((err) => {
+              if (isQuotaError(err)) markQuotaExceeded(err);
             });
           }
         }
@@ -792,13 +806,13 @@ export async function deleteUserAccount(uid: string): Promise<void> {
     await apiDeleteUser(uid);
   } catch {}
 
-  if (!isFirestoreQuotaExhausted) {
+  if (!isFirestoreQuotaExceeded) {
     try {
-      withFirestoreTimeout(deleteDoc(doc(db, 'users', uid)), 600).catch(err => {
-        if (isQuotaExceededError(err)) tripFirestoreQuotaBreaker(err);
+      withFirestoreTimeout(deleteDoc(doc(db, 'users', uid)), 600).catch((err) => {
+        if (isQuotaError(err)) markQuotaExceeded(err);
       });
     } catch (err) {
-      if (isQuotaExceededError(err)) tripFirestoreQuotaBreaker(err);
+      if (isQuotaError(err)) markQuotaExceeded(err);
       console.warn('Notice deleting user from Firestore:', err);
     }
   }
@@ -816,9 +830,9 @@ export async function deleteUserAccount(uid: string): Promise<void> {
     for (const sup of supsToDelete) {
       addDeletedSupervisionId(sup.id);
       apiDeleteSupervision(sup.id).catch(() => {});
-      if (!isFirestoreQuotaExhausted) {
-        withFirestoreTimeout(deleteDoc(doc(db, 'supervisions', sup.id)), 500).catch(err => {
-          if (isQuotaExceededError(err)) tripFirestoreQuotaBreaker(err);
+      if (!isFirestoreQuotaExceeded) {
+        withFirestoreTimeout(deleteDoc(doc(db, 'supervisions', sup.id)), 500).catch((err) => {
+          if (isQuotaError(err)) markQuotaExceeded(err);
         });
       }
     }
@@ -831,16 +845,12 @@ export async function deleteUserAccount(uid: string): Promise<void> {
 }
 
 export async function getUserProfile(uid: string): Promise<UserProfile | null> {
-  if (!isFirestoreQuotaExhausted) {
-    try {
-      const snap = await withFirestoreTimeout(getDoc(doc(db, 'users', uid)), 600, null);
-      if (snap && snap.exists()) {
-        return snap.data() as UserProfile;
-      }
-    } catch (err) {
-      if (isQuotaExceededError(err)) tripFirestoreQuotaBreaker(err);
+  try {
+    const snap = await getDoc(doc(db, 'users', uid));
+    if (snap.exists()) {
+      return snap.data() as UserProfile;
     }
-  }
+  } catch (err) {}
   const local = getStoredUsers().find(u => u.uid === uid);
   return local || null;
 }
@@ -856,16 +866,10 @@ export async function updateUserApprovalStatus(uid: string, status: 'approved' |
     current[idx] = { ...current[idx], approvalStatus: status, updatedAt: new Date().toISOString() };
     saveStoredUsers(current);
   }
-  if (!isFirestoreQuotaExhausted) {
-    try {
-      await withFirestoreTimeout(setDoc(doc(db, 'users', uid), { approvalStatus: status, updatedAt: new Date().toISOString() }, { merge: true }), 1000);
-    } catch (err) {
-      if (isQuotaExceededError(err)) {
-        tripFirestoreQuotaBreaker(err);
-      } else {
-        console.warn('Could not update user approval in Firestore, updated state locally', err);
-      }
-    }
+  try {
+    await setDoc(doc(db, 'users', uid), { approvalStatus: status, updatedAt: new Date().toISOString() }, { merge: true });
+  } catch (err) {
+    console.warn('Could not update user approval in Firestore, updated state locally', err);
   }
 }
 
@@ -877,13 +881,8 @@ export async function fetchUsersBySchool(schoolId?: string): Promise<UserProfile
 
 // Subscribe to real-time users updates
 export function subscribeToUsers(callback: (users: UserProfile[]) => void): Unsubscribe {
-  if (isFirestoreQuotaExhausted) {
-    callback(getStoredUsers());
-    return () => {};
-  }
   try {
-    let unsub: Unsubscribe = () => {};
-    unsub = onSnapshot(collection(db, 'users'), (snap) => {
+    return onSnapshot(collection(db, 'users'), (snap) => {
       const firestoreUsers = snap.docs.map(d => ({ ...d.data(), uid: d.id } as UserProfile));
       const map = new Map<string, UserProfile>();
       DEFAULT_USERS.forEach(u => map.set(u.uid, u));
@@ -892,17 +891,10 @@ export function subscribeToUsers(callback: (users: UserProfile[]) => void): Unsu
       saveStoredUsers(combined);
       callback(combined);
     }, (err) => {
-      if (isQuotaExceededError(err)) {
-        tripFirestoreQuotaBreaker(err);
-        try { unsub(); } catch {}
-      } else {
-        console.warn('Real-time users subscription warning:', err);
-      }
+      console.warn('Real-time users subscription warning:', err);
       callback(getStoredUsers());
     });
-    return unsub;
   } catch (err) {
-    if (isQuotaExceededError(err)) tripFirestoreQuotaBreaker(err);
     console.warn('Failed to attach real-time users listener:', err);
     callback(getStoredUsers());
     return () => {};
@@ -915,10 +907,6 @@ export async function ensureInitialSchools(): Promise<School[]> {
   if (local && local.length > 0) {
     return local;
   }
-  if (isFirestoreQuotaExhausted) {
-    saveLocalSchools(DEFAULT_SCHOOLS);
-    return DEFAULT_SCHOOLS;
-  }
   try {
     const schoolsSnap = await withFirestoreTimeout(getDocs(collection(db, 'schools')), 1800, null);
     if (schoolsSnap && !schoolsSnap.empty) {
@@ -929,20 +917,13 @@ export async function ensureInitialSchools(): Promise<School[]> {
 
     // Bootstrap defaults
     for (const sch of DEFAULT_SCHOOLS) {
-      if (isFirestoreQuotaExhausted) break;
       const { id, ...data } = sch;
-      withFirestoreTimeout(setDoc(doc(db, 'schools', id), data, { merge: true }), 1500).catch(err => {
-        if (isQuotaExceededError(err)) tripFirestoreQuotaBreaker(err);
-      });
+      withFirestoreTimeout(setDoc(doc(db, 'schools', id), data, { merge: true }), 1500).catch(() => {});
     }
     saveLocalSchools(DEFAULT_SCHOOLS);
     return DEFAULT_SCHOOLS;
-  } catch (err: any) {
-    if (isQuotaExceededError(err)) {
-      tripFirestoreQuotaBreaker(err);
-    } else {
-      console.warn('Using default schools due to offline or uninitialized state', err);
-    }
+  } catch (err) {
+    console.warn('Using default schools due to offline or uninitialized state', err);
     saveLocalSchools(DEFAULT_SCHOOLS);
     return DEFAULT_SCHOOLS;
   }
@@ -953,13 +934,9 @@ export async function resetToDefaultSchools(): Promise<School[]> {
   try {
     await apiResetSchools();
   } catch {}
-  if (!isFirestoreQuotaExhausted) {
-    for (const sch of DEFAULT_SCHOOLS) {
-      const { id, ...data } = sch;
-      withFirestoreTimeout(setDoc(doc(db, 'schools', id), data, { merge: true }), 500).catch(err => {
-        if (isQuotaExceededError(err)) tripFirestoreQuotaBreaker(err);
-      });
-    }
+  for (const sch of DEFAULT_SCHOOLS) {
+    const { id, ...data } = sch;
+    withFirestoreTimeout(setDoc(doc(db, 'schools', id), data, { merge: true }), 500).catch(() => {});
   }
   return DEFAULT_SCHOOLS;
 }
@@ -979,18 +956,16 @@ export async function fetchAllSchools(): Promise<School[]> {
     console.warn('Backend API schools notice:', backendErr);
   }
 
-  // 2. Non-blocking Firestore sync (only if newer and quota not exhausted)
-  if (!isFirestoreQuotaExhausted) {
-    try {
-      const snap = await withFirestoreTimeout(getDocs(collection(db, 'schools')), 600, null);
-      if (snap && !snap.empty) {
-        const firestoreSchools = snap.docs.map(doc => normalizeSchoolData({ id: doc.id, ...doc.data() } as School));
-        currentList = mergeSchoolsByTimestamp(currentList, firestoreSchools);
-        saveLocalSchools(currentList);
-      }
-    } catch (err) {
-      console.warn('Notice fetching schools from Firestore (using backend/local storage):', err);
+  // 2. Non-blocking Firestore sync (only if newer)
+  try {
+    const snap = await withFirestoreTimeout(getDocs(collection(db, 'schools')), 600, null);
+    if (snap && !snap.empty) {
+      const firestoreSchools = snap.docs.map(doc => normalizeSchoolData({ id: doc.id, ...doc.data() } as School));
+      currentList = mergeSchoolsByTimestamp(currentList, firestoreSchools);
+      saveLocalSchools(currentList);
     }
+  } catch (err) {
+    console.warn('Notice fetching schools from Firestore (using backend/local storage):', err);
   }
 
   return currentList;
@@ -1017,14 +992,14 @@ export async function addSchool(data: Omit<School, 'id'>): Promise<School> {
   }
 
   // Fire-and-forget to Firestore without blocking UI (if quota available)
-  if (!isFirestoreQuotaExhausted) {
+  if (!isFirestoreQuotaExceeded) {
     try {
       const cleaned = cleanForFirestore(school);
-      withFirestoreTimeout(setDoc(doc(db, 'schools', targetId), cleaned), 600).catch(err => {
-        if (isQuotaExceededError(err)) tripFirestoreQuotaBreaker(err);
+      withFirestoreTimeout(setDoc(doc(db, 'schools', targetId), cleaned), 600).catch((err) => {
+        if (isQuotaError(err)) markQuotaExceeded(err);
       });
     } catch (err) {
-      if (isQuotaExceededError(err)) tripFirestoreQuotaBreaker(err);
+      if (isQuotaError(err)) markQuotaExceeded(err);
       console.warn('Notice saving school to Firestore (saved locally & backend):', err);
     }
   }
@@ -1097,15 +1072,15 @@ export async function updateSchool(id: string, data: Partial<School>): Promise<v
     console.warn('Backend API update school notice:', apiErr);
   }
 
-  // Non-blocking Firestore push
-  if (!isFirestoreQuotaExhausted) {
+  // Non-blocking Firestore push (only if quota available)
+  if (!isFirestoreQuotaExceeded) {
     try {
       const cleaned = cleanForFirestore(updatedSchool);
-      withFirestoreTimeout(setDoc(doc(db, 'schools', id), cleaned, { merge: true }), 600).catch(err => {
-        if (isQuotaExceededError(err)) tripFirestoreQuotaBreaker(err);
+      withFirestoreTimeout(setDoc(doc(db, 'schools', id), cleaned, { merge: true }), 600).catch((err) => {
+        if (isQuotaError(err)) markQuotaExceeded(err);
       });
     } catch (err) {
-      if (isQuotaExceededError(err)) tripFirestoreQuotaBreaker(err);
+      if (isQuotaError(err)) markQuotaExceeded(err);
       console.warn('Notice updating school in Firestore (saved locally & backend):', err);
     }
   }
@@ -1119,13 +1094,13 @@ export async function deleteSchool(id: string): Promise<void> {
     await apiDeleteSchool(id);
   } catch {}
 
-  if (!isFirestoreQuotaExhausted) {
+  if (!isFirestoreQuotaExceeded) {
     try {
-      withFirestoreTimeout(deleteDoc(doc(db, 'schools', id)), 600).catch(err => {
-        if (isQuotaExceededError(err)) tripFirestoreQuotaBreaker(err);
+      withFirestoreTimeout(deleteDoc(doc(db, 'schools', id)), 600).catch((err) => {
+        if (isQuotaError(err)) markQuotaExceeded(err);
       });
     } catch (err) {
-      if (isQuotaExceededError(err)) tripFirestoreQuotaBreaker(err);
+      if (isQuotaError(err)) markQuotaExceeded(err);
       console.warn('Notice deleting school from Firestore:', err);
     }
   }
@@ -1137,33 +1112,37 @@ export async function ensureInitialSupervisions(): Promise<Supervision[]> {
   if (local && local.length > 0) {
     return local;
   }
-  if (isFirestoreQuotaExhausted) {
-    saveLocalSupervisions(SAMPLE_SUPERVISIONS);
+  if (isFirestoreQuotaExceeded) {
     return SAMPLE_SUPERVISIONS;
   }
   try {
-    const snap = await withFirestoreTimeout(getDocs(collection(db, 'supervisions')), 1800, null);
+    const snap = await withFirestoreTimeout(getDocs(collection(db, 'supervisions')), 3500, null);
     if (snap && !snap.empty) {
       const data = snap.docs.map(d => normalizeSupervisionData({ id: d.id, ...d.data() } as Supervision));
       saveLocalSupervisions(data);
       return data;
     }
 
-    // First time bootstrap: seed SAMPLE_SUPERVISIONS to Firestore
+    if (isFirestoreQuotaExceeded) {
+      return SAMPLE_SUPERVISIONS;
+    }
+
+    // First time bootstrap: seed SAMPLE_SUPERVISIONS to Firestore only if quota available
     for (const sup of SAMPLE_SUPERVISIONS) {
-      if (isFirestoreQuotaExhausted) break;
-      await withFirestoreTimeout(setDoc(doc(db, 'supervisions', sup.id), cleanForFirestore(sup), { merge: true }), 600);
+      if (isFirestoreQuotaExceeded) break;
+      await withFirestoreTimeout(
+        setDoc(doc(db, 'supervisions', sup.id), cleanForFirestore(sup), { merge: true }),
+        1500
+      ).catch(() => {});
     }
     saveLocalSupervisions(SAMPLE_SUPERVISIONS);
     return SAMPLE_SUPERVISIONS;
-  } catch (err: any) {
-    if (isQuotaExceededError(err)) {
-      tripFirestoreQuotaBreaker(err);
-    } else {
-      console.warn('Firestore initial supervision sync warning:', err);
+  } catch (err) {
+    if (isQuotaError(err)) {
+      markQuotaExceeded(err);
     }
-    const fallback = loadLocalSupervisions();
-    return fallback && fallback.length > 0 ? fallback : SAMPLE_SUPERVISIONS;
+    console.warn('Firestore initial supervision sync warning:', err);
+    return SAMPLE_SUPERVISIONS;
   }
 }
 
@@ -1183,20 +1162,17 @@ export async function fetchSupervisions(userProfile?: UserProfile | null): Promi
       console.warn('Backend API supervisions notice:', backendErr);
     }
 
-    // 2. Non-blocking Firestore sync (if available, newer, and quota not exhausted)
-    if (!isFirestoreQuotaExhausted) {
-      try {
-        const q = collection(db, 'supervisions');
-        const snap = await withFirestoreTimeout(getDocs(q), 2500, null);
-        if (snap && !snap.empty) {
-          const firestoreSups = snap.docs.map(d => normalizeSupervisionData({ id: d.id, ...d.data() } as Supervision));
-          results = mergeSupervisionsByTimestamp(results, firestoreSups);
-          saveLocalSupervisions(results);
-        }
-      } catch (err) {
-        if (isQuotaExceededError(err)) tripFirestoreQuotaBreaker(err);
-        console.warn('Firestore supervisions notice:', err);
+    // 2. Non-blocking Firestore sync (if available and newer)
+    try {
+      const q = collection(db, 'supervisions');
+      const snap = await withFirestoreTimeout(getDocs(q), 3500, null);
+      if (snap && !snap.empty) {
+        const firestoreSups = snap.docs.map(d => normalizeSupervisionData({ id: d.id, ...d.data() } as Supervision));
+        results = mergeSupervisionsByTimestamp(results, firestoreSups);
+        saveLocalSupervisions(results);
       }
+    } catch (err) {
+      console.warn('Firestore supervisions notice:', err);
     }
 
     const deletedSupIds = new Set(getDeletedSupervisionIds());
@@ -1208,12 +1184,20 @@ export async function fetchSupervisions(userProfile?: UserProfile | null): Promi
       (s.teacherId && deletedUids.has(s.teacherId)) ||
       (s.teacherName && deletedNames.has(s.teacherName.toLowerCase().trim()));
 
-    // Respect stored results from backend and Firestore; only fallback if completely empty
-    if (results.length === 0) {
-      results = SAMPLE_SUPERVISIONS.filter(s => !isSupDeleted(s));
-    } else {
-      results = results.filter(s => !isSupDeleted(s));
-    }
+    // Merge with SAMPLE_SUPERVISIONS to guarantee initial supervised teachers are available,
+    // excluding any that have been deleted via Kelola Pengguna
+    const map = new Map<string, Supervision>();
+    SAMPLE_SUPERVISIONS.forEach(s => {
+      if (!isSupDeleted(s)) {
+        map.set(s.id, s);
+      }
+    });
+    results.forEach(s => {
+      if (!isSupDeleted(s)) {
+        map.set(s.id, s);
+      }
+    });
+    results = Array.from(map.values()).filter(s => !isSupDeleted(s));
 
     // Role-based filtering
     if (userProfile?.role === 'guru') {
@@ -1248,82 +1232,67 @@ export async function fetchSupervisions(userProfile?: UserProfile | null): Promi
 }
 
 export async function getSupervisionById(id: string): Promise<Supervision | null> {
-  if (!isFirestoreQuotaExhausted) {
-    try {
-      const snap = await withFirestoreTimeout(getDoc(doc(db, 'supervisions', id)), 600, null);
-      if (snap && snap.exists()) {
-        const sup = normalizeSupervisionData({ id: snap.id, ...snap.data() } as Supervision);
-        saveSingleLocalSupervision(sup);
-        return sup;
-      }
-    } catch (err) {
-      if (isQuotaExceededError(err)) tripFirestoreQuotaBreaker(err);
-      console.warn('Notice getting supervision by id from Firestore:', err);
+  try {
+    const snap = await withFirestoreTimeout(getDoc(doc(db, 'supervisions', id)), 600, null);
+    if (snap && snap.exists()) {
+      const sup = normalizeSupervisionData({ id: snap.id, ...snap.data() } as Supervision);
+      saveSingleLocalSupervision(sup);
+      return sup;
     }
+  } catch (err) {
+    console.warn('Notice getting supervision by id from Firestore:', err);
   }
 
   const localList = loadLocalSupervisions() || [];
   return localList.find(s => s.id === id) || null;
 }
 
-// Real-time synchronization listener for Supervisions
+// Real-time synchronization listener for Supervisions (local-first pub/sub, avoids consuming Firestore read units)
 export function subscribeToSupervisions(
   callback: (supervisions: Supervision[]) => void,
   userProfile?: UserProfile | null
 ): Unsubscribe {
-  if (isFirestoreQuotaExhausted) {
-    const fallback = loadLocalSupervisions() || SAMPLE_SUPERVISIONS;
-    callback(fallback);
-    return () => {};
-  }
-  try {
-    let unsub: Unsubscribe = () => {};
-    unsub = onSnapshot(collection(db, 'supervisions'), (snap) => {
-      let results = snap.docs.map(d => normalizeSupervisionData({ id: d.id, ...d.data() } as Supervision));
-      if (results.length === 0) {
-        results = loadLocalSupervisions() || SAMPLE_SUPERVISIONS;
-      } else {
-        const local = loadLocalSupervisions() || [];
-        results = mergeSupervisionsByTimestamp(local, results);
-        saveLocalSupervisions(results);
-      }
+  const getFilteredLocal = () => {
+    let results = loadLocalSupervisions() || SAMPLE_SUPERVISIONS;
+    if (userProfile?.role === 'guru') {
+      results = results.filter(
+        s => s.teacherId === userProfile.uid ||
+             s.teacherName.toLowerCase().trim() === userProfile.displayName.toLowerCase().trim()
+      );
+    } else if (userProfile?.role === 'kepsek' && (userProfile.schoolId || userProfile.schoolName)) {
+      results = results.filter(
+        s => (userProfile.schoolId && s.schoolId === userProfile.schoolId) ||
+             (userProfile.schoolName && s.schoolName.toLowerCase().trim() === userProfile.schoolName.toLowerCase().trim())
+      );
+    }
+    return results;
+  };
 
-      // Filter based on user profile role
-      if (userProfile?.role === 'guru') {
-        results = results.filter(
-          s => s.teacherId === userProfile.uid ||
-               s.teacherName.toLowerCase().trim() === userProfile.displayName.toLowerCase().trim()
-        );
-      } else if (userProfile?.role === 'kepsek' && (userProfile.schoolId || userProfile.schoolName)) {
-        results = results.filter(
-          s => (userProfile.schoolId && s.schoolId === userProfile.schoolId) ||
-               (userProfile.schoolName && s.schoolName.toLowerCase().trim() === userProfile.schoolName.toLowerCase().trim())
-        );
-      }
+  // Provide initial local data immediately (0ms)
+  callback(getFilteredLocal());
 
-      callback(results);
-    }, (err) => {
-      if (isQuotaExceededError(err)) {
-        tripFirestoreQuotaBreaker(err);
-        try { unsub(); } catch {}
-      } else {
-        console.warn('Real-time supervision snapshot error:', err);
-      }
-      const fallback = loadLocalSupervisions() || SAMPLE_SUPERVISIONS;
-      callback(fallback);
-    });
-    return unsub;
-  } catch (err) {
-    if (isQuotaExceededError(err)) tripFirestoreQuotaBreaker(err);
-    console.warn('Could not attach real-time supervisions listener:', err);
-    const fallback = loadLocalSupervisions() || SAMPLE_SUPERVISIONS;
-    callback(fallback);
-    return () => {};
+  const handleLocalChange = () => {
+    callback(getFilteredLocal());
+  };
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener('pakkus-local-supervisions-updated', handleLocalChange);
+    window.addEventListener('pakkus-sync-completed', handleLocalChange);
+    return () => {
+      window.removeEventListener('pakkus-local-supervisions-updated', handleLocalChange);
+      window.removeEventListener('pakkus-sync-completed', handleLocalChange);
+    };
   }
+
+  return () => {};
 }
 
-// Save Supervision with immediate local storage + backend API disk persistence + non-blocking Firebase write
-export async function saveSupervision(supervision: Partial<Supervision> & { id?: string }): Promise<string> {
+// Save Supervision with immediate local storage + backend API disk persistence.
+// Data is saved to LocalStorage & Backend API disk. Firestore sync is executed when Admin clicks 'Sinkronisasi'
+export async function saveSupervision(
+  supervision: Partial<Supervision> & { id?: string },
+  forceSyncToFirestore = false
+): Promise<string> {
   const targetId = supervision.id || `sup-${Date.now()}`;
   const now = new Date().toISOString();
 
@@ -1344,16 +1313,19 @@ export async function saveSupervision(supervision: Partial<Supervision> & { id?:
     console.warn('Backend API save supervision notice:', apiErr);
   }
 
-  // 3. Persist to Firebase Firestore (only if quota is not exhausted)
-  if (!isFirestoreQuotaExhausted) {
+  // Mark that there are local modifications ready for sync
+  markDataModifiedLocally();
+
+  // 3. Persist to Firebase Firestore ONLY if explicitly requested during Admin sync
+  if (forceSyncToFirestore && !isFirestoreQuotaExceeded) {
     try {
       const docRef = doc(db, 'supervisions', targetId);
       const cleaned = cleanForFirestore(fullData);
       await withFirestoreTimeout(setDoc(docRef, cleaned, { merge: true }), 3500);
       return targetId;
-    } catch (err) {
-      if (isQuotaExceededError(err)) {
-        tripFirestoreQuotaBreaker(err);
+    } catch (err: any) {
+      if (isQuotaError(err)) {
+        markQuotaExceeded(err);
       } else {
         console.warn('Firestore write notice (saved in local and backend storage):', err);
       }
@@ -1373,117 +1345,133 @@ export async function deleteSupervision(id: string): Promise<void> {
     await apiDeleteSupervision(id);
   } catch {}
 
-  if (!isFirestoreQuotaExhausted) {
+  markDataModifiedLocally();
+
+  if (!isFirestoreQuotaExceeded) {
     try {
-      await withFirestoreTimeout(deleteDoc(doc(db, 'supervisions', id)), 600);
+      withFirestoreTimeout(deleteDoc(doc(db, 'supervisions', id)), 600).catch((err) => {
+        if (isQuotaError(err)) markQuotaExceeded(err);
+      });
     } catch (err) {
-      if (isQuotaExceededError(err)) {
-        tripFirestoreQuotaBreaker(err);
-      } else {
-        console.warn('Notice deleting supervision from Firestore:', err);
-      }
+      if (isQuotaError(err)) markQuotaExceeded(err);
     }
   }
 }
 
 // Synchronize all pending local data (users, schools, supervisions) to Firebase Firestore
-export async function syncAllPendingLocalChangesToFirestore(): Promise<{ usersCount: number; schoolsCount: number; supervisionsCount: number }> {
-  if (isFirestoreQuotaExhausted) {
-    console.warn('Firestore write quota reached limit. Data is already safely and permanently persisted in Backend API and Local Storage.');
-    return { usersCount: 0, schoolsCount: 0, supervisionsCount: 0 };
-  }
-
+export async function syncAllPendingLocalChangesToFirestore(): Promise<{ 
+  usersCount: number; 
+  schoolsCount: number; 
+  supervisionsCount: number;
+  lastSyncTime: string;
+}> {
   let uCount = 0;
   let sCount = 0;
   let supCount = 0;
+
+  if (isFirestoreQuotaExceeded) {
+    const errorMsg = 'Kuota gratis harian Firebase sedang penuh (Quota limit exceeded). Seluruh data Anda tersimpan 100% aman di Server Backend & Penyimpanan Lokal. Anda dapat melanjutkan pengisian data dan sinkronisasi akan dilanjutkan setelah kuota di-reset besok.';
+    console.warn(errorMsg);
+    throw new Error(errorMsg);
+  }
 
   // 1. Users
   try {
     const users = getStoredUsers();
     for (const u of users) {
-      if (isFirestoreQuotaExhausted) break;
-      await withFirestoreTimeout(setDoc(doc(db, 'users', u.uid), cleanForFirestore(u), { merge: true }), 1000);
+      if (isFirestoreQuotaExceeded) break;
+      await withFirestoreTimeout(setDoc(doc(db, 'users', u.uid), cleanForFirestore(u), { merge: true }), 3500);
       uCount++;
     }
-  } catch (err: any) {
-    if (isQuotaExceededError(err)) {
-      tripFirestoreQuotaBreaker(err);
-    } else {
-      console.warn('Pending users sync notice:', err);
+  } catch (err) {
+    if (isQuotaError(err)) {
+      markQuotaExceeded(err);
+      throw err;
     }
+    console.warn('Pending users sync notice:', err);
   }
 
   // 2. Schools
   try {
-    if (!isFirestoreQuotaExhausted) {
-      const schools = loadLocalSchools() || DEFAULT_SCHOOLS;
-      for (const s of schools) {
-        if (isFirestoreQuotaExhausted) break;
-        await withFirestoreTimeout(setDoc(doc(db, 'schools', s.id), cleanForFirestore(s), { merge: true }), 1000);
-        sCount++;
-      }
+    const schools = loadLocalSchools() || DEFAULT_SCHOOLS;
+    for (const s of schools) {
+      if (isFirestoreQuotaExceeded) break;
+      await withFirestoreTimeout(setDoc(doc(db, 'schools', s.id), cleanForFirestore(s), { merge: true }), 3500);
+      sCount++;
     }
-  } catch (err: any) {
-    if (isQuotaExceededError(err)) {
-      tripFirestoreQuotaBreaker(err);
-    } else {
-      console.warn('Pending schools sync notice:', err);
+  } catch (err) {
+    if (isQuotaError(err)) {
+      markQuotaExceeded(err);
+      throw err;
     }
+    console.warn('Pending schools sync notice:', err);
   }
 
   // 3. Supervisions
   try {
-    if (!isFirestoreQuotaExhausted) {
-      const supervisions = loadLocalSupervisions() || [];
-      for (const s of supervisions) {
-        if (isFirestoreQuotaExhausted) break;
-        await withFirestoreTimeout(setDoc(doc(db, 'supervisions', s.id), cleanForFirestore(s), { merge: true }), 1000);
-        supCount++;
-      }
+    const supervisions = loadLocalSupervisions() || [];
+    for (const s of supervisions) {
+      if (isFirestoreQuotaExceeded) break;
+      await withFirestoreTimeout(setDoc(doc(db, 'supervisions', s.id), cleanForFirestore(s), { merge: true }), 3500);
+      supCount++;
     }
-  } catch (err: any) {
-    if (isQuotaExceededError(err)) {
-      tripFirestoreQuotaBreaker(err);
-    } else {
-      console.warn('Pending supervisions sync notice:', err);
+  } catch (err) {
+    if (isQuotaError(err)) {
+      markQuotaExceeded(err);
+      throw err;
     }
+    console.warn('Pending supervisions sync notice:', err);
   }
 
-  return { usersCount: uCount, schoolsCount: sCount, supervisionsCount: supCount };
+  const syncTime = new Date().toISOString();
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(LAST_SYNC_TIME_KEY, syncTime);
+    localStorage.removeItem(HAS_UNSYNCED_KEY);
+    window.dispatchEvent(new CustomEvent('pakkus-sync-completed', { detail: { syncTime, count: supCount } }));
+  }
+
+  return { usersCount: uCount, schoolsCount: sCount, supervisionsCount: supCount, lastSyncTime: syncTime };
 }
 
 // Master boot initialization to ensure Firestore collections exist with full data
 export async function syncAllInitialDataToFirestore() {
-  if (isFirestoreQuotaExhausted) {
-    console.log('Notice: Firestore daily write quota limit reached. Data continues to be stored and served reliably from Express backend and local storage.');
+  if (isFirestoreQuotaExceeded) {
+    return;
+  }
+
+  // Throttle initial sync to avoid unnecessary repeated writes on every single page mount
+  const lastSyncStr = typeof window !== 'undefined' ? localStorage.getItem('last_firestore_initial_sync') : null;
+  const now = Date.now();
+  if (lastSyncStr && (now - Number(lastSyncStr) < 4 * 60 * 60 * 1000)) {
     return;
   }
 
   try {
     // 1. Ensure schools exist in Firestore (seeds only if collection is empty)
     await ensureInitialSchools();
-
-    if (isFirestoreQuotaExhausted) return;
+    if (isFirestoreQuotaExceeded) return;
 
     // 2. Ensure default users exist in Firestore only if not present yet
     try {
-      const usersSnap = await withFirestoreTimeout(getDocs(collection(db, 'users')), 2500, null);
-      const existingUserIds = new Set(usersSnap?.docs.map(d => d.id) || []);
-      for (const u of DEFAULT_USERS) {
-        if (isFirestoreQuotaExhausted) break;
-        if (!existingUserIds.has(u.uid)) {
-          await withFirestoreTimeout(setDoc(doc(db, 'users', u.uid), cleanForFirestore(u), { merge: true }), 1000);
+      const usersSnap = await withFirestoreTimeout(getDocs(collection(db, 'users')), 3500, null);
+      if (usersSnap) {
+        const existingUserIds = new Set(usersSnap.docs.map(d => d.id) || []);
+        for (const u of DEFAULT_USERS) {
+          if (isFirestoreQuotaExceeded) return;
+          if (!existingUserIds.has(u.uid)) {
+            await setDoc(doc(db, 'users', u.uid), cleanForFirestore(u), { merge: true });
+          }
         }
       }
-    } catch (userErr: any) {
-      if (isQuotaExceededError(userErr)) {
-        tripFirestoreQuotaBreaker(userErr);
+    } catch (userErr) {
+      if (isQuotaError(userErr)) {
+        markQuotaExceeded(userErr);
         return;
       }
       console.warn('Users bootstrap notice:', userErr);
     }
 
-    if (isFirestoreQuotaExhausted) return;
+    if (isFirestoreQuotaExceeded) return;
 
     // 3. Ensure Supervisions exist in Firestore and sync bidirectionally with Backend API
     try {
@@ -1491,7 +1479,7 @@ export async function syncAllInitialDataToFirestore() {
       const localSups = loadLocalSupervisions() || [];
       const primarySups = backendSups && backendSups.length > 0 ? backendSups : (localSups.length > 0 ? localSups : SAMPLE_SUPERVISIONS);
 
-      const snap = await withFirestoreTimeout(getDocs(collection(db, 'supervisions')), 2500, null);
+      const snap = await withFirestoreTimeout(getDocs(collection(db, 'supervisions')), 3500, null);
       const existingFirestoreMap = new Map<string, any>();
       if (snap && !snap.empty) {
         snap.docs.forEach(d => existingFirestoreMap.set(d.id, d.data()));
@@ -1499,12 +1487,12 @@ export async function syncAllInitialDataToFirestore() {
 
       // Sync any missing or newer from backend/local to Firestore
       for (const sup of primarySups) {
-        if (isFirestoreQuotaExhausted) break;
+        if (isFirestoreQuotaExceeded) return;
         const exist = existingFirestoreMap.get(sup.id);
         const supTime = sup.updatedAt ? new Date(sup.updatedAt).getTime() : 0;
         const existTime = exist?.updatedAt ? new Date(exist.updatedAt).getTime() : 0;
         if (!exist || supTime > existTime) {
-          await withFirestoreTimeout(setDoc(doc(db, 'supervisions', sup.id), cleanForFirestore(sup), { merge: true }), 1000);
+          await setDoc(doc(db, 'supervisions', sup.id), cleanForFirestore(sup), { merge: true });
         }
       }
 
@@ -1515,22 +1503,26 @@ export async function syncAllInitialDataToFirestore() {
           apiSaveSupervision(fsData).catch(() => {});
         }
       }
-    } catch (supErr: any) {
-      if (isQuotaExceededError(supErr)) {
-        tripFirestoreQuotaBreaker(supErr);
+    } catch (supErr) {
+      if (isQuotaError(supErr)) {
+        markQuotaExceeded(supErr);
         return;
       }
       console.warn('Supervisions bootstrap notice:', supErr);
       await ensureInitialSupervisions();
     }
 
-    console.log(`Firebase Firestore synchronized successfully with project: ${firebaseConfig.projectId}`);
-  } catch (err: any) {
-    if (isQuotaExceededError(err)) {
-      tripFirestoreQuotaBreaker(err);
-    } else {
-      console.warn('Notice during Firestore background sync:', err);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('last_firestore_initial_sync', String(now));
     }
+
+    console.log(`Firebase Firestore status verified for project: ${firebaseConfig.projectId}`);
+  } catch (err) {
+    if (isQuotaError(err)) {
+      markQuotaExceeded(err);
+      return;
+    }
+    console.warn('Notice during Firestore background sync:', err);
   }
 }
 

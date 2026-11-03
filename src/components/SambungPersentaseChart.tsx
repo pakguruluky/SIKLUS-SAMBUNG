@@ -623,11 +623,22 @@ export const SambungPersentaseChart: React.FC<SambungPersentaseChartProps> = ({
                         <div className="flex items-center gap-1.5 font-bold">
                           <span className="text-slate-600">{t.avgBefore}% (Selidiki)</span>
                           <span className="text-slate-300">&rarr;</span>
-                          <span className="text-emerald-700 font-black">{t.avgAfter}% (Uji)</span>
-                          <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black border border-emerald-300">
+                          <span className={`font-black ${t.avgAfter >= 85 ? 'text-emerald-700' : 'text-amber-700'}`}>
+                            {t.avgAfter}% (Uji)
+                          </span>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-black border ${
+                            t.avgAfter >= 85 
+                              ? 'bg-emerald-100 text-emerald-800 border-emerald-300' 
+                              : 'bg-amber-100 text-amber-800 border-amber-300'
+                          }`}>
                             +{t.avgDelta}%
                           </span>
                         </div>
+                        {t.avgAfter < 85 && (
+                          <span className="text-[9px] text-amber-700 font-bold block mt-0.5">
+                            Defisit -{Math.round((85 - t.avgAfter) * 10) / 10}% dari target 85%
+                          </span>
+                        )}
                       </div>
 
                       <button
@@ -655,21 +666,45 @@ export const SambungPersentaseChart: React.FC<SambungPersentaseChartProps> = ({
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2 border-t border-slate-200/70">
                     {KATEGORI_INDIKATOR_PEMBELAJARAN.map((ind) => {
                       const indData = t.indicators[ind.key];
+                      const targetScore = ind.key === 'refleksiMurid' ? 80 : 85;
+                      const isOptimalInd = indData.afterPercent >= targetScore;
+                      const defisitInd = Math.round((targetScore - indData.afterPercent) * 10) / 10;
 
                       return (
-                        <div key={ind.key} className="bg-white rounded-xl p-3 border border-slate-200/80 shadow-2xs space-y-1.5">
+                        <div key={ind.key} className={`bg-white rounded-xl p-3 border shadow-2xs space-y-1.5 ${
+                          isOptimalInd ? 'border-slate-200/80' : 'border-amber-300 bg-amber-50/20'
+                        }`}>
                           <div className="flex items-center justify-between text-[11px]">
                             <span className="font-extrabold text-slate-800 truncate pr-1">
                               {ind.kategori}
                             </span>
-                            <span className="text-[10px] font-black text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                              +{indData.deltaPercent}%
-                            </span>
+                            <div className="flex items-center gap-1">
+                              <span className={`text-[9px] font-black px-1.5 py-0.2 rounded border ${
+                                isOptimalInd 
+                                  ? 'bg-emerald-100 text-emerald-800 border-emerald-300' 
+                                  : 'bg-amber-100 text-amber-900 border-amber-300'
+                              }`}>
+                                {isOptimalInd ? 'Optimal' : `-${defisitInd}%`}
+                              </span>
+                              <span className="text-[10px] font-black text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                                +{indData.deltaPercent}%
+                              </span>
+                            </div>
                           </div>
 
                           <div className="flex items-center justify-between text-[10px] font-semibold text-slate-500">
                             <span>Selidiki: <strong>{indData.beforePercent}%</strong></span>
-                            <span>Uji: <strong className="text-emerald-700">{indData.afterPercent}%</strong></span>
+                            <span>
+                              Uji:{' '}
+                              <strong className={isOptimalInd ? 'text-emerald-700' : 'text-amber-800'}>
+                                {indData.afterPercent}%
+                              </strong>
+                              {!isOptimalInd && (
+                                <span className="text-[9px] text-amber-600 block text-right font-medium">
+                                  Target: {targetScore}%
+                                </span>
+                              )}
+                            </span>
                           </div>
 
                           {/* Dual Bar Track */}
@@ -680,7 +715,11 @@ export const SambungPersentaseChart: React.FC<SambungPersentaseChartProps> = ({
                             />
                             <div 
                               style={{ width: `${indData.afterPercent}%` }} 
-                              className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 absolute left-0 top-0 opacity-90" 
+                              className={`h-full absolute left-0 top-0 opacity-90 ${
+                                isOptimalInd 
+                                  ? 'bg-gradient-to-r from-emerald-500 to-teal-400' 
+                                  : 'bg-gradient-to-r from-amber-500 to-amber-600'
+                              }`} 
                             />
                           </div>
 

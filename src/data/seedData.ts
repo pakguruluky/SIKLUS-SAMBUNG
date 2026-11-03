@@ -1661,7 +1661,8 @@ const YANUAR_DRAFT_SUPERVISION: Supervision = {
   semester: 'Ganjil',
   schoolYear: '2025/2026',
   lessonTitle: 'Carita wayang',
-  status: 'draft',
+  status: 'in_progress',
+  statusOptimal: 'belum_optimal',
   supervisorId: 'admin-kusnandar',
   supervisorName: 'Kusnandar, M.Si',
   supervisorRole: 'admin',
@@ -1672,59 +1673,66 @@ const YANUAR_DRAFT_SUPERVISION: Supervision = {
       cpTpAtpUrl: '',
       modulAjarUrl: 'https://drive.google.com/file/d/drive_1793599538367_RPP_Bahasa%20Sunda/view?usp=sharing'
     },
-    telaahScores: {},
-    telaahComments: {},
-    telaahSummary: {
-      totalScore: 0,
-      maxPossibleScore: 44,
-      finalScore: 0,
-      predicate: 'Belum Dinilai'
+    telaahScores: { 1:2, 2:2, 3:2, 4:2, 5:1, 6:2, 7:2, 8:1, 9:2, 10:2, 11:2, 12:1, 13:2, 14:1, 15:2, 16:2, 17:1, 18:2, 19:2, 20:2, 21:1, 22:1 },
+    telaahComments: {
+      1: 'Tujuan pembelajaran bahasa Sunda tertuang jelas.',
+      8: 'Model pembelajaran perlu diperkaya dengan studi kasus wayang kontekstual.'
     },
-    feedback: { kelebihan: '', perbaikan: '', rekomendasi: '' }
+    telaahSummary: {
+      totalScore: 34,
+      maxPossibleScore: 44,
+      finalScore: 77.3,
+      predicate: 'Cukup'
+    },
+    feedback: {
+      kelebihan: 'Materi carita wayang kaya dengan kearifan lokal Jawa Barat.',
+      perbaikan: 'Perkuat keterhubungan cerita dengan problem etika generasi muda masa kini.',
+      rekomendasi: 'Disempurnakan pada siklus perbaikan dan pendampingan klinis.'
+    }
   },
   praObservasi: {
     interviewDurationMinutes: 30,
-    q1_kd_indikator: '',
-    q2_metode: '',
-    q3_alat_bahan: '',
-    q4_tahapan: '',
-    q5_persiapan: '',
-    q6_materi_sulit: '',
-    q7_target_kompetensi: '',
-    q8_perhatian_khusus: '',
-    supervisorNotes: ''
+    q1_kd_indikator: 'Menganalisis isi, struktur, dan nilai budaya dalam carita wayang.',
+    q2_metode: 'Diskusi kelompok dan peragaan dialog tokoh wayang.',
+    q3_alat_bahan: 'Teks carita wayang, audio lakon wayang golek.',
+    q4_tahapan: 'Apersepsi lakon wayang, pembedahan tokoh, latihan paguneman, refleksi.',
+    q5_persiapan: 'Menyiapkan LKPD analisis karakter tokoh wayang.',
+    q6_materi_sulit: 'Membedakan ragam basa lemes dan loma dalam dialog wayang.',
+    q7_target_kompetensi: 'Apresiasi sastra Sunda dan penanaman budi pekerti luhur.',
+    q8_perhatian_khusus: 'Membimbing murid yang belum lancar berbahasa Sunda halus.',
+    supervisorNotes: 'Rancangan baik, perlu pembiasaan aktif murid dalam bertutur.'
   },
   observasiKelas: {
     items: {},
-    totalYa: 0,
+    totalYa: 19,
     totalAspek: 25,
-    totalSkor: 0,
-    score: 0,
-    predicate: 'Perlu Perbaikan',
-    feedbackNotes: ''
+    totalSkor: 38,
+    score: 76.0,
+    predicate: 'Cukup (C)',
+    feedbackNotes: 'Interaksi kelas cukup baik, murid mendengarkan cerita wayang namun inisiatif dialog dan diskusi masih dominan dipandu guru.'
   },
   pascaObservasi: {
-    q1_kesan: '',
-    q2_sesuai_rencana: '',
-    q3_hal_memuaskan: '',
-    q4_hal_kurang: '',
-    q5_ketercapaian_tujuan: '',
-    q6_kesulitan_siswa: '',
-    q7_alternatif_solusi: '',
-    q8_rencana_tindak_lanjut: '',
-    q9_pengembangan_diri: '',
-    generalImpression: '',
-    recommendations: ''
+    q1_kesan: 'Murid menyimak dengan baik saat pemutaran rekaman wayang golek.',
+    q2_sesuai_rencana: 'Sebagian besar terlaksana, alokasi waktu paguneman perlu diperpanjang.',
+    q3_hal_memuaskan: 'Beberapa murid sangat antusias menirukan intonasi dalang.',
+    q4_hal_kurang: 'Murid yang pasif masih menunggu giliran ditunjuk guru.',
+    q5_ketercapaian_tujuan: 'Cukup tercapai sekitar 76%.',
+    q6_kesulitan_siswa: 'Kosa kata bahasa Sunda kuna yang jarang digunakan sehari-hari.',
+    q7_alternatif_solusi: 'Menyediakan kamus kecil istilah carita wayang di lembar kerja.',
+    q8_rencana_tindak_lanjut: 'Melakukan pendampingan kelompok sebaya.',
+    q9_pengembangan_diri: 'Mengikuti pelatihan penyusunan media ajar bahasa daerah interaktif.',
+    generalImpression: 'Perlu penguatan diferensiasi proses dan porsi interaksi antarmurid.',
+    recommendations: 'Pendampingan klinis lanjutan bersama Pengawas Pembina Kusnandar, M.Si.'
   },
   evaluasiTahunan: {
-    hasilBelajar: { evidence: '', note: '', score: 0 },
-    administrasi: { evidence: '', note: '', score: 0 },
-    pengembanganDiri: { evidence: '', note: '', score: 0 },
-    kedisiplinan: { evidence: '', note: '', score: 0 },
-    rekomendasi: { notes: '', tindakLanjut: '', score: 0 },
-    finalAverageScore: 0,
-    finalGrade: 'Belum Dinilai',
-    summaryNotes: ''
+    hasilBelajar: { evidence: 'Rekap Asesmen Sumatif Bahasa Sunda', note: 'Rata-rata 75', score: 75 },
+    administrasi: { evidence: 'Kelengkapan Perangkat Ajar', note: 'Lengkap terverifikasi', score: 75 },
+    pengembanganDiri: { evidence: 'Sertifikat Diklat Pembelajaran', note: '1 Kegiatan', score: 72 },
+    kedisiplinan: { evidence: 'Presensi Kehadiran Guru', note: 'Kehadiran 94%', score: 78 },
+    rekomendasi: { notes: 'Tingkatkan keterlibatan murid mandiri di kelas.', tindakLanjut: 'Supervisi klinis berkala', score: 75 },
+    finalAverageScore: 75.0,
+    finalGrade: 'Cukup',
+    summaryNotes: 'Kinerja cukup baik dan berpotensi meningkat dengan pembinaan terarah.'
   }
 };
 

@@ -16,23 +16,29 @@ import { NewSupervisionModal } from './components/forms/NewSupervisionModal';
 import { SambungInstrumentView } from './components/SambungInstrumentView';
 import { KesimpulanSemuaGuruDashboard } from './components/KesimpulanSemuaGuruDashboard';
 import { LocalStorageBackupModal } from './components/LocalStorageBackupModal';
+import { CheckCircle2, AlertCircle } from 'lucide-react';
 
 import { 
   auth, 
   fbSignOut, 
   ensureInitialSchools, 
   fetchAllSchools, 
-  getUserProfile,
-  fetchSupervisions,
-  saveSupervision,
-  deleteSupervision,
-  updateSchool,
-  updateUserApprovalStatus,
-  syncAllInitialDataToFirestore,
-  subscribeToSupervisions,
-  getDeletedUserIds,
-  getDeletedSupervisionIds,
-  getDeletedUserNames
+  getUserProfile, 
+  fetchSupervisions, 
+  saveSupervision, 
+  deleteSupervision, 
+  updateSchool, 
+  updateUserApprovalStatus, 
+  syncAllInitialDataToFirestore, 
+  syncAllPendingLocalChangesToFirestore,
+  subscribeToSupervisions, 
+  getDeletedUserIds, 
+  getDeletedSupervisionIds, 
+  getDeletedUserNames,
+  isQuotaExceeded,
+  getQuotaConsoleUrl,
+  getHasPendingSync,
+  isQuotaError
 } from './services/firebase';
 import { 
   loadLocalSupervisions, 
@@ -66,10 +72,12 @@ export default function App() {
   const [schools, setSchools] = useState<School[]>(() => loadLocalSchools() || []);
   const [supervisions, setSupervisions] = useState<Supervision[]>(() => {
     const loaded = loadLocalSupervisions();
+    const map = new Map<string, Supervision>();
+    SAMPLE_SUPERVISIONS.forEach(s => map.set(s.id, s));
     if (loaded && loaded.length > 0) {
-      return filterValidSupervisions(loaded);
+      loaded.forEach(s => map.set(s.id, s));
     }
-    return filterValidSupervisions(SAMPLE_SUPERVISIONS);
+    return filterValidSupervisions(Array.from(map.values()));
   });
   // Pastikan ketika memasukan alamat aplikasi langsung ke halaman beranda (landing) walaupun sudah pernah membuka sebelumnya
   const [activeTab, setActiveTab] = useState<string>('landing');
@@ -82,8 +90,29 @@ export default function App() {
   const [activeFormStage, setActiveFormStage] = useState<'perangkat' | 'pra' | 'observasi' | 'pasca' | 'evaluasi' | null>(null);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [selectedSambungId, setSelectedSambungId] = useState<string | undefined>(undefined);
+  const [quotaWarning, setQuotaWarning] = useState<boolean>(() => isQuotaExceeded());
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [hasPendingSync, setHasPendingSync] = useState<boolean>(() => getHasPendingSync());
+  const [syncToast, setSyncToast] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
 
-  // Initialize app data and sync to Firestore
+  // Listen for firestore quota & sync events
+  useEffect(() => {
+    const handleQuota = () => setQuotaWarning(true);
+    const onModified = () => setHasPendingSync(true);
+    const onCompleted = () => setHasPendingSync(false);
+
+    window.addEventListener('firestore-quota-exceeded', handleQuota);
+    window.addEventListener('pakkus-local-data-modified', onModified);
+    window.addEventListener('pakkus-sync-completed', onCompleted);
+
+    return () => {
+      window.removeEventListener('firestore-quota-exceeded', handleQuota);
+      window.removeEventListener('pakkus-local-data-modified', onModified);
+      window.removeEventListener('pakkus-sync-completed', onCompleted);
+    };
+  }, []);
+
+  // Initialize app data from local storage and backend server disk
   useEffect(() => {
     const initApp = async () => {
       // 1. Fetch schools from persistent backend API / local
@@ -108,9 +137,6 @@ export default function App() {
       } catch (e) {
         console.warn('Notice fetching supervisions on boot:', e);
       }
-
-      // 3. Background asynchronous sync without delaying the UI
-      syncAllInitialDataToFirestore().catch(() => {});
     };
 
     initApp();
@@ -184,6 +210,31 @@ export default function App() {
     setActiveTab('sambung');
   };
 
+  const handleSyncToFirebase = async () => {
+    try {
+      setIsSyncing(true);
+      const res = await syncAllPendingLocalChangesToFirestore();
+      setHasPendingSync(false);
+      setSyncToast({
+        type: 'success',
+        message: `Sinkronisasi Berhasil! ${res.supervisionsCount} berkas supervisi, ${res.schoolsCount} sekolah, dan ${res.usersCount} pengguna berhasil tersimpan permanen di Firebase Database.`
+      });
+      setTimeout(() => setSyncToast(null), 6000);
+    } catch (err: any) {
+      console.warn('Sync notice:', err);
+      const isQuota = isQuotaError(err) || isQuotaExceeded();
+      setSyncToast({
+        type: isQuota ? 'info' : 'error',
+        message: isQuota
+          ? 'Pemberitahuan: Batas kuota gratis Firebase tercapai untuk hari ini. Seluruh data Anda tersimpan 100% aman di Server Backend & Penyimpanan Lokal. Anda dapat melanjutkan pengisian data dan sinkronisasi Cloud dapat dicoba kembali besok.'
+          : (err.message || 'Gagal menyinkronkan data ke Firebase.')
+      });
+      setTimeout(() => setSyncToast(null), 7000);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const handleUpdateSupervision = async (updated: Supervision) => {
     setSupervisions(prev => {
       const next = prev.map(s => (s.id === updated.id ? updated : s));
@@ -191,8 +242,9 @@ export default function App() {
       return next;
     });
     setSelectedSupervision(updated);
-    // Write directly to Firebase
-    await saveSupervision(updated);
+    // Saved in local storage & backend disk (0 Firestore quota consumed during instrument filling)
+    await saveSupervision(updated, false);
+    setHasPendingSync(true);
   };
 
   const handleCreateSupervision = async (newSup: Supervision) => {
@@ -203,8 +255,9 @@ export default function App() {
     });
     setSelectedSambungId(newSup.id);
     setActiveTab('sambung');
-    // Write directly to Firebase
-    await saveSupervision(newSup);
+    // Saved in local storage & backend disk (0 Firestore quota consumed during instrument filling)
+    await saveSupervision(newSup, false);
+    setHasPendingSync(true);
   };
 
   const handleRestoreData = async (restoredSupervisions: Supervision[], restoredSchools: School[]) => {
@@ -274,7 +327,42 @@ export default function App() {
         onLogout={handleLogout}
         onNewSupervision={() => setIsNewSupervisionModalOpen(true)}
         onOpenLocalStorageModal={() => setIsLocalStorageModalOpen(true)}
+        onSyncToFirebase={handleSyncToFirebase}
+        isSyncing={isSyncing}
+        hasPendingSync={hasPendingSync}
       />
+
+      {/* Quota limit informational banner per Firebase guidelines */}
+      {quotaWarning && (
+        <div className="bg-amber-600 text-white px-3 sm:px-6 py-2.5 text-xs sm:text-sm font-medium shadow-sm flex flex-wrap items-center justify-between gap-2 z-40 border-b border-amber-700">
+          <div className="flex items-center gap-2 max-w-4xl">
+            <span className="font-black px-2 py-0.5 rounded bg-amber-800 text-amber-100 uppercase tracking-wider text-[10px] shrink-0">
+              Penyimpanan Server &amp; Lokal Aktif
+            </span>
+            <span className="leading-snug">
+              Batas kuota harian gratis Firebase (Free daily read/write units) telah tercapai untuk hari ini. Seluruh data pengisian instrumen Anda <strong>tetap tersimpan 100% aman &amp; permanen</strong> di Database Server dan perangkat ini. Kuota Firestore akan di-reset otomatis besok.
+            </span>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
+            <a
+              href={getQuotaConsoleUrl()}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-white hover:text-amber-100 font-bold underline transition-colors text-xs"
+            >
+              Buka Konsol Firebase ↗
+            </a>
+            <button
+              type="button"
+              onClick={() => setQuotaWarning(false)}
+              className="px-2 py-0.5 hover:bg-amber-700 rounded text-amber-100 text-xs font-bold transition-colors cursor-pointer"
+              title="Tutup pemberitahuan ini"
+            >
+              Tutup ✕
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col">
@@ -310,6 +398,9 @@ export default function App() {
                   const updated = await fetchSupervisions();
                   setSupervisions(filterValidSupervisions(updated));
                 }}
+                onSyncToFirebase={handleSyncToFirebase}
+                isSyncing={isSyncing}
+                hasPendingSync={hasPendingSync}
               />
             )}
 
@@ -321,9 +412,13 @@ export default function App() {
                 initialSupervisionId={selectedSambungId}
                 onUpdateSupervision={handleUpdateSupervision}
                 onDeleteSupervision={async (deletedId) => {
+                  await deleteSupervision(deletedId);
                   const updated = await fetchSupervisions();
                   setSupervisions(filterValidSupervisions(updated));
                 }}
+                onSyncToFirebase={handleSyncToFirebase}
+                isSyncing={isSyncing}
+                hasPendingSync={hasPendingSync}
               />
             )}
 
@@ -469,6 +564,32 @@ export default function App() {
         currentUser={currentUser}
         onRestoreData={handleRestoreData}
       />
+
+      {/* Sync Toast Notification */}
+      {syncToast && (
+        <div className={`fixed bottom-6 right-6 z-50 px-5 py-3.5 rounded-xl shadow-2xl flex items-center gap-3 border animate-bounce text-xs sm:text-sm font-semibold max-w-lg ${
+          syncToast.type === 'success'
+            ? 'bg-emerald-900 text-white border-emerald-600 shadow-emerald-950/40'
+            : syncToast.type === 'info'
+            ? 'bg-amber-950 text-amber-100 border-amber-600 shadow-amber-950/40'
+            : 'bg-rose-950 text-rose-100 border-rose-600 shadow-rose-950/40'
+        }`}>
+          {syncToast.type === 'success' ? (
+            <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+          ) : (
+            <AlertCircle className="w-5 h-5 text-amber-400 shrink-0" />
+          )}
+          <span className="leading-snug">{syncToast.message}</span>
+          <button
+            type="button"
+            onClick={() => setSyncToast(null)}
+            className="ml-auto text-white/70 hover:text-white font-bold px-1.5 py-0.5 rounded cursor-pointer"
+            title="Tutup"
+          >
+            ✕
+          </button>
+        </div>
+      )}
     </div>
   );
 }

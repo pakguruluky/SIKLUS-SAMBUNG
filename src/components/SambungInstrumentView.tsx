@@ -1719,14 +1719,25 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                 {onSyncToFirebase && (
                   <button
                     type="button"
-                    onClick={onSyncToFirebase}
+                    onClick={async () => {
+                      if (canEdit && sambungDraft) {
+                        try {
+                          await handleSave();
+                        } catch (saveErr) {
+                          console.warn('Notice saving draft before cloud sync:', saveErr);
+                        }
+                      }
+                      if (onSyncToFirebase) {
+                        await onSyncToFirebase();
+                      }
+                    }}
                     disabled={isSyncing}
                     className={`inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md ${
                       hasPendingSync
                         ? 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-emerald-500/25 ring-2 ring-emerald-300'
                         : 'bg-white/15 hover:bg-white/25 text-white border border-white/20'
                     } ${isSyncing ? 'opacity-70 cursor-wait' : 'cursor-pointer'}`}
-                    title="Simpan seluruh berkas instrumen dan supervisi ke database Firebase"
+                    title="Simpan seluruh berkas instrumen dan supervisi ke database Firebase secara realtime"
                   >
                     <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
                     <span>{isSyncing ? 'Menyinkronkan...' : hasPendingSync ? 'Sinkronisasi ke Cloud' : 'Cloud Sinkron'}</span>

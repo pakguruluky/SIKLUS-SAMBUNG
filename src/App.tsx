@@ -33,6 +33,7 @@ import {
   syncAllInitialDataToFirestore, 
   syncAllPendingLocalChangesToFirestore,
   subscribeToSupervisions, 
+  subscribeToSchools,
   getDeletedUserIds, 
   getDeletedSupervisionIds, 
   getDeletedUserNames,
@@ -176,7 +177,7 @@ export default function App() {
       }
     });
 
-    // Real-time Firestore synchronization listener
+    // Real-time Firestore synchronization listener for supervisions
     const unsubscribeSupervisions = subscribeToSupervisions((liveList) => {
       if (liveList && liveList.length > 0) {
         const filtered = filterValidSupervisions(liveList);
@@ -184,9 +185,17 @@ export default function App() {
       }
     }, currentUser);
 
+    // Real-time Firestore synchronization listener for schools
+    const unsubscribeSchools = subscribeToSchools((liveSchools) => {
+      if (liveSchools && liveSchools.length > 0) {
+        setSchools(liveSchools);
+      }
+    });
+
     return () => {
       unsubscribeAuth();
       unsubscribeSupervisions();
+      unsubscribeSchools();
     };
   }, [currentUser?.uid]);
 
@@ -241,7 +250,7 @@ export default function App() {
       setHasPendingSync(false);
       setSyncToast({
         type: 'success',
-        message: `Sinkronisasi Berhasil! ${res.supervisionsCount} berkas supervisi, ${res.schoolsCount} sekolah, dan ${res.usersCount} pengguna berhasil tersimpan permanen di Firebase Database.`
+        message: `Sinkronisasi Berhasil! ${res.supervisionsCount} berkas supervisi, ${res.schoolsCount} sekolah, dan ${res.usersCount} pengguna berhasil tersimpan realtime di Firebase Database.`
       });
       setTimeout(() => setSyncToast(null), 6000);
     } catch (err: any) {

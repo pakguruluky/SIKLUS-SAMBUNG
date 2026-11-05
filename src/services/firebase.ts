@@ -23,7 +23,8 @@ import {
   where,
   getDocFromServer,
   onSnapshot,
-  Unsubscribe
+  Unsubscribe,
+  writeBatch
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 import { School, UserProfile, Supervision, Role } from '../types';
@@ -1028,6 +1029,47 @@ export function subscribeToUsers(callback: (users: UserProfile[]) => void): Unsu
   }
 }
 
+// Real-time synchronization listener for Schools (Firestore onSnapshot + Local fallback)
+export function subscribeToSchools(callback: (schools: School[]) => void): Unsubscribe {
+  const initial = loadLocalSchools() || DEFAULT_SCHOOLS;
+  callback(initial);
+
+  let unsubscribeFirestore: Unsubscribe = () => {};
+  try {
+    unsubscribeFirestore = onSnapshot(collection(db, 'schools'), (snap) => {
+      if (!snap.empty) {
+        const firestoreSchools = snap.docs.map(d => normalizeSchoolData({ id: d.id, ...d.data() } as School));
+        const merged = mergeSchoolsByTimestamp(firestoreSchools, loadLocalSchools() || DEFAULT_SCHOOLS);
+        saveLocalSchools(merged);
+        callback(merged);
+      }
+    }, (err) => {
+      console.warn('Real-time schools onSnapshot notice:', err);
+      callback(loadLocalSchools() || DEFAULT_SCHOOLS);
+    });
+  } catch (err) {
+    console.warn('Could not attach Firestore onSnapshot for schools:', err);
+  }
+
+  const handleLocalChange = () => {
+    callback(loadLocalSchools() || DEFAULT_SCHOOLS);
+  };
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener('pakkus-local-schools-updated', handleLocalChange);
+    window.addEventListener('pakkus-sync-completed', handleLocalChange);
+    return () => {
+      unsubscribeFirestore();
+      window.removeEventListener('pakkus-local-schools-updated', handleLocalChange);
+      window.removeEventListener('pakkus-sync-completed', handleLocalChange);
+    };
+  }
+
+  return () => {
+    unsubscribeFirestore();
+  };
+}
+
 // Seed initial schools and synchronise with Firestore
 export async function ensureInitialSchools(): Promise<School[]> {
   const local = loadLocalSchools();
@@ -1374,13 +1416,13 @@ export async function getSupervisionById(id: string): Promise<Supervision | null
   return localList.find(s => s.id === id) || null;
 }
 
-// Real-time synchronization listener for Supervisions (local-first pub/sub, avoids consuming Firestore read units)
+// Real-time synchronization listener for Supervisions (Firestore onSnapshot + Local fallback)
 export function subscribeToSupervisions(
   callback: (supervisions: Supervision[]) => void,
   userProfile?: UserProfile | null
 ): Unsubscribe {
-  const getFilteredLocal = () => {
-    let results = loadLocalSupervisions() || SAMPLE_SUPERVISIONS;
+  const filterForUser = (list: Supervision[]) => {
+    let results = list;
     if (userProfile?.role === 'guru') {
       results = results.filter(
         s => s.teacherId === userProfile.uid ||
@@ -1395,9 +1437,61 @@ export function subscribeToSupervisions(
     return results;
   };
 
-  // Provide initial local data immediately (0ms)
+  const getFilteredLocal = () => {
+    const deletedIds = new Set(getDeletedSupervisionIds());
+    const deletedNames = new Set(getDeletedUserNames().map(n => n.toLowerCase().trim()));
+    const deletedUids = new Set(getDeletedUserIds());
+    const base = loadLocalSupervisions() || SAMPLE_SUPERVISIONS;
+    const clean = base.filter(s => {
+      if (deletedIds.has(s.id)) return false;
+      if (s.teacherId && deletedUids.has(s.teacherId)) return false;
+      if (s.teacherName && deletedNames.has(s.teacherName.toLowerCase().trim())) return false;
+      return true;
+    }).map(s => normalizeSupervisionData(s));
+    return filterForUser(clean);
+  };
+
+  // 1. Immediately provide initial local data for instant 0ms render
   callback(getFilteredLocal());
 
+  // 2. Setup real-time listener to Firestore supervisions collection
+  let unsubscribeFirestore: Unsubscribe = () => {};
+  try {
+    const supervisionsCol = collection(db, 'supervisions');
+    unsubscribeFirestore = onSnapshot(supervisionsCol, (snapshot) => {
+      if (!snapshot.empty) {
+        const deletedIds = new Set(getDeletedSupervisionIds());
+        const deletedNames = new Set(getDeletedUserNames().map(n => n.toLowerCase().trim()));
+        const deletedUids = new Set(getDeletedUserIds());
+
+        const firestoreSupervisions: Supervision[] = [];
+        snapshot.docs.forEach(docSnap => {
+          const raw = { id: docSnap.id, ...docSnap.data() } as Supervision;
+          if (deletedIds.has(raw.id)) return;
+          if (raw.teacherId && deletedUids.has(raw.teacherId)) return;
+          if (raw.teacherName && deletedNames.has(raw.teacherName.toLowerCase().trim())) return;
+          firestoreSupervisions.push(normalizeSupervisionData(raw));
+        });
+
+        if (firestoreSupervisions.length > 0) {
+          const currentLocal = loadLocalSupervisions() || [];
+          const merged = mergeSupervisionsByTimestamp(firestoreSupervisions, currentLocal);
+          saveLocalSupervisions(merged);
+          callback(filterForUser(merged));
+        }
+      }
+    }, (error) => {
+      console.warn('Real-time supervisions onSnapshot notice:', error);
+      if (isQuotaError(error)) {
+        markQuotaExceeded(error);
+      }
+      callback(getFilteredLocal());
+    });
+  } catch (err) {
+    console.warn('Could not attach Firestore onSnapshot for supervisions:', err);
+  }
+
+  // 3. Setup local window event listeners for local updates / sync completed
   const handleLocalChange = () => {
     callback(getFilteredLocal());
   };
@@ -1406,12 +1500,15 @@ export function subscribeToSupervisions(
     window.addEventListener('pakkus-local-supervisions-updated', handleLocalChange);
     window.addEventListener('pakkus-sync-completed', handleLocalChange);
     return () => {
+      unsubscribeFirestore();
       window.removeEventListener('pakkus-local-supervisions-updated', handleLocalChange);
       window.removeEventListener('pakkus-sync-completed', handleLocalChange);
     };
   }
 
-  return () => {};
+  return () => {
+    unsubscribeFirestore();
+  };
 }
 
 // Save Supervision with immediate local storage + backend API disk persistence.
@@ -1443,7 +1540,7 @@ export async function saveSupervision(
   // Mark that there are local modifications ready for sync
   markDataModifiedLocally();
 
-  // 3. Persist to Firebase Firestore ONLY if explicitly requested during Admin sync
+  // 3. Persist to Firebase Firestore if explicitly requested or forced
   if (forceSyncToFirestore && !isFirestoreQuotaExceeded) {
     try {
       const docRef = doc(db, 'supervisions', targetId);
@@ -1484,62 +1581,125 @@ export async function syncAllPendingLocalChangesToFirestore(): Promise<{
   supervisionsCount: number;
   lastSyncTime: string;
 }> {
+  // When user clicks Cloud Sinkron, reset temporary quota flag to attempt live Firestore write
+  isFirestoreQuotaExceeded = false;
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('firestore_quota_exceeded_date');
+    sessionStorage.removeItem('firestore_quota_exceeded');
+  }
+
   let uCount = 0;
   let sCount = 0;
   let supCount = 0;
 
-  if (isFirestoreQuotaExceeded) {
-    const errorMsg = 'Kuota gratis harian Firebase sedang penuh (Quota limit exceeded). Seluruh data Anda tersimpan 100% aman di Server Backend & Penyimpanan Lokal. Anda dapat melanjutkan pengisian data dan sinkronisasi akan dilanjutkan setelah kuota di-reset besok.';
-    console.warn(errorMsg);
-    throw new Error(errorMsg);
+  // 1. Prepare clean entities
+  const deletedIds = new Set(getDeletedSupervisionIds());
+  const deletedNames = new Set(getDeletedUserNames().map(n => n.toLowerCase().trim()));
+  const deletedUids = new Set(getDeletedUserIds());
+
+  // Users
+  const users = getStoredUsers();
+  const validUsers = users.filter(u => {
+    if (deletedUids.has(u.uid)) return false;
+    if (u.displayName && deletedNames.has(u.displayName.toLowerCase().trim())) return false;
+    return true;
+  });
+
+  // Schools
+  const validSchools = loadLocalSchools() || DEFAULT_SCHOOLS;
+
+  // Supervisions: ensure full set of 10 official supervisions is preserved
+  let allSups = loadLocalSupervisions() || [];
+  if (allSups.length === 0) {
+    try {
+      const backendSups = await apiFetchSupervisions();
+      allSups = backendSups && backendSups.length > 0 ? backendSups : SAMPLE_SUPERVISIONS;
+    } catch {
+      allSups = SAMPLE_SUPERVISIONS;
+    }
   }
 
-  // 1. Users
+  const validSupervisions = allSups.filter(s => {
+    if (deletedIds.has(s.id)) return false;
+    if (s.teacherId && deletedUids.has(s.teacherId)) return false;
+    if (s.teacherName && deletedNames.has(s.teacherName.toLowerCase().trim())) return false;
+    return true;
+  }).map(s => normalizeSupervisionData(s));
+
+  // 2. Persist to Backend API first (persists to server_data/database.json)
   try {
-    const users = getStoredUsers();
-    for (const u of users) {
-      if (isFirestoreQuotaExceeded) break;
-      await withFirestoreTimeout(setDoc(doc(db, 'users', u.uid), cleanForFirestore(u), { merge: true }), 3500);
+    await apiSyncAll({
+      supervisions: validSupervisions,
+      schools: validSchools,
+      users: validUsers,
+    });
+  } catch (apiErr) {
+    console.warn('Backend API sync notice:', apiErr);
+  }
+
+  // 3. Write directly to Firebase Firestore using writeBatch for atomic real-time update
+  try {
+    const batch = writeBatch(db);
+
+    // Add users to batch
+    for (const u of validUsers) {
+      const docRef = doc(db, 'users', u.uid);
+      batch.set(docRef, cleanForFirestore(u), { merge: true });
       uCount++;
     }
-  } catch (err) {
-    if (isQuotaError(err)) {
-      markQuotaExceeded(err);
-      throw err;
-    }
-    console.warn('Pending users sync notice:', err);
-  }
 
-  // 2. Schools
-  try {
-    const schools = loadLocalSchools() || DEFAULT_SCHOOLS;
-    for (const s of schools) {
-      if (isFirestoreQuotaExceeded) break;
-      await withFirestoreTimeout(setDoc(doc(db, 'schools', s.id), cleanForFirestore(s), { merge: true }), 3500);
+    // Add schools to batch
+    for (const s of validSchools) {
+      const docRef = doc(db, 'schools', s.id);
+      batch.set(docRef, cleanForFirestore(s), { merge: true });
       sCount++;
     }
-  } catch (err) {
-    if (isQuotaError(err)) {
-      markQuotaExceeded(err);
-      throw err;
-    }
-    console.warn('Pending schools sync notice:', err);
-  }
 
-  // 3. Supervisions
-  try {
-    const supervisions = loadLocalSupervisions() || [];
-    for (const s of supervisions) {
-      if (isFirestoreQuotaExceeded) break;
-      await withFirestoreTimeout(setDoc(doc(db, 'supervisions', s.id), cleanForFirestore(s), { merge: true }), 3500);
+    // Add supervisions to batch
+    for (const sup of validSupervisions) {
+      const docRef = doc(db, 'supervisions', sup.id);
+      batch.set(docRef, cleanForFirestore(sup), { merge: true });
       supCount++;
     }
-  } catch (err) {
-    if (isQuotaError(err)) {
-      markQuotaExceeded(err);
-      throw err;
+
+    // Commit all documents in one real-time batch
+    await withFirestoreTimeout(batch.commit(), 8000);
+  } catch (batchErr: any) {
+    console.warn('Batch commit notice, running individual concurrent writes:', batchErr);
+    if (isQuotaError(batchErr)) {
+      markQuotaExceeded(batchErr);
+      throw batchErr;
     }
-    console.warn('Pending supervisions sync notice:', err);
+
+    // Fallback: individual writes with timeout
+    uCount = 0;
+    sCount = 0;
+    supCount = 0;
+
+    for (const u of validUsers) {
+      try {
+        await withFirestoreTimeout(setDoc(doc(db, 'users', u.uid), cleanForFirestore(u), { merge: true }), 3500);
+        uCount++;
+      } catch (e) {
+        console.warn('Sync user fallback notice:', e);
+      }
+    }
+    for (const s of validSchools) {
+      try {
+        await withFirestoreTimeout(setDoc(doc(db, 'schools', s.id), cleanForFirestore(s), { merge: true }), 3500);
+        sCount++;
+      } catch (e) {
+        console.warn('Sync school fallback notice:', e);
+      }
+    }
+    for (const sup of validSupervisions) {
+      try {
+        await withFirestoreTimeout(setDoc(doc(db, 'supervisions', sup.id), cleanForFirestore(sup), { merge: true }), 3500);
+        supCount++;
+      } catch (e) {
+        console.warn('Sync supervision fallback notice:', e);
+      }
+    }
   }
 
   const syncTime = new Date().toISOString();
@@ -1547,6 +1707,7 @@ export async function syncAllPendingLocalChangesToFirestore(): Promise<{
     localStorage.setItem(LAST_SYNC_TIME_KEY, syncTime);
     localStorage.removeItem(HAS_UNSYNCED_KEY);
     window.dispatchEvent(new CustomEvent('pakkus-sync-completed', { detail: { syncTime, count: supCount } }));
+    window.dispatchEvent(new CustomEvent('pakkus-local-supervisions-updated'));
   }
 
   return { usersCount: uCount, schoolsCount: sCount, supervisionsCount: supCount, lastSyncTime: syncTime };

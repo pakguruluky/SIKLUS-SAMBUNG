@@ -128,14 +128,12 @@ export function cleanForFirestore<T>(obj: T): T {
   return obj;
 }
 
-// Quota exhaustion tracking and handling
-const TODAY_KEY = new Date().toISOString().slice(0, 10);
+// Quota exhaustion tracking and handling - transient only, never block across reloads
 let isFirestoreQuotaExceeded = false;
 try {
   if (typeof window !== 'undefined') {
-    if (localStorage.getItem('firestore_quota_exceeded_date') === TODAY_KEY || sessionStorage.getItem('firestore_quota_exceeded') === 'true') {
-      isFirestoreQuotaExceeded = true;
-    }
+    localStorage.removeItem('firestore_quota_exceeded_date');
+    sessionStorage.removeItem('firestore_quota_exceeded');
   }
 } catch {}
 
@@ -168,14 +166,12 @@ export function isQuotaError(err: any): boolean {
 
 export function markQuotaExceeded(err?: any) {
   isFirestoreQuotaExceeded = true;
-  try {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('firestore_quota_exceeded_date', TODAY_KEY);
-      sessionStorage.setItem('firestore_quota_exceeded', 'true');
-    }
-  } catch {}
+  // Automatically reset after 15 seconds so subsequent queries or syncs are never locked out
+  setTimeout(() => {
+    isFirestoreQuotaExceeded = false;
+  }, 15000);
   console.warn(
-    '⚠️ [Firestore Quota Notice] Free daily write/read quota reached. Switched gracefully to Backend Server & Local storage mode.',
+    '⚠️ [Firestore Notice] Temporary quota or network limit reached. Resuming with local and backend storage.',
     err?.message || err
   );
   if (typeof window !== 'undefined') {
@@ -1316,88 +1312,69 @@ export async function ensureInitialSupervisions(): Promise<Supervision[]> {
 }
 
 export async function fetchSupervisions(userProfile?: UserProfile | null): Promise<Supervision[]> {
-  try {
-    const localCached = loadLocalSupervisions();
-    let results: Supervision[] = localCached && localCached.length > 0 ? localCached : SAMPLE_SUPERVISIONS;
+  const deletedSupIds = new Set(getDeletedSupervisionIds());
+  const deletedUids = new Set(getDeletedUserIds());
+  const deletedNames = new Set(getDeletedUserNames().map(n => n.toLowerCase().trim()));
 
-    // 1. Fetch from persistent backend API first
-    try {
-      const backendSups = await apiFetchSupervisions();
-      if (backendSups && backendSups.length > 0) {
-        results = mergeSupervisionsByTimestamp(backendSups, results);
-        saveLocalSupervisions(results);
-      }
-    } catch (backendErr) {
-      console.warn('Backend API supervisions notice:', backendErr);
-    }
+  const isSupDeleted = (s: Supervision) =>
+    deletedSupIds.has(s.id) ||
+    (s.teacherId && deletedUids.has(s.teacherId)) ||
+    (s.teacherName && deletedNames.has(s.teacherName.toLowerCase().trim()));
 
-    // 2. Non-blocking Firestore sync (if available and newer)
-    try {
-      const q = collection(db, 'supervisions');
-      const snap = await withFirestoreTimeout(getDocs(q), 3500, null);
-      if (snap && !snap.empty) {
-        const firestoreSups = snap.docs.map(d => normalizeSupervisionData({ id: d.id, ...d.data() } as Supervision));
-        results = mergeSupervisionsByTimestamp(results, firestoreSups);
-        saveLocalSupervisions(results);
-      }
-    } catch (err) {
-      console.warn('Firestore supervisions notice:', err);
-    }
-
-    const deletedSupIds = new Set(getDeletedSupervisionIds());
-    const deletedUids = new Set(getDeletedUserIds());
-    const deletedNames = new Set(getDeletedUserNames());
-
-    const isSupDeleted = (s: Supervision) =>
-      deletedSupIds.has(s.id) ||
-      (s.teacherId && deletedUids.has(s.teacherId)) ||
-      (s.teacherName && deletedNames.has(s.teacherName.toLowerCase().trim()));
-
-    // Merge with SAMPLE_SUPERVISIONS to guarantee initial supervised teachers are available,
-    // excluding any that have been deleted via Kelola Pengguna
-    const map = new Map<string, Supervision>();
-    SAMPLE_SUPERVISIONS.forEach(s => {
-      if (!isSupDeleted(s)) {
-        map.set(s.id, s);
-      }
-    });
-    results.forEach(s => {
-      if (!isSupDeleted(s)) {
-        map.set(s.id, s);
-      }
-    });
-    results = Array.from(map.values()).filter(s => !isSupDeleted(s));
-
-    // Role-based filtering
+  const filterForUser = (list: Supervision[]) => {
     if (userProfile?.role === 'guru') {
-      const matched = results.filter(
+      return list.filter(
         s => s.teacherId === userProfile.uid ||
              s.teacherName.toLowerCase().trim() === userProfile.displayName.toLowerCase().trim()
       );
-      return matched;
     } else if (userProfile?.role === 'kepsek' && (userProfile.schoolId || userProfile.schoolName)) {
-      const matched = results.filter(
+      return list.filter(
         s => (userProfile.schoolId && s.schoolId === userProfile.schoolId) ||
              (userProfile.schoolName && s.schoolName.toLowerCase().trim() === userProfile.schoolName.toLowerCase().trim())
       );
-      return matched;
     }
+    return list;
+  };
 
-    saveLocalSupervisions(results);
-    return results;
+  // 1. AUTHORITATIVE CLOUD FIRST: Fetch from Firestore (latest synced state across devices)
+  try {
+    const q = collection(db, 'supervisions');
+    const snap = await withFirestoreTimeout(getDocs(q), 5000, null);
+    if (snap && !snap.empty) {
+      const firestoreSups = snap.docs
+        .map(d => normalizeSupervisionData({ id: d.id, ...d.data() } as Supervision))
+        .filter(s => !isSupDeleted(s));
+
+      if (firestoreSups.length > 0) {
+        saveLocalSupervisions(firestoreSups);
+        return filterForUser(firestoreSups);
+      }
+    }
   } catch (err) {
-    console.warn('Notice fetching supervisions, falling back to device local storage:', err);
-    const localCached = loadLocalSupervisions();
-    const fallback = localCached && localCached.length > 0 ? localCached : SAMPLE_SUPERVISIONS;
-    const deletedSupIds = new Set(getDeletedSupervisionIds());
-    const deletedUids = new Set(getDeletedUserIds());
-    const deletedNames = new Set(getDeletedUserNames());
-    return fallback.filter(
-      s => !deletedSupIds.has(s.id) && 
-           (!s.teacherId || !deletedUids.has(s.teacherId)) &&
-           (!s.teacherName || !deletedNames.has(s.teacherName.toLowerCase().trim()))
-    );
+    console.warn('Firestore supervisions fetch notice (falling back to backend/local):', err);
   }
+
+  // 2. Fetch from backend API disk persistence
+  try {
+    const backendSups = await apiFetchSupervisions();
+    if (backendSups && backendSups.length > 0) {
+      const validBackend = backendSups
+        .map(s => normalizeSupervisionData(s))
+        .filter(s => !isSupDeleted(s));
+      if (validBackend.length > 0) {
+        saveLocalSupervisions(validBackend);
+        return filterForUser(validBackend);
+      }
+    }
+  } catch (backendErr) {
+    console.warn('Backend API supervisions notice:', backendErr);
+  }
+
+  // 3. Fallback to local cache / sample
+  const localCached = loadLocalSupervisions();
+  let results: Supervision[] = localCached && localCached.length > 0 ? localCached : SAMPLE_SUPERVISIONS;
+  results = results.map(s => normalizeSupervisionData(s)).filter(s => !isSupDeleted(s));
+  return filterForUser(results);
 }
 
 export async function getSupervisionById(id: string): Promise<Supervision | null> {
@@ -1474,10 +1451,9 @@ export function subscribeToSupervisions(
         });
 
         if (firestoreSupervisions.length > 0) {
-          const currentLocal = loadLocalSupervisions() || [];
-          const merged = mergeSupervisionsByTimestamp(firestoreSupervisions, currentLocal);
-          saveLocalSupervisions(merged);
-          callback(filterForUser(merged));
+          // Cloud snapshot is authoritative from the latest sync across devices
+          saveLocalSupervisions(firestoreSupervisions);
+          callback(filterForUser(firestoreSupervisions));
         }
       }
     }, (error) => {
@@ -1662,6 +1638,24 @@ export async function syncAllPendingLocalChangesToFirestore(): Promise<{
       supCount++;
     }
 
+    // Record cloud sync state so all devices know the exact author, count, and timestamp of the latest sync
+    const syncMetaDoc = doc(db, 'system', 'sync_state');
+    batch.set(syncMetaDoc, {
+      lastSyncedAt: new Date().toISOString(),
+      lastSyncedBy: auth.currentUser?.email || 'admin',
+      lastSyncedByName: auth.currentUser?.displayName || 'Kusnandar, M.Si',
+      supervisionsCount: validSupervisions.length,
+      supervisionIds: validSupervisions.map(s => s.id),
+      schoolsCount: validSchools.length,
+      usersCount: validUsers.length,
+      timestamp: Date.now(),
+    }, { merge: true });
+
+    // Clean up any deleted records in Firestore
+    for (const delId of deletedIds) {
+      batch.delete(doc(db, 'supervisions', delId));
+    }
+
     // Commit all documents in one real-time batch
     await withFirestoreTimeout(batch.commit(), 8000);
   } catch (batchErr: any) {
@@ -1700,6 +1694,18 @@ export async function syncAllPendingLocalChangesToFirestore(): Promise<{
         console.warn('Sync supervision fallback notice:', e);
       }
     }
+    try {
+      await withFirestoreTimeout(setDoc(doc(db, 'system', 'sync_state'), {
+        lastSyncedAt: new Date().toISOString(),
+        lastSyncedBy: auth.currentUser?.email || 'admin',
+        lastSyncedByName: auth.currentUser?.displayName || 'Kusnandar, M.Si',
+        supervisionsCount: validSupervisions.length,
+        supervisionIds: validSupervisions.map(s => s.id),
+        schoolsCount: validSchools.length,
+        usersCount: validUsers.length,
+        timestamp: Date.now(),
+      }, { merge: true }), 3500);
+    } catch {}
   }
 
   const syncTime = new Date().toISOString();
@@ -1711,6 +1717,34 @@ export async function syncAllPendingLocalChangesToFirestore(): Promise<{
   }
 
   return { usersCount: uCount, schoolsCount: sCount, supervisionsCount: supCount, lastSyncTime: syncTime };
+}
+
+export interface CloudSyncState {
+  lastSyncedAt: string;
+  lastSyncedBy?: string;
+  lastSyncedByName?: string;
+  supervisionsCount: number;
+  supervisionIds?: string[];
+  schoolsCount?: number;
+  usersCount?: number;
+  timestamp?: number;
+}
+
+export function subscribeToSyncState(callback: (state: CloudSyncState | null) => void): Unsubscribe {
+  try {
+    const docRef = doc(db, 'system', 'sync_state');
+    return onSnapshot(docRef, (snap) => {
+      if (snap.exists()) {
+        callback(snap.data() as CloudSyncState);
+      } else {
+        callback(null);
+      }
+    }, (err) => {
+      console.warn('Real-time sync state notice:', err);
+    });
+  } catch {
+    return () => {};
+  }
 }
 
 // Master boot initialization to ensure Firestore collections exist with full data

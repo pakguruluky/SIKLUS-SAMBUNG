@@ -67,6 +67,10 @@
     "/supervisions/{supervisionId}": {
       "schema": { "$ref": "#/entities/Supervision" },
       "description": "Dokumen Rekam Jejak Supervisi Akademik Guru Lengkap"
+    },
+    "/system/{docId}": {
+      "schema": { "$ref": "#/entities/Supervision" },
+      "description": "Metadata status sinkronisasi realtime cloud"
     }
   }
 }

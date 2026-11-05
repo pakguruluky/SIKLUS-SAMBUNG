@@ -36,5 +36,10 @@ service cloud.firestore {
     match /test/{docId} {
       allow read, write: if true;
     }
+
+    // System synchronization metadata collection
+    match /system/{docId} {
+      allow read, write: if true;
+    }
   }
 }

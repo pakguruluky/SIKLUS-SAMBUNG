@@ -28,6 +28,7 @@ interface NavbarProps {
   onSyncToFirebase?: () => void;
   isSyncing?: boolean;
   hasPendingSync?: boolean;
+  cloudSyncInfo?: { count: number; lastSyncedAt?: string; lastSyncedByName?: string };
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -41,6 +42,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onSyncToFirebase,
   isSyncing,
   hasPendingSync,
+  cloudSyncInfo,
 }) => {
   const getRoleLabel = (role: Role) => {
     switch (role) {
@@ -182,9 +184,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                     onClick={onSyncToFirebase}
                     disabled={isSyncing}
                     title={
-                      hasPendingSync
-                        ? "Ada data pengisian instrumen lokal siap disinkronkan ke Firebase. Klik untuk menyimpan seluruh data ke cloud."
-                        : "Semua data lokal telah sinkron dengan Firebase Database."
+                      cloudSyncInfo
+                        ? `Cloud Sinkron: ${cloudSyncInfo.count} Guru tersimpan di Firebase (${cloudSyncInfo.lastSyncedByName || 'Admin'}${cloudSyncInfo.lastSyncedAt ? ' • ' + new Date(cloudSyncInfo.lastSyncedAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : ''})`
+                        : (hasPendingSync
+                            ? "Ada data pengisian instrumen lokal siap disinkronkan ke Firebase. Klik untuk menyimpan seluruh data ke cloud."
+                            : "Semua data lokal telah sinkron dengan Firebase Database.")
                     }
                     className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-2xs whitespace-nowrap shrink-0 border ${
                       hasPendingSync
@@ -194,10 +198,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
                     <span className="hidden sm:inline">
-                      {isSyncing ? 'Menyinkronkan...' : hasPendingSync ? 'Sinkronisasi (Siap Sync)' : 'Cloud Sinkron'}
+                      {isSyncing ? 'Menyinkronkan...' : hasPendingSync ? 'Sinkronisasi (Siap Sync)' : `Cloud Sinkron${cloudSyncInfo?.count ? ` (${cloudSyncInfo.count})` : ''}`}
                     </span>
                     <span className="sm:hidden">
-                      {isSyncing ? 'Sync...' : 'Sync'}
+                      {isSyncing ? 'Sync...' : `Sync${cloudSyncInfo?.count ? ` (${cloudSyncInfo.count})` : ''}`}
                     </span>
                   </button>
                 )}

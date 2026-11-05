@@ -34,6 +34,8 @@ import {
   syncAllPendingLocalChangesToFirestore,
   subscribeToSupervisions, 
   subscribeToSchools,
+  subscribeToSyncState,
+  CloudSyncState,
   getDeletedUserIds, 
   getDeletedSupervisionIds, 
   getDeletedUserNames,
@@ -118,6 +120,7 @@ export default function App() {
   const [quotaWarning, setQuotaWarning] = useState<boolean>(() => isQuotaExceeded());
   const [isSyncing, setIsSyncing] = useState(false);
   const [hasPendingSync, setHasPendingSync] = useState<boolean>(() => getHasPendingSync());
+  const [cloudSyncState, setCloudSyncState] = useState<CloudSyncState | null>(null);
   const [syncToast, setSyncToast] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
 
   // Listen for firestore quota & sync events
@@ -192,10 +195,18 @@ export default function App() {
       }
     });
 
+    // Real-time listener for cloud sync metadata
+    const unsubscribeSyncState = subscribeToSyncState((state) => {
+      if (state) {
+        setCloudSyncState(state);
+      }
+    });
+
     return () => {
       unsubscribeAuth();
       unsubscribeSupervisions();
       unsubscribeSchools();
+      unsubscribeSyncState();
     };
   }, [currentUser?.uid]);
 
@@ -363,6 +374,7 @@ export default function App() {
         onSyncToFirebase={handleSyncToFirebase}
         isSyncing={isSyncing}
         hasPendingSync={hasPendingSync}
+        cloudSyncInfo={cloudSyncState ? { count: cloudSyncState.supervisionsCount, lastSyncedAt: cloudSyncState.lastSyncedAt, lastSyncedByName: cloudSyncState.lastSyncedByName } : undefined}
       />
 
       {/* Quota limit informational banner per Firebase guidelines */}

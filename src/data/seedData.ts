@@ -1736,27 +1736,24 @@ const YANUAR_DRAFT_SUPERVISION: Supervision = {
   }
 };
 
-const TARGET_10_IDS = new Set([
+// 9 Supervisi Resmi dari file backup valid terunggah (SIKLUS_SAMBUNG_Backup_2026-11-05 (3).json)
+const TARGET_OFFICIAL_BACKUP_IDS = new Set([
   'sup-demo-01',
-  'sup-demo-05',
   'sup-demo-02',
-  'sup-demo-rimba-atik',
   'sup-demo-04',
+  'sup-demo-05',
   'sup-demo-06',
-  'sup-demo-ummul-kirana',
+  'sup-demo-07',
   'sup-demo-ummul-sani',
-  'sup-demo-ananda-saulina',
-  'sup-1793599538368',
+  'sup-demo-ummul-kirana',
+  'sup-demo-rimba-atik',
 ]);
 
-if (!SAMPLE_SUPERVISIONS.some(s => s.id === 'sup-1793599538368')) {
-  SAMPLE_SUPERVISIONS.push(YANUAR_DRAFT_SUPERVISION);
-}
-
-// Batasi SAMPLE_SUPERVISIONS persis pada 10 guru (9 selesai supervisi, 1 belum)
+// Batasi SAMPLE_SUPERVISIONS persis pada 9 guru sesuai data sinkronisasi resmi
 for (let i = SAMPLE_SUPERVISIONS.length - 1; i >= 0; i--) {
-  if (!TARGET_10_IDS.has(SAMPLE_SUPERVISIONS[i].id)) {
+  if (!TARGET_OFFICIAL_BACKUP_IDS.has(SAMPLE_SUPERVISIONS[i].id)) {
     SAMPLE_SUPERVISIONS.splice(i, 1);
   }
 }
+
 

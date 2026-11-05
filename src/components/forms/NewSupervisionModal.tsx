@@ -181,8 +181,8 @@ export const NewSupervisionModal: React.FC<NewSupervisionModalProps> = ({
         isNewSupervision: true,
       };
 
-      const baseSup: Supervision = { id: `sup-${Date.now()}`, ...newSup };
-      const newId = await saveSupervision(baseSup);
+      const baseSup: Supervision = { id: `sup-${Date.now()}`, ...newSup, isNewSupervision: true };
+      const newId = await saveSupervision(baseSup, true);
       onCreated({ ...baseSup, id: newId });
       onClose();
     } catch (err: any) {

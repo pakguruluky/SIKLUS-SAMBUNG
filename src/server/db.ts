@@ -393,6 +393,7 @@ export function bulkSync(data: {
   deletedSupervisionIds?: string[];
   deletedUserIds?: string[];
   deletedUserNames?: string[];
+  replaceSupervisions?: boolean;
 }): { schoolsCount: number; supervisionsCount: number; usersCount: number } {
   const db = loadDatabase();
 
@@ -417,10 +418,14 @@ export function bulkSync(data: {
   }
 
   if (Array.isArray(data.supervisions)) {
-    const supMap = new Map<string, Supervision>();
-    db.supervisions.forEach(s => supMap.set(s.id, s));
-    data.supervisions.forEach(s => supMap.set(s.id, s));
-    db.supervisions = Array.from(supMap.values());
+    if (data.replaceSupervisions) {
+      db.supervisions = [...data.supervisions];
+    } else {
+      const supMap = new Map<string, Supervision>();
+      db.supervisions.forEach(s => supMap.set(s.id, s));
+      data.supervisions.forEach(s => supMap.set(s.id, s));
+      db.supervisions = Array.from(supMap.values());
+    }
   }
 
   if (Array.isArray(data.users)) {

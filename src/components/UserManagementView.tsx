@@ -233,7 +233,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
             summaryNotes: '',
           },
         };
-        await saveSupervision(newSup);
+        await saveSupervision(newSup, true);
       }
 
       await loadUsers();

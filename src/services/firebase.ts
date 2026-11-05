@@ -625,6 +625,10 @@ export async function addUserAccount(user: UserProfile): Promise<UserProfile> {
     approvalStatus: user.approvalStatus || 'approved',
   };
 
+  // Remove from deleted tombstones if re-added
+  removeDeletedUserId(uid);
+  if (user.displayName) removeDeletedUserName(user.displayName);
+
   // 1. Save local
   const current = getStoredUsers();
   const existingIdx = current.findIndex(u => u.uid === uid || (user.username && u.username === user.username));
@@ -642,12 +646,17 @@ export async function addUserAccount(user: UserProfile): Promise<UserProfile> {
     console.warn('Backend API save user notice:', apiErr);
   }
 
-  // 3. Save to Firestore
-  try {
-    const cleaned = cleanForFirestore(completeUser);
-    withFirestoreTimeout(setDoc(doc(db, 'users', uid), cleaned, { merge: true }), 600).catch(() => {});
-  } catch (err) {
-    console.warn('Notice saving user to Firestore (saved in backend/local):', err);
+  // 3. Save to Firestore in real-time
+  if (!isFirestoreQuotaExceeded) {
+    try {
+      const cleaned = cleanForFirestore(completeUser);
+      withFirestoreTimeout(setDoc(doc(db, 'users', uid), cleaned, { merge: true }), 3500).catch((err) => {
+        if (isQuotaError(err)) markQuotaExceeded(err);
+      });
+    } catch (err) {
+      if (isQuotaError(err)) markQuotaExceeded(err);
+      console.warn('Notice saving user to Firestore (saved in backend/local):', err);
+    }
   }
 
   return completeUser;
@@ -788,6 +797,29 @@ export function addDeletedUserName(name: string) {
       names.push(clean);
       localStorage.setItem(DELETED_USER_NAMES_KEY, JSON.stringify(names));
     }
+  } catch {}
+}
+
+export function removeDeletedSupervisionId(id: string) {
+  try {
+    const ids = getDeletedSupervisionIds().filter(i => i !== id);
+    localStorage.setItem(DELETED_SUPERVISION_IDS_KEY, JSON.stringify(ids));
+  } catch {}
+}
+
+export function removeDeletedUserId(uid: string) {
+  try {
+    const ids = getDeletedUserIds().filter(i => i !== uid);
+    localStorage.setItem(DELETED_USER_IDS_KEY, JSON.stringify(ids));
+  } catch {}
+}
+
+export function removeDeletedUserName(name: string) {
+  if (!name) return;
+  try {
+    const clean = name.toLowerCase().trim();
+    const names = getDeletedUserNames().filter(n => n.toLowerCase().trim() !== clean);
+    localStorage.setItem(DELETED_USER_NAMES_KEY, JSON.stringify(names));
   } catch {}
 }
 
@@ -1488,7 +1520,7 @@ export function subscribeToSupervisions(
 }
 
 // Save Supervision with immediate local storage + backend API disk persistence.
-// Data is saved to LocalStorage & Backend API disk. Firestore sync is executed when Admin clicks 'Sinkronisasi'
+// Data penambahan baru tersimpan realtime ke Firebase Firestore & disiarkan langsung ke semua perangkat
 export async function saveSupervision(
   supervision: Partial<Supervision> & { id?: string },
   forceSyncToFirestore = false
@@ -1496,32 +1528,63 @@ export async function saveSupervision(
   const targetId = supervision.id || `sup-${Date.now()}`;
   const now = new Date().toISOString();
 
+  // Bersihkan penanda tombstone jika guru atau supervisi ini ditambahkan kembali
+  removeDeletedSupervisionId(targetId);
+  if (supervision.teacherId) removeDeletedUserId(supervision.teacherId);
+  if (supervision.teacherName) removeDeletedUserName(supervision.teacherName);
+
+  // Periksa apakah ini data penambahan baru
+  const existingLocal = loadLocalSupervisions() || [];
+  const isExisting = existingLocal.some(s => s.id === targetId);
+  const isNewAddition = !isExisting || Boolean((supervision as any).isNewSupervision);
+
   const fullData: Supervision = {
     ...supervision,
     id: targetId,
+    isValidData: true,
     createdAt: (supervision as any).createdAt || now,
     updatedAt: now,
   } as Supervision;
 
-  // 1. ALWAYS persist to device local storage immediately (0ms)
+  // 1. SELALU simpan langsung ke local storage perangkat (0ms render instan)
   saveSingleLocalSupervision(fullData);
 
-  // 2. ALWAYS persist to backend API disk storage immediately (< 10ms)
+  // 2. SELALU simpan ke persistent disk backend API (< 10ms)
   try {
     await apiSaveSupervision(fullData);
   } catch (apiErr) {
     console.warn('Backend API save supervision notice:', apiErr);
   }
 
-  // Mark that there are local modifications ready for sync
-  markDataModifiedLocally();
+  // 3. Data penambahan atau jika forceSyncToFirestore: LANGSUNG simpan realtime ke Firebase Firestore
+  const shouldSyncFirestore = forceSyncToFirestore || isNewAddition;
 
-  // 3. Persist to Firebase Firestore if explicitly requested or forced
-  if (forceSyncToFirestore && !isFirestoreQuotaExceeded) {
+  if (shouldSyncFirestore && !isFirestoreQuotaExceeded) {
     try {
       const docRef = doc(db, 'supervisions', targetId);
       const cleaned = cleanForFirestore(fullData);
-      await withFirestoreTimeout(setDoc(docRef, cleaned, { merge: true }), 3500);
+      await withFirestoreTimeout(setDoc(docRef, cleaned, { merge: true }), 4000);
+
+      // Perbarui metadata sync di Firestore agar perangkat lain (Device B, dll) menerima update realtime
+      const updatedLocalList = loadLocalSupervisions() || [];
+      const userEmail = auth.currentUser?.email || 'admin';
+      const userName = auth.currentUser?.displayName || 'Kusnandar, M.Si';
+      withFirestoreTimeout(
+        setDoc(doc(db, 'system', 'sync_state'), {
+          lastSyncedAt: now,
+          lastSyncedBy: userEmail,
+          lastSyncedByName: userName,
+          supervisionsCount: updatedLocalList.length,
+          supervisionIds: updatedLocalList.map(s => s.id),
+          timestamp: Date.now(),
+        }, { merge: true }),
+        3500
+      ).catch(() => {});
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(LAST_SYNC_TIME_KEY, now);
+        window.dispatchEvent(new CustomEvent('pakkus-sync-completed', { detail: { syncTime: now, count: updatedLocalList.length } }));
+      }
       return targetId;
     } catch (err: any) {
       if (isQuotaError(err)) {
@@ -1531,6 +1594,9 @@ export async function saveSupervision(
       }
       return targetId;
     }
+  } else {
+    // Tandai jika ada modifikasi pengisian instrumen lokal yang siap disinkronkan saat klik Cloud Sinkron
+    markDataModifiedLocally();
   }
 
   return targetId;

@@ -206,6 +206,7 @@ export async function apiSyncAll(payload: {
   deletedSupervisionIds?: string[];
   deletedUserIds?: string[];
   deletedUserNames?: string[];
+  replaceSupervisions?: boolean;
 }): Promise<boolean> {
   try {
     const res = await fetch(`${API_BASE}/sync`, {

@@ -215,7 +215,7 @@ export const EditGuruSupervisiModal: React.FC<EditGuruSupervisiModalProps> = ({
         updated.sambung.gerakkan.catatanOptimal = compCalc.catatanOptimal;
       }
 
-      await saveSupervision(updated);
+      await saveSupervision(updated, true);
       onSaved(updated);
 
       setToastMessage(`Data guru ${updated.teacherName} berhasil disimpan!`);

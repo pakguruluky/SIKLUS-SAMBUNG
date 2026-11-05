@@ -293,15 +293,15 @@ export default function App() {
 
   const handleCreateSupervision = async (newSup: Supervision) => {
     setSupervisions(prev => {
-      const next = [newSup, ...prev];
+      const next = [newSup, ...prev.filter(s => s.id !== newSup.id)];
       saveLocalSupervisions(next);
       return next;
     });
     setSelectedSambungId(newSup.id);
     setActiveTab('sambung');
-    // Saved in local storage & backend disk (0 Firestore quota consumed during instrument filling)
-    await saveSupervision(newSup, false);
-    setHasPendingSync(true);
+    // Data penambahan langsung tersimpan realtime ke Firebase Firestore
+    await saveSupervision(newSup, true);
+    setHasPendingSync(false);
   };
 
   const handleRestoreData = async (restoredSupervisions: Supervision[], restoredSchools: School[]) => {

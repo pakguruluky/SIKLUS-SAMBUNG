@@ -131,10 +131,10 @@ const getTeacherAlurSambung = (s: Supervision): SambungKesimpulanAlurSambung => 
 
 // Helper to safely obtain RTL items
 const getTeacherRtlNyatakan = (s: Supervision): SambungRtlNyatakanItem[] => {
-  if (s.sambung?.gerakkan?.rtlNyatakan && s.sambung.gerakkan.rtlNyatakan.length > 0) {
-    return s.sambung.gerakkan.rtlNyatakan;
-  }
-  return generateGerakkanData(s).rtlNyatakan;
+  const list = (s.sambung?.gerakkan?.rtlNyatakan && s.sambung.gerakkan.rtlNyatakan.length > 0)
+    ? s.sambung.gerakkan.rtlNyatakan
+    : generateGerakkanData(s).rtlNyatakan;
+  return list.filter(r => !r.indikator?.includes('Asesmen Autentik') && r.id !== 5);
 };
 
 // Helper to safely obtain Pengimbasan items

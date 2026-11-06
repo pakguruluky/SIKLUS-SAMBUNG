@@ -52,9 +52,18 @@ export function loadDatabase(): DatabaseSchema {
       const content = fs.readFileSync(DB_FILE, 'utf-8');
       const parsed = JSON.parse(content);
       if (parsed && Array.isArray(parsed.schools) && Array.isArray(parsed.supervisions)) {
+        const sanitizedSupervisions = (parsed.supervisions || []).map((s: any) => {
+          if (s.sambung?.gerakkan?.rtlNyatakan) {
+            s.sambung.gerakkan.rtlNyatakan = s.sambung.gerakkan.rtlNyatakan.filter(
+              (r: any) => !r.indikator?.includes('Asesmen Autentik') && r.id !== 5
+            );
+          }
+          return s;
+        });
+
         inMemoryDb = {
           schools: parsed.schools,
-          supervisions: parsed.supervisions,
+          supervisions: sanitizedSupervisions,
           users: Array.isArray(parsed.users) ? parsed.users : DEFAULT_USERS,
           deletedSupervisionIds: Array.isArray(parsed.deletedSupervisionIds) ? parsed.deletedSupervisionIds : [],
           deletedUserIds: Array.isArray(parsed.deletedUserIds) ? parsed.deletedUserIds : [],

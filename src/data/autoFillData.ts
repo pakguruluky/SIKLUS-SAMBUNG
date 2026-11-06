@@ -1929,16 +1929,6 @@ export function generateGerakkanData(supervision: Supervision): {
       buktiKeberhasilan: 'Buku Jurnal Refleksi Murid terisi rapi, rekapan angket suara murid, catatan tindak lanjut umpan balik guru',
       rekomendasiSupervisi: 'Jadikan data refleksi murid sebagai dasar evaluasi diri guru (Self-Regulated Teacher) dalam Penilaian Kinerja Guru (PKG).',
     },
-    {
-      id: 5,
-      indikator: 'Asesmen Autentik Formatif & Tindak Lanjut Diferensiasi',
-      hasilNyatakan: `Terselenggaranya asesmen autentik yang tidak hanya mengukur capaian akhir (assessment of learning), melainkan memantau proses (assessment for & as learning) dengan rubrik transparan. Skor ketercapaian aspek asesmen telaah dan observasi mencapai predikat ${obsPred}.`,
-      rencanaTindakLanjut: `1. Mengembangkan instrumen asesmen diagnostik kognitif dan non-kognitif sebelum memulai bab baru.\n2. Menggunakan aplikasi asesmen formatif interaktif (Quizizz, Kahoot, Google Form) dengan analisis butir soal instan untuk pemetaan kelompok remidial dan pengayaan.\n3. Melaksanakan program tindak lanjut klinis bagi murid yang belum tuntas tanpa menambah beban psikologis.`,
-      mitraKolaborasi: `Pengawas Pembina Kusnandar, M.Si, Koordinator Penilaian Sekolah, dan Rekan Guru ${subject}`,
-      waktuPelaksanaan: 'Berkala di awal, tengah, dan akhir unit pembelajaran',
-      buktiKeberhasilan: 'Kisi-kisi dan rubrik asesmen autentik, laporan hasil analisis diagnostik, portofolio remidial & pengayaan terstruktur',
-      rekomendasiSupervisi: 'Pengawas Pembina melakukan supervisi berkala terhadap kesahihan dan reliabilitas rubrik asesmen formatif kurikulum.',
-    },
   ];
 
   // 2. Rencana Tindak Lanjut Temuan Supervisi

@@ -496,6 +496,12 @@ function normalizeSupervisionData(sup: Supervision): Supervision {
         completedAt: uji.pascaObservasi.completedAt || new Date().toISOString(),
       };
     }
+
+    if (normalized.sambung?.gerakkan?.rtlNyatakan) {
+      normalized.sambung.gerakkan.rtlNyatakan = normalized.sambung.gerakkan.rtlNyatakan.filter(
+        (r: any) => !r.indikator?.includes('Asesmen Autentik') && r.id !== 5
+      );
+    }
   }
 
   return normalized;

@@ -6789,9 +6789,12 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
               {/* SUBTAB 1: RTL DARI HASIL NYATAKAN (INSTRUMEN UTAMA)      */}
               {/* ========================================================= */}
               {gSubTab === 'rtl_nyatakan' && (() => {
-                const effectiveRtlList = (sambungDraft.gerakkan.rtlNyatakan && sambungDraft.gerakkan.rtlNyatakan.length > 0)
+                const rawRtlList = (sambungDraft.gerakkan.rtlNyatakan && sambungDraft.gerakkan.rtlNyatakan.length > 0)
                   ? sambungDraft.gerakkan.rtlNyatakan
                   : generateGerakkanData(currentSupervision).rtlNyatakan;
+                const effectiveRtlList = rawRtlList.filter(
+                  item => !item.indikator?.includes('Asesmen Autentik') && item.id !== 5
+                );
 
                 return (
                   <div className="space-y-6">
@@ -6807,7 +6810,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                             Rencana Tindak Lanjut Berdasarkan Hasil Nyatakan &amp; Kesimpulan Transformasi
                           </h4>
                           <p className="text-xs text-slate-600 leading-relaxed max-w-3xl">
-                            Diisi secara sistematis menghubungkan 5 indikator perubahan yang telah dinyatakan dan diverifikasi di Tahap Nyatakan menjadi rencana aksi nyata guru <strong>{currentSupervision.teacherName}</strong> bersama komunitas belajar dan pengawas pembina.
+                            Diisi secara sistematis menghubungkan 4 indikator perubahan yang telah dinyatakan dan diverifikasi di Tahap Nyatakan menjadi rencana aksi nyata guru <strong>{currentSupervision.teacherName}</strong> bersama komunitas belajar dan pengawas pembina.
                           </p>
                         </div>
 
@@ -6816,11 +6819,14 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                             type="button"
                             onClick={() => {
                               const generated = generateGerakkanData(currentSupervision);
+                              const cleanRtl = generated.rtlNyatakan.filter(
+                                item => !item.indikator?.includes('Asesmen Autentik') && item.id !== 5
+                              );
                               setSambungDraft({
                                 ...sambungDraft,
                                 gerakkan: {
                                   ...sambungDraft.gerakkan,
-                                  rtlNyatakan: generated.rtlNyatakan,
+                                  rtlNyatakan: cleanRtl,
                                   kesimpulanAlurSambung: generated.kesimpulanAlurSambung,
                                 },
                               });
@@ -6857,7 +6863,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                       <div className="flex items-center justify-between">
                         <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
                           <Layers className="w-4 h-4 text-cyan-700" />
-                          <span>Tabel Rencana Tindak Lanjut Berdasarkan Hasil Nyatakan &amp; Kesimpulan (5 Indikator Transformasi)</span>
+                          <span>Tabel Rencana Tindak Lanjut Berdasarkan Hasil Nyatakan &amp; Kesimpulan (4 Indikator Transformasi)</span>
                         </h4>
 
                         <button

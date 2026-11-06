@@ -1218,9 +1218,10 @@ export const SambungPrintModal: React.FC<SambungPrintModalProps> = ({
           <div className="page-break-after">
             {(() => {
               const defaultGerakkan = generateGerakkanData(supervision);
-              const effectiveRtl = (sambung.gerakkan.rtlNyatakan && sambung.gerakkan.rtlNyatakan.length > 0)
+              const rawRtl = (sambung.gerakkan.rtlNyatakan && sambung.gerakkan.rtlNyatakan.length > 0)
                 ? sambung.gerakkan.rtlNyatakan
                 : defaultGerakkan.rtlNyatakan;
+              const effectiveRtl = rawRtl.filter(r => !r.indikator?.includes('Asesmen Autentik') && r.id !== 5);
               const effectiveAlur = sambung.gerakkan.kesimpulanAlurSambung || defaultGerakkan.kesimpulanAlurSambung;
 
               return (

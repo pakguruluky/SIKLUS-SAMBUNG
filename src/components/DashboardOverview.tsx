@@ -124,7 +124,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   const completionChartInstance = useRef<ChartJS | null>(null);
   const statusChartInstance = useRef<ChartJS | null>(null);
 
-  const isAdmin = currentUser.role === 'admin';
+  const isAdmin = currentUser.role === 'admin' || currentUser.role === 'pengawas' || currentUser.role === 'super_admin';
   const isKepsek = currentUser.role === 'kepsek';
   const isGuru = currentUser.role === 'guru';
 
@@ -1018,8 +1018,30 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                   <tbody className="divide-y divide-slate-100">
                     {filteredTeacherList.length === 0 ? (
                       <tr>
-                        <td colSpan={10} className="py-12 text-center text-slate-400">
-                          Tidak ditemukan data guru yang sesuai kriteria pencarian / filter.
+                        <td colSpan={10} className="py-12 text-center text-slate-500">
+                          {mySupervisions.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center gap-2 max-w-md mx-auto py-4">
+                              <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+                                <Sparkles className="w-6 h-6" />
+                              </div>
+                              <p className="font-bold text-slate-900 text-sm">
+                                Ruang Kerja Pengawas Baru Siap Digunakan
+                              </p>
+                              <p className="text-xs text-slate-500 leading-relaxed">
+                                Ruang kerja Anda bersih (0 guru supervisi). Seluruh data yang Anda tambahkan akan tersimpan realtime ke Firebase Firestore.
+                              </p>
+                              <button
+                                type="button"
+                                onClick={onNewSupervision}
+                                className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-200 transition-all cursor-pointer"
+                              >
+                                <PlusCircle className="w-4 h-4" />
+                                <span>+ Rekam Supervisi Guru Pertama</span>
+                              </button>
+                            </div>
+                          ) : (
+                            <span>Tidak ditemukan data guru yang sesuai kriteria pencarian / filter.</span>
+                          )}
                         </td>
                       </tr>
                     ) : (

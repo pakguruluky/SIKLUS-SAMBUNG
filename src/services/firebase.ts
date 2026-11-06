@@ -507,6 +507,25 @@ function normalizeSupervisionData(sup: Supervision): Supervision {
   return normalized;
 }
 
+export function isKusnandarAccount(user?: UserProfile | null): boolean {
+  if (!user) return false;
+  const uid = user.uid || '';
+  const username = (user.username || '').toLowerCase().trim();
+  const name = (user.displayName || '').toLowerCase().trim();
+  return (
+    uid === 'user-pengawas-kusnandar' ||
+    uid === 'admin-kusnandar' ||
+    username === 'pengawas' ||
+    username === 'kusnandar' ||
+    name.includes('kusnandar')
+  );
+}
+
+export function isSupervisorAccount(user?: UserProfile | null): boolean {
+  if (!user) return false;
+  return user.role === 'admin' || user.role === 'pengawas' || user.role === 'super_admin';
+}
+
 // Authenticate via username/email & password
 export async function authenticateRealUser(
   usernameOrEmail: string,
@@ -514,20 +533,31 @@ export async function authenticateRealUser(
 ): Promise<UserProfile> {
   const cleaned = usernameOrEmail.trim().toLowerCase();
 
-  // 1. Check in-memory / local storage user cache first
+  // 1. Super Admin Direct Access (username: admin, password: bajuri39)
+  if (cleaned === 'admin' || cleaned === 'admin@siklus-sambung.sch.id') {
+    if (passwordInput === 'bajuri39') {
+      const superAdminUser: UserProfile = DEFAULT_USERS[0];
+      setDoc(doc(db, 'users', superAdminUser.uid), superAdminUser, { merge: true }).catch(() => {});
+      return superAdminUser;
+    } else {
+      throw new Error('Kata sandi Super Admin tidak sesuai. Silakan masukkan kata sandi yang valid.');
+    }
+  }
+
+  // 2. Check in-memory / local storage user cache first
   const localUsers = getStoredUsers();
   const matchedLocal = localUsers.find(
     u => (u.username?.toLowerCase() === cleaned || u.email.toLowerCase() === cleaned) &&
-         (u.password === passwordInput || passwordInput === 'pakkus')
+         (u.password === passwordInput || (passwordInput === 'pakkus' && u.username !== 'admin'))
   );
   if (matchedLocal) {
     return matchedLocal;
   }
 
-  // 2. Check DEFAULT_USERS
+  // 3. Check DEFAULT_USERS
   const matchedDefault = DEFAULT_USERS.find(
     u => (u.username?.toLowerCase() === cleaned || u.email.toLowerCase() === cleaned) &&
-         (u.password === passwordInput || passwordInput === 'pakkus')
+         (u.password === passwordInput || (passwordInput === 'pakkus' && u.username !== 'admin'))
   );
   if (matchedDefault) {
     // Save to Firestore in background
@@ -535,14 +565,14 @@ export async function authenticateRealUser(
     return matchedDefault;
   }
 
-  // 3. Check Firestore `users` collection
+  // 4. Check Firestore `users` collection
   try {
     const usersSnap = await getDocs(collection(db, 'users'));
     for (const d of usersSnap.docs) {
       const u = d.data() as UserProfile;
       if (
         (u.username?.toLowerCase() === cleaned || u.email.toLowerCase() === cleaned) &&
-        (u.password === passwordInput || passwordInput === 'pakkus')
+        (u.password === passwordInput || (passwordInput === 'pakkus' && u.username !== 'admin'))
       ) {
         return { ...u, uid: d.id };
       }
@@ -551,11 +581,11 @@ export async function authenticateRealUser(
     console.warn('Firestore user lookup warning:', err);
   }
 
-  // 4. Fallback: if username is 'pengawas' and password is 'pakkus'
+  // 5. Fallback: if username is 'pengawas' and password is 'pakkus'
   if (cleaned === 'pengawas' && passwordInput === 'pakkus') {
-    const adminUser = DEFAULT_USERS[0];
-    setDoc(doc(db, 'users', adminUser.uid), adminUser, { merge: true }).catch(() => {});
-    return adminUser;
+    const pengawasUser = DEFAULT_USERS.find(u => u.username === 'pengawas') || DEFAULT_USERS[1];
+    setDoc(doc(db, 'users', pengawasUser.uid), pengawasUser, { merge: true }).catch(() => {});
+    return pengawasUser;
   }
 
   throw new Error('Username atau kata sandi tidak sesuai. Silakan periksa kembali kredensial Anda.');
@@ -1360,16 +1390,38 @@ export async function fetchSupervisions(userProfile?: UserProfile | null): Promi
     (s.teacherName && deletedNames.has(s.teacherName.toLowerCase().trim()));
 
   const filterForUser = (list: Supervision[]) => {
-    if (userProfile?.role === 'guru') {
+    if (!userProfile) return list;
+    if (userProfile.role === 'super_admin') {
+      return list;
+    }
+    if (userProfile.role === 'guru') {
       return list.filter(
         s => s.teacherId === userProfile.uid ||
              s.teacherName.toLowerCase().trim() === userProfile.displayName.toLowerCase().trim()
       );
-    } else if (userProfile?.role === 'kepsek' && (userProfile.schoolId || userProfile.schoolName)) {
+    } else if (userProfile.role === 'kepsek' && (userProfile.schoolId || userProfile.schoolName)) {
       return list.filter(
         s => (userProfile.schoolId && s.schoolId === userProfile.schoolId) ||
              (userProfile.schoolName && s.schoolName.toLowerCase().trim() === userProfile.schoolName.toLowerCase().trim())
       );
+    } else if (userProfile.role === 'admin' || userProfile.role === 'pengawas') {
+      if (isKusnandarAccount(userProfile)) {
+        return list.filter(s =>
+          !s.supervisorId ||
+          s.supervisorId === 'user-pengawas-kusnandar' ||
+          s.supervisorId === 'admin-kusnandar' ||
+          (s.supervisorName && s.supervisorName.toLowerCase().includes('kusnandar')) ||
+          s.createdBy === 'user-pengawas-kusnandar' ||
+          s.createdBy === 'system' ||
+          s.id.startsWith('sup-demo-')
+        );
+      } else {
+        return list.filter(s =>
+          s.supervisorId === userProfile.uid ||
+          s.createdBy === userProfile.uid ||
+          (Boolean(s.supervisorName) && s.supervisorName.toLowerCase().trim() === userProfile.displayName.toLowerCase().trim())
+        );
+      }
     }
     return list;
   };
@@ -1438,16 +1490,38 @@ export function subscribeToSupervisions(
 ): Unsubscribe {
   const filterForUser = (list: Supervision[]) => {
     let results = list;
-    if (userProfile?.role === 'guru') {
+    if (!userProfile) return results;
+    if (userProfile.role === 'super_admin') {
+      return results;
+    }
+    if (userProfile.role === 'guru') {
       results = results.filter(
         s => s.teacherId === userProfile.uid ||
              s.teacherName.toLowerCase().trim() === userProfile.displayName.toLowerCase().trim()
       );
-    } else if (userProfile?.role === 'kepsek' && (userProfile.schoolId || userProfile.schoolName)) {
+    } else if (userProfile.role === 'kepsek' && (userProfile.schoolId || userProfile.schoolName)) {
       results = results.filter(
         s => (userProfile.schoolId && s.schoolId === userProfile.schoolId) ||
              (userProfile.schoolName && s.schoolName.toLowerCase().trim() === userProfile.schoolName.toLowerCase().trim())
       );
+    } else if (userProfile.role === 'admin' || userProfile.role === 'pengawas') {
+      if (isKusnandarAccount(userProfile)) {
+        results = results.filter(s =>
+          !s.supervisorId ||
+          s.supervisorId === 'user-pengawas-kusnandar' ||
+          s.supervisorId === 'admin-kusnandar' ||
+          (s.supervisorName && s.supervisorName.toLowerCase().includes('kusnandar')) ||
+          s.createdBy === 'user-pengawas-kusnandar' ||
+          s.createdBy === 'system' ||
+          s.id.startsWith('sup-demo-')
+        );
+      } else {
+        results = results.filter(s =>
+          s.supervisorId === userProfile.uid ||
+          s.createdBy === userProfile.uid ||
+          (Boolean(s.supervisorName) && s.supervisorName.toLowerCase().trim() === userProfile.displayName.toLowerCase().trim())
+        );
+      }
     }
     return results;
   };

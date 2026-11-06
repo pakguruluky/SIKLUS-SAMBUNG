@@ -25,6 +25,7 @@ export const SchoolManagement: React.FC<SchoolManagementProps> = ({
   const [npsn, setNpsn] = useState('');
   const [address, setAddress] = useState('');
   const [principalName, setPrincipalName] = useState('');
+  const [supervisorName, setSupervisorName] = useState('');
   const [accreditation, setAccreditation] = useState<'A' | 'B' | 'C' | 'Belum Terakreditasi'>('A');
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -51,6 +52,7 @@ export const SchoolManagement: React.FC<SchoolManagementProps> = ({
     setNpsn('');
     setAddress('');
     setPrincipalName('');
+    setSupervisorName(currentUser.displayName || 'Pengawas Pembina');
     setAccreditation('A');
     setErrorMsg('');
     setIsModalOpen(true);
@@ -62,6 +64,7 @@ export const SchoolManagement: React.FC<SchoolManagementProps> = ({
     setNpsn(sch.npsn);
     setAddress(sch.address);
     setPrincipalName(sch.principalName);
+    setSupervisorName(sch.supervisorName || currentUser.displayName || 'Kusnandar, M.Si');
     setAccreditation(sch.accreditation);
     setErrorMsg('');
     setIsModalOpen(true);
@@ -85,6 +88,8 @@ export const SchoolManagement: React.FC<SchoolManagementProps> = ({
           address,
           principalName,
           accreditation,
+          supervisorName: supervisorName.trim() || currentUser.displayName || 'Kusnandar, M.Si',
+          supervisorId: editingSchool.supervisorId || currentUser.uid,
         });
       } else {
         await addSchool({
@@ -95,6 +100,8 @@ export const SchoolManagement: React.FC<SchoolManagementProps> = ({
           accreditation,
           createdAt: new Date().toISOString(),
           createdBy: currentUser.uid,
+          supervisorName: supervisorName.trim() || currentUser.displayName || 'Pengawas Pembina',
+          supervisorId: currentUser.uid,
         });
       }
 
@@ -184,6 +191,7 @@ export const SchoolManagement: React.FC<SchoolManagementProps> = ({
                 <th className="py-3.5 px-4">Nama SMA</th>
                 <th className="py-3.5 px-4">NPSN</th>
                 <th className="py-3.5 px-4">Kepala Sekolah</th>
+                <th className="py-3.5 px-4">Pengawas Pembina</th>
                 <th className="py-3.5 px-4">Alamat</th>
                 <th className="py-3.5 px-4 text-center">Akreditasi</th>
                 <th className="py-3.5 px-4 text-center">Aksi</th>
@@ -202,6 +210,11 @@ export const SchoolManagement: React.FC<SchoolManagementProps> = ({
                   </td>
                   <td className="py-3.5 px-4 font-mono font-medium text-slate-700">{sch.npsn}</td>
                   <td className="py-3.5 px-4 font-medium text-slate-800">{sch.principalName}</td>
+                  <td className="py-3.5 px-4">
+                    <span className="font-semibold text-indigo-900 bg-indigo-50/80 px-2 py-0.5 rounded-md border border-indigo-100">
+                      {sch.supervisorName || 'Kusnandar, M.Si'}
+                    </span>
+                  </td>
                   <td className="py-3.5 px-4 text-slate-500 max-w-xs truncate" title={sch.address}>
                     {sch.address || '-'}
                   </td>
@@ -318,6 +331,23 @@ export const SchoolManagement: React.FC<SchoolManagementProps> = ({
                   placeholder="Contoh: Dra. Hj. Yeni Suryani, M.Pd."
                   className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-indigo-600"
                 />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Nama Pengawas Pembina Sekolah *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={supervisorName}
+                  onChange={(e) => setSupervisorName(e.target.value)}
+                  placeholder="Contoh: Kusnandar, M.Si atau nama pengawas Anda"
+                  className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-indigo-600"
+                />
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  Pengawas yang membina sekolah ini dan menandatangani instrumen supervisi.
+                </p>
               </div>
 
               <div>

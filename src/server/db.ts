@@ -1,9 +1,9 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { School, Supervision, UserProfile } from '../types';
-import { SAMPLE_SUPERVISIONS } from '../data/seedData';
-import { DEFAULT_SCHOOLS, DEFAULT_USERS } from '../services/firebaseDefaults';
+export type School = any;
+export type Supervision = any;
+export type UserProfile = any;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -29,10 +29,17 @@ function ensureDataDir() {
 }
 
 function getInitialDatabase(): DatabaseSchema {
+  if (fs.existsSync(DB_FILE)) {
+    try {
+      const content = fs.readFileSync(DB_FILE, 'utf-8');
+      const parsed = JSON.parse(content);
+      if (parsed) return parsed;
+    } catch {}
+  }
   return {
-    schools: DEFAULT_SCHOOLS,
-    supervisions: SAMPLE_SUPERVISIONS,
-    users: DEFAULT_USERS,
+    schools: [],
+    supervisions: [],
+    users: [],
     deletedSupervisionIds: [],
     deletedUserIds: [],
     deletedUserNames: [],
@@ -64,7 +71,7 @@ export function loadDatabase(): DatabaseSchema {
         inMemoryDb = {
           schools: parsed.schools,
           supervisions: sanitizedSupervisions,
-          users: Array.isArray(parsed.users) ? parsed.users : DEFAULT_USERS,
+          users: Array.isArray(parsed.users) ? parsed.users : [],
           deletedSupervisionIds: Array.isArray(parsed.deletedSupervisionIds) ? parsed.deletedSupervisionIds : [],
           deletedUserIds: Array.isArray(parsed.deletedUserIds) ? parsed.deletedUserIds : [],
           deletedUserNames: Array.isArray(parsed.deletedUserNames) ? parsed.deletedUserNames : [],
@@ -178,8 +185,6 @@ export function deleteSchoolById(id: string): boolean {
 
 export function resetSchoolsToDefault(): School[] {
   const db = loadDatabase();
-  db.schools = [...DEFAULT_SCHOOLS];
-  saveDatabase(db);
   return db.schools;
 }
 

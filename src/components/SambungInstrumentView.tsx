@@ -32,7 +32,7 @@ import {
   getFourIndicatorsOptimalBreakdown,
   INDIKATOR_LABELS
 } from '../utils/sambungCalculations';
-import { saveSupervision, deleteSupervision, deleteUserAccount, purgeTeacherDataCompletely, getDeletedUserIds, getDeletedSupervisionIds, getDeletedUserNames } from '../services/firebase';
+import { saveSupervision, deleteSupervision, deleteUserAccount, purgeTeacherDataCompletely, getDeletedUserIds, getDeletedSupervisionIds, getDeletedUserNames, isKusnandarAccount, updateSchool } from '../services/firebase';
 import { analyzeTelaahRppWithAI } from '../services/aiService';
 import { SambungPrintModal } from './SambungPrintModal';
 import { PerangkatAjarModal } from './forms/PerangkatAjarModal';
@@ -83,6 +83,7 @@ import {
   Share2,
   ArrowRightLeft,
   RotateCcw,
+  Pencil,
   X
 } from 'lucide-react';
 import { 
@@ -254,6 +255,45 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
     if (!found) return availableSupervisions[0] || null;
     return found;
   }, [availableSupervisions, selectedId]);
+
+  // Dynamic resolution of school and supervisor name
+  // Disesuaikan dengan nama pengawas yang menambahkannya atau pengawas sekolah binaannya
+  const matchedSchool = useMemo(() => {
+    if (!currentSupervision) return undefined;
+    return schools.find(
+      (s) =>
+        s.id === currentSupervision.schoolId ||
+        (s.name && currentSupervision.schoolName && s.name.toLowerCase().trim() === currentSupervision.schoolName.toLowerCase().trim())
+    );
+  }, [schools, currentSupervision]);
+
+  const effectiveSupervisorName = useMemo(() => {
+    if (!currentSupervision) return 'Kusnandar, M.Si';
+
+    // 1. Jika sekolah memiliki data Pengawas Pembina yang bertugas di sekolah binaan tersebut
+    if (matchedSchool?.supervisorName && matchedSchool.supervisorName.trim()) {
+      return matchedSchool.supervisorName;
+    }
+
+    // 2. Jika berkas supervisi memiliki nama pengawas khusus (bukan default placeholder)
+    if (currentSupervision.supervisorName && currentSupervision.supervisorName !== 'Kusnandar, M.Si') {
+      return currentSupervision.supervisorName;
+    }
+
+    // 3. Jika pengguna aktif adalah Pengawas atau Admin yang menambahkan data ini (bukan akun Pak Kusnandar)
+    if (currentUser && (currentUser.role === 'pengawas' || currentUser.role === 'admin') && !isKusnandarAccount(currentUser)) {
+      if (currentSupervision.createdBy === currentUser.uid || currentSupervision.supervisorId === currentUser.uid || !currentSupervision.createdBy) {
+        return currentUser.displayName || 'Pengawas Pembina';
+      }
+    }
+
+    // 4. Default ke supervisorName berkas atau akun pembina utama
+    return currentSupervision.supervisorName || 'Kusnandar, M.Si';
+  }, [currentSupervision, matchedSchool, currentUser]);
+
+  // Inline editing state for Pengawas Pembina
+  const [isEditingSupervisor, setIsEditingSupervisor] = useState(false);
+  const [tempSupervisorName, setTempSupervisorName] = useState('');
 
   // Local draft of SambungData for immediate responsiveness
   const [sambungDraft, setSambungDraft] = useState<SambungData | null>(null);
@@ -1662,7 +1702,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
               Instrumen Siklus Strategi SAMBUNG
             </h1>
             <p className="text-xs sm:text-sm text-indigo-200 mt-1 max-w-3xl leading-relaxed">
-              Supervisi berkesinambungan oleh <strong>Kusnandar, M.Si</strong> berbasis 7 tahapan:{' '}
+              Supervisi berkesinambungan oleh <strong>{effectiveSupervisorName}</strong> berbasis 7 tahapan:{' '}
               <span className="font-semibold text-white">S</span>elidiki &bull;{' '}
               <span className="font-semibold text-white">A</span>rahkan &bull;{' '}
               <span className="font-semibold text-white">M</span>aknai &bull;{' '}
@@ -1901,8 +1941,68 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                   <SchoolIcon className="w-3.5 h-3.5 text-slate-400" />
                   {currentSupervision.schoolName}
                 </span>
-                <span>NIP: {currentSupervision.teacherNip || '-'}</span>
-                <span>Pengawas Pembina: <strong className="text-slate-700">Kusnandar, M.Si</strong></span>
+                <span className="flex items-center gap-1.5">
+                  <span>Pengawas Pembina:</span>
+                  {isEditingSupervisor ? (
+                    <span className="inline-flex items-center gap-1 bg-white px-1.5 py-0.5 rounded border border-indigo-300 shadow-xs">
+                      <input
+                        type="text"
+                        value={tempSupervisorName}
+                        onChange={(e) => setTempSupervisorName(e.target.value)}
+                        placeholder="Nama Pengawas Pembina"
+                        className="px-1.5 py-0.5 text-xs rounded border border-slate-300 font-bold text-slate-900 bg-white focus:outline-indigo-600 min-w-[170px]"
+                        autoFocus
+                      />
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const newName = tempSupervisorName.trim();
+                          if (newName) {
+                            const updated = {
+                              ...currentSupervision,
+                              supervisorName: newName,
+                              updatedAt: new Date().toISOString(),
+                            };
+                            onUpdateSupervision(updated);
+                            if (matchedSchool) {
+                              try {
+                                await updateSchool(matchedSchool.id, { supervisorName: newName });
+                              } catch {}
+                            }
+                          }
+                          setIsEditingSupervisor(false);
+                        }}
+                        className="px-2 py-0.5 bg-indigo-600 text-white rounded text-[11px] font-bold hover:bg-indigo-700 cursor-pointer"
+                      >
+                        Simpan
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingSupervisor(false)}
+                        className="px-1.5 py-0.5 text-slate-500 hover:text-slate-700 text-[11px] cursor-pointer"
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5">
+                      <strong className="text-slate-800 font-bold">{effectiveSupervisorName}</strong>
+                      {canEdit && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTempSupervisorName(effectiveSupervisorName);
+                            setIsEditingSupervisor(true);
+                          }}
+                          title="Klik untuk menyesuaikan nama Pengawas Pembina"
+                          className="p-1 rounded text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
+                        >
+                          <Pencil className="w-3 h-3" />
+                        </button>
+                      )}
+                    </span>
+                  )}
+                </span>
               </div>
             </div>
           </div>
@@ -2636,7 +2736,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                     {/* Catatan Kesepakatan Wawancara Pengawas */}
                     <div className="p-4 rounded-xl border border-amber-200 bg-amber-50/60 space-y-2">
                       <label className="text-xs font-bold text-amber-950 block">
-                        Catatan Kesepakatan Pengawas Pembina (Kusnandar, M.Si) / Kepala Sekolah:
+                        Catatan Kesepakatan Pengawas Pembina ({effectiveSupervisorName}) / Kepala Sekolah:
                       </label>
                       <textarea
                         rows={3}
@@ -3893,7 +3993,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-slate-200">
                 <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-center">
                   <span className="text-[10px] text-slate-500 font-semibold uppercase block mb-1">Pengawas Sekolah</span>
-                  <p className="font-bold text-xs text-slate-900">Kusnandar, M.Si</p>
+                  <p className="font-bold text-xs text-slate-900">{effectiveSupervisorName}</p>
                   <p className="text-[10px] text-emerald-600 font-medium mt-1">Disepakati Pembina</p>
                 </div>
                 <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-center">
@@ -3907,7 +4007,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                         arahkan: {
                           ...sambungDraft.arahkan,
                           tandaTangan: {
-                            pengawas: 'Kusnandar, M.Si',
+                            pengawas: effectiveSupervisorName,
                             guru: currentSupervision.teacherName,
                             tanggalDisepakati: new Date().toISOString().split('T')[0],
                             kepalaSekolah: e.target.value,
@@ -4119,7 +4219,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-slate-200">
                       <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-center">
                         <span className="text-[10px] text-slate-500 font-semibold uppercase block mb-1">Pengawas Pembina</span>
-                        <p className="font-bold text-xs text-slate-900">Kusnandar, M.Si</p>
+                        <p className="font-bold text-xs text-slate-900">{effectiveSupervisorName}</p>
                         <p className="text-[10px] text-emerald-600 font-medium mt-1">Coach &bull; Disepakati</p>
                       </div>
                       <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-center">
@@ -4292,7 +4392,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                         <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Nama Penelaah</span>
                         <input
                           type="text"
-                          value={berdayakan.namaPenelaah || 'Kusnandar, M.Si'}
+                          value={berdayakan.namaPenelaah || effectiveSupervisorName}
                           onChange={(e) =>
                             setSambungDraft({
                               ...sambungDraft,
@@ -4877,7 +4977,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-slate-200">
                     <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-center">
                       <span className="text-[10px] text-slate-500 font-semibold uppercase block mb-1">Penelaah / Pengawas Pembina</span>
-                      <p className="font-bold text-xs text-slate-900">{berdayakan.namaPenelaah || 'Kusnandar, M.Si'}</p>
+                      <p className="font-bold text-xs text-slate-900">{berdayakan.namaPenelaah || effectiveSupervisorName}</p>
                       <p className="text-[10px] text-amber-700 font-medium mt-1">Disetujui &amp; Disahkan</p>
                     </div>
                     <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-center">
@@ -5138,7 +5238,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                     <div className="p-4 rounded-xl border border-amber-200 bg-amber-50/60 space-y-2">
                       <label className="block text-xs font-bold text-amber-950 flex items-center gap-2">
                         <Award className="w-4 h-4 text-amber-700" />
-                        <span>Catatan Kesepakatan &amp; Arahan Pengawas Pembina (Kusnandar, M.Si):</span>
+                        <span>Catatan Kesepakatan &amp; Arahan Pengawas Pembina ({effectiveSupervisorName}):</span>
                       </label>
                       <textarea
                         rows={3}
@@ -5565,7 +5665,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                           <span>10 Butir Pertanyaan Dialog Pasca-Observasi &amp; Coaching Alur TIRTA</span>
                         </h5>
                         <p className="text-xs text-slate-500">
-                          Refleksi mendalam guru bersama Pengawas Pembina Kusnandar, M.Si setelah pelaksanaan pembelajaran di kelas.
+                          Refleksi mendalam guru bersama Pengawas Pembina {effectiveSupervisorName} setelah pelaksanaan pembelajaran di kelas.
                         </p>
                       </div>
 
@@ -5678,7 +5778,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                       <div className="p-4 rounded-xl border border-purple-200 bg-purple-50/60 space-y-2">
                         <label className="block text-xs font-bold text-purple-950 flex items-center gap-2">
                           <Award className="w-4 h-4 text-purple-700" />
-                          <span>Rekomendasi Diseminasi &amp; Komitmen Pengawas (Kusnandar, M.Si):</span>
+                          <span>Rekomendasi Diseminasi &amp; Komitmen Pengawas ({effectiveSupervisorName}):</span>
                         </label>
                         <textarea
                           rows={3}
@@ -6853,7 +6953,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                           Skor Observasi Kelas: {currentSupervision.observasiKelas?.score ?? 94.0}/100 ({currentSupervision.observasiKelas?.predicate || 'Sangat Baik'})
                         </span>
                         <span className="px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-800 font-bold">
-                          Pengawas Pembina: Kusnandar, M.Si
+                          Pengawas Pembina: {effectiveSupervisorName}
                         </span>
                       </div>
                     </div>
@@ -6905,7 +7005,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                               <th className="py-3 px-3 text-left">Rencana Tindak Lanjut Konkret (Aksi Guru)</th>
                               <th className="py-3 px-3 text-left w-48">Mitra Kolaborasi</th>
                               <th className="py-3 px-3 text-left w-36">Waktu &amp; Bukti Keberhasilan</th>
-                              <th className="py-3 px-3 text-left w-52">Rekomendasi Supervisi (Kusnandar, M.Si)</th>
+                              <th className="py-3 px-3 text-left w-52">Rekomendasi Supervisi ({effectiveSupervisorName})</th>
                               <th className="py-3 px-2 text-center w-10">Aksi</th>
                             </tr>
                           </thead>
@@ -7037,7 +7137,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                                       });
                                     }}
                                     className="w-full text-slate-800 bg-white/80 border border-amber-200 rounded-lg p-2 text-xs focus:outline-amber-600 resize-y leading-relaxed"
-                                    placeholder="Rekomendasi dari Pengawas Kusnandar, M.Si..."
+                                    placeholder={`Rekomendasi dari Pengawas ${effectiveSupervisorName}...`}
                                   />
                                 </td>
 
@@ -7345,7 +7445,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                       <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-2">
                         <span className="text-xs font-bold text-indigo-900 uppercase tracking-wide flex items-center gap-1.5">
                           <Award className="w-4 h-4 text-indigo-600" />
-                          <span>Catatan Resmi Pengawas Pembina Kusnandar, M.Si</span>
+                          <span>Catatan Resmi Pengawas Pembina {effectiveSupervisorName}</span>
                         </span>
                         <textarea
                           rows={4}
@@ -7589,9 +7689,9 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                         (Tervalidasi Sistem SAMBUNG)
                       </div>
                       <div>
-                        <p className="font-extrabold text-xs text-slate-900 underline">Kusnandar, M.Si</p>
-                        <p className="text-[11px] text-slate-600 font-medium">NIP. 19680512 199403 1 004</p>
-                        <p className="text-[10px] text-cyan-800 font-semibold mt-0.5">Pengawas Pembina Disdik Prov. Jawa Barat</p>
+                        <p className="font-extrabold text-xs text-slate-900 underline">{effectiveSupervisorName}</p>
+                        <p className="text-[11px] text-slate-600 font-medium">{effectiveSupervisorName === 'Kusnandar, M.Si' ? 'NIP. 19680512 199403 1 004' : 'Pengawas Pembina Sekolah'}</p>
+                        <p className="text-[10px] text-cyan-800 font-semibold mt-0.5">Pengawas Pembina Satuan Pendidikan SMA</p>
                       </div>
                     </div>
                   </div>
@@ -7645,7 +7745,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                               )}
                             </span>
                             <span className="text-xs text-white/70">
-                              Verifikasi Pengawas Pembina Kusnandar, M.Si
+                              Verifikasi Pengawas Pembina {effectiveSupervisorName}
                             </span>
                           </div>
 
@@ -7877,7 +7977,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                       <div className="flex items-center gap-2">
                         <Award className="w-4 h-4 text-indigo-700" />
                         <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                          Arahan &amp; Rekomendasi Resmi Pengawas Pembina Kusnandar, M.Si
+                          Arahan &amp; Rekomendasi Resmi Pengawas Pembina {effectiveSupervisorName}
                         </h4>
                       </div>
                       <p className="text-xs text-slate-700 leading-relaxed bg-white p-3.5 rounded-xl border border-slate-200 italic">
@@ -7980,7 +8080,7 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                               <th className="py-2.5 px-3 text-center w-20">Akhir</th>
                               <th className="py-2.5 px-3 text-center w-20">Selisih</th>
                               <th className="py-2.5 px-3 text-center w-36">Status Ketercapaian</th>
-                              <th className="py-2.5 px-3 text-left">Fokus Rekomendasi Kusnandar, M.Si</th>
+                              <th className="py-2.5 px-3 text-left">Fokus Rekomendasi {effectiveSupervisorName}</th>
                               <th className="py-2.5 px-3 text-center w-24">Aksi</th>
                             </tr>
                           </thead>

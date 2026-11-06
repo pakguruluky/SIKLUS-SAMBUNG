@@ -20,6 +20,7 @@ export const SambungPrintModal: React.FC<SambungPrintModalProps> = ({
   if (!isOpen || !supervision.sambung) return null;
 
   const sambung = supervision.sambung;
+  const supervisorName = supervision.supervisorName || 'Pengawas Pembina';
 
   const handlePrint = () => {
     window.print();
@@ -86,7 +87,7 @@ export const SambungPrintModal: React.FC<SambungPrintModalProps> = ({
               <div>
                 <p><span className="font-semibold text-slate-600">Sekolah:</span> {supervision.schoolName}</p>
                 <p><span className="font-semibold text-slate-600">Kelas / Fase:</span> {supervision.classGrade}</p>
-                <p><span className="font-semibold text-slate-600">Pengawas Pembina:</span> <strong>Kusnandar, M.Si</strong></p>
+                <p><span className="font-semibold text-slate-600">Pengawas Pembina:</span> <strong>{supervision.supervisorName || 'Pengawas Pembina'}</strong></p>
               </div>
             </div>
 
@@ -380,8 +381,8 @@ export const SambungPrintModal: React.FC<SambungPrintModalProps> = ({
             <div className="grid grid-cols-3 gap-4 text-center text-xs mt-8">
               <div>
                 <p className="font-semibold text-slate-700 mb-14">Pengawas Sekolah,</p>
-                <p className="font-bold underline text-slate-900">Kusnandar, M.Si</p>
-                <p className="text-[10px] text-slate-500">NIP. 19680712 199412 1 002</p>
+                <p className="font-bold underline text-slate-900">{supervisorName}</p>
+                <p className="text-[10px] text-slate-500">{supervisorName === 'Kusnandar, M.Si' ? 'NIP. 19680712 199412 1 002' : 'Pengawas Pembina Sekolah'}</p>
               </div>
               <div>
                 <p className="font-semibold text-slate-700 mb-14">Kepala Sekolah,</p>
@@ -412,7 +413,7 @@ export const SambungPrintModal: React.FC<SambungPrintModalProps> = ({
                   <div>
                     <h3 className="font-bold text-sm">M — Lembar Refleksi &amp; Coaching Pasca Observasi (MAKNAI)</h3>
                     <p className="text-[10px] text-indigo-200">
-                      Sesuai Dokumen Resmi Pengawas Pembina Kusnandar, M.Si — 10 Pertanyaan Refleksi Pasca Observasi &amp; Dialog Coaching
+                      Sesuai Dokumen Resmi Pengawas Pembina {supervisorName} — 10 Pertanyaan Refleksi Pasca Observasi &amp; Dialog Coaching
                     </p>
                   </div>
                 </div>
@@ -514,8 +515,8 @@ export const SambungPrintModal: React.FC<SambungPrintModalProps> = ({
                 <div className="grid grid-cols-3 text-center text-xs pt-3 border-t border-slate-200">
                   <div>
                     <p className="font-semibold text-slate-700 mb-12">Pengawas Pembina,</p>
-                    <p className="font-bold underline text-slate-900">Kusnandar, M.Si</p>
-                    <p className="text-[10px] text-slate-500">NIP. 19680315 199412 1 002</p>
+                    <p className="font-bold underline text-slate-900">{supervisorName}</p>
+                    <p className="text-[10px] text-slate-500">{supervisorName === 'Kusnandar, M.Si' ? 'NIP. 19680315 199412 1 002' : 'Pengawas Pembina Sekolah'}</p>
                   </div>
                   <div>
                     <p className="font-semibold text-slate-700 mb-12">Kepala Sekolah,</p>
@@ -594,7 +595,7 @@ export const SambungPrintModal: React.FC<SambungPrintModalProps> = ({
                     <p><strong>Sekolah :</strong> {supervision.schoolName}</p>
                     <p className="col-span-2"><strong>Judul Rencana Pembelajaran :</strong> {ber.rppPerbaikanTitle || autoBer.rppPerbaikanTitle}</p>
                     <p><strong>Tanggal Telaah :</strong> {ber.tanggalTelaah || new Date().toISOString().split('T')[0]}</p>
-                    <p><strong>Nama Penelaah :</strong> {ber.namaPenelaah || 'Kusnandar, M.Si'}</p>
+                    <p><strong>Nama Penelaah :</strong> {ber.namaPenelaah || supervisorName}</p>
                     {ber.rppPerbaikanUrl && (
                       <p className="col-span-2 text-indigo-700 truncate">
                         <strong>Tautan Berkas RPP (Drive) :</strong> {ber.rppPerbaikanUrl}
@@ -766,7 +767,7 @@ export const SambungPrintModal: React.FC<SambungPrintModalProps> = ({
                   </div>
                   <div className="text-center">
                     <p className="text-slate-500 mb-12">Penelaah / Pengawas Pembina,</p>
-                    <p className="font-bold underline">{ber.namaPenelaah || 'Kusnandar, M.Si'}</p>
+                    <p className="font-bold underline">{ber.namaPenelaah || supervisorName}</p>
                     <p className="text-[10px] text-slate-500">NIP. 196805121994121001</p>
                   </div>
                 </div>
@@ -790,7 +791,7 @@ export const SambungPrintModal: React.FC<SambungPrintModalProps> = ({
                   </span>
                   <div>
                     <h3 className="font-bold text-sm">Wawancara Pra-Observasi Pembelajaran Perbaikan</h3>
-                    <p className="text-[10px] text-purple-200">UJI &bull; Instrumen Resmi Pengawas Pembina Kusnandar, M.Si (8 Butir Pertanyaan)</p>
+                    <p className="text-[10px] text-purple-200">UJI &bull; Instrumen Resmi Pengawas Pembina {supervisorName} (8 Butir Pertanyaan)</p>
                   </div>
                 </div>
 
@@ -798,7 +799,7 @@ export const SambungPrintModal: React.FC<SambungPrintModalProps> = ({
                   <p><strong>Sekolah / Guru :</strong> {supervision.schoolName} / {supervision.teacherName}</p>
                   <p><strong>Mata Pelajaran / Kelas :</strong> {supervision.subject} / {supervision.classGrade}</p>
                   <p><strong>Fokus Pembinaan :</strong> Implementasi Modul Ajar Revisi &amp; Student Agency</p>
-                  <p><strong>Pengawas Pembina :</strong> Kusnandar, M.Si</p>
+                  <p><strong>Pengawas Pembina :</strong> {supervisorName}</p>
                 </div>
 
                 <table className="w-full border-collapse border border-slate-300 text-[11px] mb-3">
@@ -838,8 +839,8 @@ export const SambungPrintModal: React.FC<SambungPrintModalProps> = ({
                   </div>
                   <div className="text-center">
                     <p className="text-slate-500 mb-12">Pengawas Pembina,</p>
-                    <p className="font-bold underline">Kusnandar, M.Si</p>
-                    <p className="text-[10px] text-slate-500">NIP. 196805121994121001</p>
+                    <p className="font-bold underline">{supervisorName}</p>
+                    <p className="text-[10px] text-slate-500">{supervisorName === 'Kusnandar, M.Si' ? 'NIP. 196805121994121001' : 'Pengawas Pembina Sekolah'}</p>
                   </div>
                 </div>
               </div>
@@ -862,7 +863,7 @@ export const SambungPrintModal: React.FC<SambungPrintModalProps> = ({
                   </span>
                   <div>
                     <h3 className="font-bold text-sm">Observasi Pelaksanaan Pembelajaran Perbaikan</h3>
-                    <p className="text-[10px] text-emerald-200">UJI &bull; Instrumen Resmi Pengawas Pembina Kusnandar, M.Si (25 Butir / 9 Kategori)</p>
+                    <p className="text-[10px] text-emerald-200">UJI &bull; Instrumen Resmi Pengawas Pembina {supervisorName} (25 Butir / 9 Kategori)</p>
                   </div>
                 </div>
 
@@ -942,8 +943,8 @@ export const SambungPrintModal: React.FC<SambungPrintModalProps> = ({
                   </div>
                   <div className="text-center">
                     <p className="text-slate-500 mb-10">Pengawas Pembina,</p>
-                    <p className="font-bold underline">Kusnandar, M.Si</p>
-                    <p className="text-[10px] text-slate-500">NIP. 196805121994121001</p>
+                    <p className="font-bold underline">{supervisorName}</p>
+                    <p className="text-[10px] text-slate-500">{supervisorName === 'Kusnandar, M.Si' ? 'NIP. 19680512 199412 1 001' : 'Pengawas Pembina Sekolah'}</p>
                   </div>
                 </div>
               </div>
@@ -1005,7 +1006,7 @@ export const SambungPrintModal: React.FC<SambungPrintModalProps> = ({
                     <p className="text-slate-700 text-[11px] italic leading-relaxed">{pasca.kesanUmum || '-'}</p>
                   </div>
                   <div className="p-2.5 border border-slate-300 rounded bg-slate-50">
-                    <p className="font-bold text-slate-800 mb-1">Rekomendasi Diseminasi Pengawas (Kusnandar, M.Si):</p>
+                    <p className="font-bold text-slate-800 mb-1">Rekomendasi Diseminasi Pengawas ({supervisorName}):</p>
                     <p className="text-slate-700 text-[11px] italic leading-relaxed">{pasca.saranMasukan || '-'}</p>
                   </div>
                 </div>
@@ -1018,8 +1019,8 @@ export const SambungPrintModal: React.FC<SambungPrintModalProps> = ({
                   </div>
                   <div className="text-center">
                     <p className="text-slate-500 mb-12">Pengawas Pembina,</p>
-                    <p className="font-bold underline">Kusnandar, M.Si</p>
-                    <p className="text-[10px] text-slate-500">NIP. 196805121994121001</p>
+                    <p className="font-bold underline">{supervisorName}</p>
+                    <p className="text-[10px] text-slate-500">{supervisorName === 'Kusnandar, M.Si' ? 'NIP. 19680512 199412 1 001' : 'Pengawas Pembina Sekolah'}</p>
                   </div>
                 </div>
               </div>
@@ -1235,7 +1236,7 @@ export const SambungPrintModal: React.FC<SambungPrintModalProps> = ({
                         GERAKKAN: Rencana Tindak Lanjut dari Hasil Nyatakan &amp; Kesimpulan
                       </h3>
                       <p className="text-[10px] text-cyan-200">
-                        Sesuai Instrumen Resmi Pengawas Pembina Kusnandar, M.Si &bull; Menghubungkan Selidiki, Amati, Maknai, Berdayakan, Uji, dan Nyatakan
+                        Sesuai Instrumen Resmi Pengawas Pembina {supervisorName} &bull; Menghubungkan Selidiki, Amati, Maknai, Berdayakan, Uji, dan Nyatakan
                       </p>
                     </div>
                   </div>
@@ -1460,7 +1461,7 @@ export const SambungPrintModal: React.FC<SambungPrintModalProps> = ({
 
                         {/* Supervisory Directive */}
                         <div className="p-2 bg-cyan-50/40 rounded border border-cyan-200 text-slate-800">
-                          <strong className="text-cyan-950 block mb-0.5">Arahan Supervisi Pengawas Pembina Kusnandar, M.Si:</strong>
+                          <strong className="text-cyan-950 block mb-0.5">Arahan Supervisi Pengawas Pembina {supervision.supervisorName || 'Pengawas Pembina'}:</strong>
                           <p className="leading-snug italic">"{compCalc.rekomendasiPengawas}"</p>
                         </div>
                       </div>
@@ -1469,7 +1470,7 @@ export const SambungPrintModal: React.FC<SambungPrintModalProps> = ({
 
                   {/* CATATAN PENGESAHAN PENGUATAN SUPERVISOR */}
                   <div className="bg-slate-50 border border-slate-300 p-2.5 rounded-lg mb-6 text-[10px]">
-                    <strong className="text-slate-900 block mb-0.5">Catatan Pengesahan Pengawas Pembina Kusnandar, M.Si:</strong>
+                    <strong className="text-slate-900 block mb-0.5">Catatan Pengesahan Pengawas Pembina {supervision.supervisorName || 'Pengawas Pembina'}:</strong>
                     <p className="text-slate-700 italic leading-relaxed">
                       "{effectiveAlur.catatanPengawas}"
                     </p>
@@ -1489,13 +1490,13 @@ export const SambungPrintModal: React.FC<SambungPrintModalProps> = ({
                     </div>
                     <div>
                       <p className="text-slate-600 mb-14">Bogor, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}<br/>Pengawas Sekolah Pembina SMA,</p>
-                      <p className="font-bold underline text-slate-900">Kusnandar, M.Si</p>
-                      <p className="text-[10px] text-slate-500">Pengawas Pembina Disdik Prov. Jawa Barat</p>
+                      <p className="font-bold underline text-slate-900">{supervision.supervisorName || 'Pengawas Pembina'}</p>
+                      <p className="text-[10px] text-slate-500">Pengawas Pembina Satuan Pendidikan SMA</p>
                     </div>
                   </div>
 
                   <div className="mt-6 text-center text-[9px] text-slate-400 print:text-slate-500">
-                    Dokumen Portofolio Resmi Strategi SAMBUNG (Tahap G - Gerakkan) &bull; Sistem Informasi Pengawasan, Pendampingan, dan Evaluasi Guru SMA &bull; Pengawas Kusnandar, M.Si
+                    Dokumen Portofolio Resmi Strategi SAMBUNG (Tahap G - Gerakkan) &bull; Sistem Informasi Pengawasan, Pendampingan, dan Evaluasi Guru SMA &bull; Pengawas {supervision.supervisorName || 'Pengawas Pembina'}
                   </div>
                 </div>
               );

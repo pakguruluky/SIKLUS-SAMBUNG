@@ -13,6 +13,7 @@ import {
   INDIKATOR_LABELS,
   getTeacherIndikatorOptimalStatus
 } from '../utils/sambungCalculations';
+import { isKusnandarAccount } from '../services/firebase';
 import { SambungPrintModal } from './SambungPrintModal';
 import { SambungPersentaseChart } from './SambungPersentaseChart';
 import { TabelDanGrafikKohorBerpasangan } from './TabelDanGrafikKohorBerpasangan';
@@ -172,6 +173,22 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
   const [detailModalTeacher, setDetailModalTeacher] = useState<Supervision | null>(null);
   const [printSupervision, setPrintSupervision] = useState<Supervision | null>(null);
   const [editingTeacher, setEditingTeacher] = useState<Supervision | null>(null);
+
+  // Dynamic supervisor label according to assigned school or creator
+  const currentSupervisorLabel = useMemo(() => {
+    if (selectedSchool !== 'all') {
+      const sch = schools.find(s => s.id === selectedSchool || s.name === selectedSchool);
+      if (sch?.supervisorName) return sch.supervisorName;
+    }
+    if (currentUser && (currentUser.role === 'pengawas' || currentUser.role === 'admin') && !isKusnandarAccount(currentUser)) {
+      return currentUser.displayName || 'Pengawas Pembina';
+    }
+    const firstCustom = supervisions.find(s => s.supervisorName && s.supervisorName !== 'Kusnandar, M.Si');
+    if (firstCustom?.supervisorName) {
+      return firstCustom.supervisorName;
+    }
+    return 'Kusnandar, M.Si';
+  }, [selectedSchool, schools, currentUser, supervisions]);
 
   // Extract unique schools dynamically from supervisions
   const schoolOptions = useMemo(() => {
@@ -403,7 +420,7 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
 
             <div className="text-xs text-indigo-200 flex items-center gap-2 bg-white/10 px-3.5 py-1.5 rounded-full border border-white/10 shadow-2xs">
               <User className="w-3.5 h-3.5 text-indigo-300" />
-              <span>Pengawas Pembina: <strong className="text-white">Kusnandar, M.Si</strong></span>
+              <span>Pengawas Pembina: <strong className="text-white">{currentSupervisorLabel}</strong></span>
             </div>
           </div>
 
@@ -836,7 +853,7 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
                       <th className="py-3 px-3 text-center w-28">Akhir (U &amp; B)</th>
                       <th className="py-3 px-3 text-center w-20">Selisih</th>
                       <th className="py-3 px-3 text-center w-44">Status Ketercapaian</th>
-                      <th className="py-3 px-3 text-left">Arahan Pengawas Pembina Kusnandar, M.Si</th>
+                      <th className="py-3 px-3 text-left">Arahan Pengawas Pembina ({currentSupervisorLabel})</th>
                       <th className="py-3 px-3 text-center w-28">Aksi</th>
                     </tr>
                   </thead>
@@ -915,7 +932,7 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
                                     : (r.aspekBelumOptimal[0] || 'Perlu pembinaan klinis')}
                                 </p>
                                 <span className="inline-block text-[10px] text-slate-600 font-medium">
-                                  Pendampingan klinis terjadwal oleh Pengawas Pembina Kusnandar, M.Si.
+                                  Pendampingan klinis terjadwal oleh Pengawas Pembina {t.supervisorName || currentSupervisorLabel}.
                                 </span>
                               </div>
                             )}
@@ -1015,7 +1032,7 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
 
               <div className="flex items-center gap-2 self-start sm:self-auto">
                 <span className="text-[11px] font-bold text-indigo-200 bg-white/10 px-3 py-1.5 rounded-xl border border-white/15">
-                  Standar Pengawas Pembina: Kusnandar, M.Si
+                  Standar Pengawas Pembina: {currentSupervisorLabel}
                 </span>
               </div>
             </div>
@@ -2322,7 +2339,7 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
                 {/* Catatan Naratif Pengawas & Dukungan KS */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
                   <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-1">
-                    <span className="font-bold text-indigo-900 block text-xs">Catatan Resmi Pengawas Pembina Kusnandar, M.Si:</span>
+                    <span className="font-bold text-indigo-900 block text-xs">Catatan Resmi Pengawas Pembina ({detailModalTeacher.supervisorName || currentSupervisorLabel}):</span>
                     <p className="text-slate-700 italic leading-relaxed text-[11px]">{alur.catatanPengawas}</p>
                   </div>
                   <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-1">
@@ -2335,7 +2352,7 @@ export const KesimpulanSemuaGuruDashboard: React.FC<KesimpulanSemuaGuruDashboard
               {/* Modal Footer */}
               <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
                 <span className="text-[11px] text-slate-500">
-                  Dokumen Portofolio Kesimpulan Siklus SAMBUNG resmi Pengawas Pembina Kusnandar, M.Si
+                  Dokumen Portofolio Kesimpulan Siklus SAMBUNG resmi Pengawas Pembina {detailModalTeacher.supervisorName || currentSupervisorLabel}
                 </span>
                 <button
                   type="button"

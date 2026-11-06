@@ -691,7 +691,7 @@ export function applyAutoFillToSupervision(
       },
       feedback: auto.telaahFeedback,
       reviewedAt: new Date().toISOString(),
-      reviewedBy: supervision.perangkatAjar?.reviewedBy || 'Kusnandar, M.Si (Pengawas Pembina)',
+      reviewedBy: supervision.perangkatAjar?.reviewedBy || (supervision.supervisorName ? `${supervision.supervisorName} (Pengawas Pembina)` : 'Pengawas Pembina'),
     },
     praObservasi: {
       interviewDurationMinutes: 35,
@@ -938,6 +938,7 @@ export function generateAmatiData(
   // 5. Matriks rencana aksi pembinaan terstruktur berkesinambungan
   const kegiatanList: SambungKegiatanAksi[] = [];
   let kId = 1;
+  const supervisorName = supervision.supervisorName || 'Pengawas Pembina';
 
   if (chosenKeys.includes('peranGuru')) {
     kegiatanList.push({
@@ -946,7 +947,7 @@ export function generateAmatiData(
       kegiatanPembinaan: `Workshop & Coaching penyusunan skenario pembelajaran ${subject} berpusat pada murid (student-centered learning)`,
       indikatorKeberhasilan: `Modul ajar ${subject} memuat diferensiasi proses dan peran guru sebagai coach/fasilitator inkuiri terverifikasi pengawas`,
       waktu: 'Bulan ke-1',
-      penanggungJawab: `${teacherName} & Kusnandar, M.Si`,
+      penanggungJawab: `${teacherName} & ${supervisorName}`,
     });
   }
 
@@ -991,7 +992,7 @@ export function generateAmatiData(
         kegiatanPembinaan: `Coaching reflektif penguatan pedagogik pembelajaran ${subject}`,
         indikatorKeberhasilan: `Modul ajar dan skenario kelas berfokus penuh pada pengalaman belajar aktif murid`,
         waktu: 'Bulan ke-1',
-        penanggungJawab: `${teacherName} & Kusnandar, M.Si`,
+        penanggungJawab: `${teacherName} & ${supervisorName}`,
       },
       {
         id: 2,
@@ -1013,7 +1014,7 @@ export function generateAmatiData(
     fokusPerubahan,
     kegiatan: kegiatanList,
     tandaTangan: {
-      pengawas: 'Kusnandar, M.Si',
+      pengawas: supervisorName,
       kepalaSekolah: supervision.sambung?.arahkan?.tandaTangan?.kepalaSekolah || 'Kepala Sekolah',
       guru: teacherName,
       tanggalDisepakati: supervision.sambung?.arahkan?.tandaTangan?.tanggalDisepakati || new Date().toISOString().split('T')[0],
@@ -1882,6 +1883,7 @@ export function generateGerakkanData(supervision: Supervision): {
   const telaahPred = supervision.perangkatAjar?.telaahSummary?.predicate || 'Sangat Baik';
   const obsScore = supervision.observasiKelas?.score ?? 94.0;
   const obsPred = supervision.observasiKelas?.predicate || 'Sangat Baik';
+  const supervisorName = supervision.supervisorName || 'Pengawas Pembina';
   
   // Mengambil data before & after nyata yang ada di draft
   const before = supervision.sambung?.selidiki?.matriksBefore || DEFAULT_MATRIKS_BEFORE;
@@ -1894,7 +1896,7 @@ export function generateGerakkanData(supervision: Supervision): {
       indikator: 'Peran Guru: Berorientasi pada Pengalaman Belajar & Inkuiri Murid',
       hasilNyatakan: `Terbukti bertransformasi dari dominasi ceramah satu arah (${before.peranGuru}) menjadi perancang dan fasilitator pengalaman belajar murid melalui inkuiri aktif (${after.peranGuru}). Skor telaah modul: ${telaahScore} (${telaahPred}), Skor observasi kelas: ${obsScore}% (${obsPred}).`,
       rencanaTindakLanjut: `1. Mempertahankan dan mengoptimalkan peran sebagai fasilitator inkuiri dengan menerapkan teknik bertanya pemantik terbuka (open-ended questions) secara konsisten.\n2. Menyusun 3 variasi panduan diferensiasi proses (tiered learning) agar setiap kelompok murid tertantang sesuai tingkat kesiapannya.\n3. Mengalokasikan 10-15 menit pendampingan kelompok kecil (scaffolding klinis) bagi murid yang mengalami hambatan pemahaman.`,
-      mitraKolaborasi: `Komunitas Belajar (Kombel) Guru ${subject} ${school}, MGMP Kabupaten Bogor, dan Pengawas Pembina Kusnandar, M.Si`,
+      mitraKolaborasi: `Komunitas Belajar (Kombel) Guru ${subject} ${school}, MGMP Kabupaten Bogor, dan Pengawas Pembina ${supervisorName}`,
       waktuPelaksanaan: '2 Minggu ke depan (Awal unit materi baru)',
       buktiKeberhasilan: 'Modul Ajar berdiferensiasi terverifikasi, rubrik scaffolding harian, lembar observasi teman sejawat',
       rekomendasiSupervisi: `Pengawas Pembina merekomendasikan ${teacher} menjadi narasumber/fasilitator model dalam Kombel internal sekolah untuk teknik scaffolding inkuiri.`,
@@ -2003,12 +2005,12 @@ export function generateGerakkanData(supervision: Supervision): {
   const kesimpulanAlurSambung: SambungKesimpulanAlurSambung = {
     selidikiBaseline: `Tahap SELIDIKI: Pemetaan awal telaah modul ajar dan wawancara pendahuluan menunjukkan guru ${teacher} memiliki penguasaan materi yang kuat namun proses belajar masih berpusat pada transfer konten ceramah instruksional. Murid pasif mencatat dan belum terbiasa melakukan refleksi metakognisi.`,
     amatiObservasi: `Tahap AMATI: Observasi tatap muka awal di kelas mengidentifikasi area amatan kritis, yakni perlunya pergeseran peran guru menjadi fasilitator inkuiri, peningkatan keterlibatan kolaboratif murid (student agency), dan penguatan konteks riil kehidupan sehari-hari murid.`,
-    maknaiCoaching: `Tahap MAKNAI: Supervisor (Pengawas Kusnandar, M.Si) melaksanakan dialog coaching reflektif pasca observasi dengan 10 pertanyaan mendalam. Guru menyadari akar persoalan dan membangun komitmen nyata untuk merestrukturisasi desain pembelajaran menjadi bermakna dan menggembirakan.`,
+    maknaiCoaching: `Tahap MAKNAI: Supervisor (${supervisorName}) melaksanakan dialog coaching reflektif pasca observasi dengan 10 pertanyaan mendalam. Guru menyadari akar persoalan dan membangun komitmen nyata untuk merestrukturisasi desain pembelajaran menjadi bermakna dan menggembirakan.`,
     berdayakanModul: `Tahap BERDAYAKAN: Guru menyusun dan menyempurnakan Modul Ajar Perbaikan ${lesson} yang berorientasi Pembelajaran Mendalam (Deep Learning). Modul ajar memuat diferensiasi konten/proses/produk, pertanyaan pemantik inkuiri, dan rubrik asesmen formatif autentik.`,
     ujiPembuktian: `Tahap UJI: Implementasi lapangan diuji secara terukur melalui wawancara pra-observasi 8 butir, observasi pelaksanaan 25 butir (Skor Capaian: ${obsScore}% / ${obsPred}), dialog refleksi pasca-observasi, serta angket suara murid (U-2) yang mencatat kepuasan dan antusiasme belajar murid di atas 85%.`,
     nyatakanDampak: `Tahap NYATAKAN: Pembuktian perubahan Before vs After dan data dampak kuantitatif-kualitatif membuktikan lonjakan signifikan: peran guru beralih ke fasilitator inkuiri, aktivitas murid bergeser dari pasif ke pengaplikasian pengetahuan riil, materi terhubung isu nyata, dan budaya refleksi melembaga.`,
     gerakkanKomitmen: `Tahap GERAKKAN: Seluruh hasil supervisi tidak berhenti sebagai dokumen administratif, melainkan diwujudkan dalam 5 Rencana Tindak Lanjut (RTL) Konkret berbasis hasil Nyatakan dan 4 agenda pengimbasan praktik baik di Kombel Sekolah, MGMP Kabupaten, dan PMM.`,
-    catatanPengawas: `Apresiasi tinggi kepada ${teacher} atas integritas profesional, keterbukaan dalam coaching, dan komitmen menuntaskan seluruh 7 siklus SAMBUNG. Transformasi pembelajaran yang dicapai sangat signifikan dan layak dijadikan teladan praktik baik bagi guru-guru SMA lainnya. Teruslah menginspirasi dan memuliakan potensi murid! — Kusnandar, M.Si (Pengawas Pembina).`,
+    catatanPengawas: `Apresiasi tinggi kepada ${teacher} atas integritas profesional, keterbukaan dalam coaching, dan komitmen menuntaskan seluruh 7 siklus SAMBUNG. Transformasi pembelajaran yang dicapai sangat signifikan dan layak dijadikan teladan praktik baik bagi guru-guru SMA lainnya. Teruslah menginspirasi dan memuliakan potensi murid! — ${supervisorName} (Pengawas Pembina).`,
     dukunganKepalaSekolah: `Pihak sekolah berkomitmen penuh menyediakan sarana prasarana penunjang, memfasilitasi waktu berbagi praktik baik di Komunitas Belajar (Kombel) sekolah, serta mendukung keikutsertaan guru dalam forum peningkatan keprofesian berkelanjutan.`,
   };
 

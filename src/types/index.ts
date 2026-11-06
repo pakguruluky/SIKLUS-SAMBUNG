@@ -1,4 +1,4 @@
-export type Role = 'admin' | 'pengawas' | 'kepsek' | 'guru';
+export type Role = 'admin' | 'pengawas' | 'kepsek' | 'guru' | 'super_admin';
 
 export interface School {
   id: string;
@@ -10,6 +10,8 @@ export interface School {
   createdAt: string;
   createdBy: string;
   updatedAt?: string;
+  supervisorName?: string;
+  supervisorId?: string;
 }
 
 export interface UserProfile {
@@ -24,6 +26,8 @@ export interface UserProfile {
   nip?: string;
   phone?: string;
   subject?: string;
+  wilayahTugas?: string;
+  supervisorWorkspaceId?: string;
   approvalStatus?: 'approved' | 'pending' | 'rejected';
   createdAt: string;
   updatedAt?: string;
@@ -63,6 +67,7 @@ export interface Supervision {
   supervisorRole: Role;
   createdAt: string;
   updatedAt: string;
+  createdBy?: string;
   isNewSupervision?: boolean;
   isValidData?: boolean;
   statusOptimal?: 'optimal' | 'belum_optimal';

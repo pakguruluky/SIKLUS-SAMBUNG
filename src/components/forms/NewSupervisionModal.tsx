@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Supervision, UserProfile, School } from '../../types';
 import { X, CheckCircle, GraduationCap, Building2, Zap, Sparkles } from 'lucide-react';
-import { saveSupervision } from '../../services/firebase';
+import { saveSupervision, addSchool } from '../../services/firebase';
 import { createEmptySambungData } from '../../data/sambungSeed';
 
 interface NewSupervisionModalProps {
@@ -59,6 +59,8 @@ export const NewSupervisionModal: React.FC<NewSupervisionModalProps> = ({
   onCreated,
 }) => {
   const [schoolId, setSchoolId] = useState(currentUser.schoolId || (schools[0]?.id || ''));
+  const [customSchoolName, setCustomSchoolName] = useState('');
+  const [customSchoolNpsn, setCustomSchoolNpsn] = useState('');
   const [teacherName, setTeacherName] = useState(
     currentUser.role === 'guru' ? currentUser.displayName : ''
   );
@@ -72,13 +74,18 @@ export const NewSupervisionModal: React.FC<NewSupervisionModalProps> = ({
   const [semester, setSemester] = useState<'Ganjil' | 'Genap'>('Ganjil');
   const [schoolYear, setSchoolYear] = useState('2025/2026');
   const [lessonTitle, setLessonTitle] = useState('');
-  const [supervisorName, setSupervisorName] = useState(
-    currentUser.role === 'admin' 
-      ? 'Kusnandar, M.Si' 
-      : currentUser.role === 'kepsek' 
-      ? currentUser.displayName 
-      : 'Kusnandar, M.Si'
-  );
+
+  const [supervisorName, setSupervisorName] = useState(() => {
+    const initSch = schools.find(s => s.id === (currentUser.schoolId || schools[0]?.id));
+    if (initSch?.supervisorName) return initSch.supervisorName;
+    if (currentUser.role === 'pengawas' || currentUser.role === 'admin') {
+      return currentUser.displayName || 'Pengawas Pembina';
+    }
+    if (currentUser.role === 'kepsek') {
+      return currentUser.displayName || 'Kepala Sekolah';
+    }
+    return 'Kusnandar, M.Si';
+  });
 
   const [saving, setSaving] = useState(false);
   const [errMsg, setErrMsg] = useState('');
@@ -95,11 +102,35 @@ export const NewSupervisionModal: React.FC<NewSupervisionModalProps> = ({
     try {
       setSaving(true);
       setErrMsg('');
-      const selectedSchool = schools.find(s => s.id === schoolId) || schools[0];
+
+      let finalSchoolId = schoolId;
+      let finalSchoolName = '';
+      const finalSupervisor = supervisorName.trim() || currentUser.displayName || 'Pengawas Pembina';
+
+      if (schools.length === 0 || schoolId === 'new-custom-school') {
+        const nameToUse = customSchoolName.trim() || 'SMA Binaan';
+        const createdSchool = await addSchool({
+          name: nameToUse,
+          npsn: customSchoolNpsn.trim() || String(Math.floor(10000000 + Math.random() * 90000000)),
+          address: '',
+          principalName: 'Kepala Sekolah',
+          accreditation: 'A',
+          createdAt: new Date().toISOString(),
+          createdBy: currentUser.uid,
+          supervisorName: finalSupervisor,
+          supervisorId: currentUser.uid,
+        });
+        finalSchoolId = createdSchool.id;
+        finalSchoolName = createdSchool.name;
+      } else {
+        const selectedSchool = schools.find(s => s.id === schoolId) || schools[0];
+        finalSchoolId = selectedSchool?.id || 'sch-default';
+        finalSchoolName = selectedSchool?.name || 'SMA Binaan';
+      }
 
       const newSup: Omit<Supervision, 'id'> = {
-        schoolId: selectedSchool?.id || 'sch-default',
-        schoolName: selectedSchool?.name || 'SMA Binaan',
+        schoolId: finalSchoolId,
+        schoolName: finalSchoolName,
         teacherId: currentUser.role === 'guru' ? currentUser.uid : `teacher-${Date.now()}`,
         teacherName,
         teacherNip,
@@ -109,9 +140,10 @@ export const NewSupervisionModal: React.FC<NewSupervisionModalProps> = ({
         schoolYear,
         lessonTitle,
         status: 'draft',
-        supervisorId: currentUser.role === 'admin' || currentUser.role === 'kepsek' ? currentUser.uid : 'admin-kusnandar',
+        supervisorId: currentUser.uid || 'user-pengawas',
         supervisorName,
         supervisorRole: currentUser.role === 'admin' ? 'admin' : currentUser.role === 'kepsek' ? 'kepsek' : 'admin',
+        createdBy: currentUser.uid,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         perangkatAjar: {
@@ -177,7 +209,7 @@ export const NewSupervisionModal: React.FC<NewSupervisionModalProps> = ({
           summaryNotes: '',
         },
         // Pastikan seluruh instrumen Siklus SAMBUNG (S, A, M, B, U, N, G) kosong (belum terisi)
-        sambung: createEmptySambungData(teacherName, selectedSchool?.name || '', subject),
+        sambung: createEmptySambungData(teacherName, finalSchoolName, subject),
         isNewSupervision: true,
       };
 
@@ -222,16 +254,53 @@ export const NewSupervisionModal: React.FC<NewSupervisionModalProps> = ({
             <label className="block font-semibold text-slate-700 mb-1">
               Satuan Pendidikan SMA Target *
             </label>
-            <select
-              value={schoolId}
-              onChange={(e) => setSchoolId(e.target.value)}
-              disabled={currentUser.role === 'guru' || currentUser.role === 'kepsek'}
-              className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:outline-indigo-600 disabled:bg-slate-100"
-            >
-              {schools.map(s => (
-                <option key={s.id} value={s.id}>{s.name} (NPSN: {s.npsn})</option>
-              ))}
-            </select>
+            {schools.length > 0 ? (
+              <select
+                value={schoolId}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSchoolId(val);
+                  const matched = schools.find(s => s.id === val);
+                  if (matched?.supervisorName) {
+                    setSupervisorName(matched.supervisorName);
+                  } else if (currentUser.role === 'pengawas' || currentUser.role === 'admin') {
+                    setSupervisorName(currentUser.displayName || 'Pengawas Pembina');
+                  }
+                }}
+                disabled={currentUser.role === 'guru' || currentUser.role === 'kepsek'}
+                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:outline-indigo-600 disabled:bg-slate-100 font-semibold"
+              >
+                {schools.map(s => (
+                  <option key={s.id} value={s.id}>{s.name} (NPSN: {s.npsn})</option>
+                ))}
+                <option value="new-custom-school">+ Tambah Satuan Pendidikan Baru Lainnya</option>
+              </select>
+            ) : null}
+
+            {(schools.length === 0 || schoolId === 'new-custom-school') && (
+              <div className="mt-2 p-3 bg-indigo-50/70 border border-indigo-200 rounded-xl space-y-2">
+                <p className="text-[11px] font-bold text-indigo-900">
+                  {schools.length === 0 ? 'Masukkan Satuan Pendidikan Binaan Pertama Anda:' : 'Data Satuan Pendidikan Baru:'}
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <input
+                    type="text"
+                    required
+                    value={customSchoolName}
+                    onChange={(e) => setCustomSchoolName(e.target.value)}
+                    placeholder="Contoh: SMAN 1 Mandiri"
+                    className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white focus:outline-indigo-600"
+                  />
+                  <input
+                    type="text"
+                    value={customSchoolNpsn}
+                    onChange={(e) => setCustomSchoolNpsn(e.target.value)}
+                    placeholder="NPSN (Opsional)"
+                    className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white focus:outline-indigo-600"
+                  />
+                </div>
+              </div>
+            )}
 
             {PRESET_TEACHERS[schoolId] && currentUser.role !== 'guru' && (
               <div className="flex flex-wrap items-center gap-1.5 pt-2">

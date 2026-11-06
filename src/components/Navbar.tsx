@@ -14,7 +14,8 @@ import {
   Users,
   Home,
   RefreshCw,
-  CloudUpload
+  CloudUpload,
+  ShieldCheck
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -46,6 +47,8 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const getRoleLabel = (role: Role) => {
     switch (role) {
+      case 'super_admin':
+        return 'Super Admin Pusat';
       case 'admin':
       case 'pengawas':
         return 'Pengawas Pembina / Admin';
@@ -112,7 +115,22 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span>Dashboard</span>
               </button>
 
-              {(currentUser.role === 'admin' || (currentUser.role as string) === 'pengawas') && (
+              {currentUser.role === 'super_admin' && (
+                <button
+                  onClick={() => setActiveTab('super-admin')}
+                  title="Panel Super Admin: Manajemen Akun Pengawas & Sistem"
+                  className={`px-2.5 lg:px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 border shadow-2xs ${
+                    activeTab === 'super-admin'
+                      ? 'bg-purple-600 text-white border-purple-700 shadow-purple-200'
+                      : 'bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200'
+                  }`}
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-purple-600 group-hover:text-purple-700" />
+                  <span>Super Admin</span>
+                </button>
+              )}
+
+              {(currentUser.role === 'admin' || (currentUser.role as string) === 'pengawas' || currentUser.role === 'super_admin') && (
                 <>
                   <button
                     onClick={() => setActiveTab('schools')}
@@ -286,13 +304,22 @@ export const Navbar: React.FC<NavbarProps> = ({
             <BarChart3 className="w-4 h-4" />
             <span>Dashboard</span>
           </button>
-          {currentUser.role === 'admin' && (
+          {currentUser.role === 'super_admin' && (
+            <button
+              onClick={() => setActiveTab('super-admin')}
+              className={`flex flex-col items-center gap-1 ${activeTab === 'super-admin' ? 'text-purple-600 font-bold' : 'text-slate-500'}`}
+            >
+              <ShieldCheck className="w-4 h-4 text-purple-600" />
+              <span>Super Admin</span>
+            </button>
+          )}
+          {(currentUser.role === 'admin' || currentUser.role === 'super_admin') && (
             <button
               onClick={() => setActiveTab('schools')}
               className={`flex flex-col items-center gap-1 ${activeTab === 'schools' ? 'text-indigo-600 font-bold' : 'text-slate-500'}`}
             >
               <Building2 className="w-4 h-4" />
-              <span>Sekolah Binaan</span>
+              <span>Sekolah</span>
             </button>
           )}
           <button

@@ -117,6 +117,19 @@ export const DEFAULT_SCHOOLS: School[] = [
 // Default Real Accounts per User Request
 export const DEFAULT_USERS: UserProfile[] = [
   {
+    uid: 'user-super-admin',
+    username: 'admin',
+    password: 'bajuri39',
+    email: 'admin@siklus-sambung.sch.id',
+    displayName: 'Super Admin',
+    role: 'super_admin',
+    nip: 'SUPERADMIN-001',
+    phone: '081100000001',
+    wilayahTugas: 'Pusat & Seluruh Wilayah Binaan',
+    approvalStatus: 'approved',
+    createdAt: '2025-01-01T00:00:00.000Z'
+  },
+  {
     uid: 'user-pengawas-kusnandar',
     username: 'pengawas',
     password: 'pakkus',
@@ -125,6 +138,7 @@ export const DEFAULT_USERS: UserProfile[] = [
     role: 'admin',
     nip: '19680512 199403 1 004',
     phone: '081288990011',
+    wilayahTugas: 'Cabang Dinas Pendidikan Wilayah II',
     approvalStatus: 'approved',
     createdAt: '2025-01-01T00:00:00.000Z'
   },

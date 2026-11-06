@@ -425,10 +425,11 @@ export function calculateSupervisionComprehensiveScore(s: Supervision): Comprehe
   }
 
   let rekomendasiPengawas = '';
+  const supervisorTitle = s.supervisorName || 'Pengawas Pembina';
   if (isOptimal) {
     rekomendasiPengawas = `Selamat kepada ${s.teacherName} (${s.subject} di ${s.schoolName}). Seluruh komponen nilai supervisi telah terpenuhi secara optimal (&ge;85%). Direkomendasikan sebagai Guru Model untuk mendiseminasikan praktik baik Pembelajaran Mendalam di Komunitas Belajar (Kombel) sekolah dan MGMP Kabupaten/Kota Bogor.`;
   } else {
-    rekomendasiPengawas = `Guru ${s.teacherName} berstatus Belum Optimal (Capaian: ${finalComprehensiveScore}%, Defisit: -${defisitMenujuOptimal}%). Memerlukan pembinaan terfokus pada: ${aspekBelumOptimal.join('; ')}. Direkomendasikan pendampingan klinis terjadwal oleh Kepala Sekolah dan Pengawas Pembina Kusnandar, M.Si.`;
+    rekomendasiPengawas = `Guru ${s.teacherName} berstatus Belum Optimal (Capaian: ${finalComprehensiveScore}%, Defisit: -${defisitMenujuOptimal}%). Memerlukan pembinaan terfokus pada: ${aspekBelumOptimal.join('; ')}. Direkomendasikan pendampingan klinis terjadwal oleh Kepala Sekolah dan Pengawas Pembina ${supervisorTitle}.`;
   }
 
   const catatanOptimal: SambungCatatanOptimal = {
@@ -440,7 +441,7 @@ export function calculateSupervisionComprehensiveScore(s: Supervision): Comprehe
     aspekOptimal,
     aspekBelumOptimal,
     rekomendasiPengawas,
-    diverifikasiOleh: 'Kusnandar, M.Si (Pengawas Pembina)',
+    diverifikasiOleh: `${supervisorTitle} (Pengawas Pembina)`,
     tanggalPenetapan: new Date().toISOString().split('T')[0],
   };
 

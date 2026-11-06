@@ -22,7 +22,7 @@ import {
   deleteTeacherCompletely,
   bulkSync,
   restoreBackupData,
-} from './src/server/db';
+} from './src/server/db.ts';
 
 dotenv.config();
 
@@ -38,12 +38,14 @@ async function startServer() {
   const hostArgIdx = process.argv.indexOf('--host');
   const cliHost = hostArgIdx !== -1 && process.argv[hostArgIdx + 1] ? process.argv[hostArgIdx + 1] : '0.0.0.0';
 
-  // In AI Studio / Cloud Run, PORT may be set to 8080 (which is reserved for Nginx).
-  // The app dev server MUST always run on port 3000 to accept upstream proxying.
-  const rawPort = process.env.PORT;
-  const PORT = Number(cliPort || process.env.DEFAULT_APP_PORT || (rawPort && rawPort !== '8080' ? rawPort : 3000));
-  const HOST = cliHost || '0.0.0.0';
   const isProd = process.env.NODE_ENV === 'production';
+  // In production (Cloud Run), listen on the port provided by Cloud Run (process.env.PORT || 8080).
+  // In development, the app dev server MUST run on port 3000 to accept upstream proxying.
+  const PORT = Number(
+    cliPort ||
+    (isProd ? (process.env.PORT || 8080) : (process.env.DEFAULT_APP_PORT || 3000))
+  );
+  const HOST = cliHost || '0.0.0.0';
 
   app.use(express.json({ limit: '10mb' }));
 

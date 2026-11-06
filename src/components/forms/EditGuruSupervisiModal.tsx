@@ -98,7 +98,14 @@ export const EditGuruSupervisiModal: React.FC<EditGuruSupervisiModalProps> = ({
       setSemester(supervision.semester || 'Ganjil');
       setSchoolYear(supervision.schoolYear || '2025/2026');
       setLessonTitle(supervision.lessonTitle || '');
-      setSupervisorName(supervision.supervisorName || 'Kusnandar, M.Si');
+      const sch = schools.find(s => s.id === supervision.schoolId || s.name === supervision.schoolName);
+      const resolvedSupervisor = 
+        (supervision.supervisorName && supervision.supervisorName !== 'Kusnandar, M.Si' ? supervision.supervisorName : null) ||
+        sch?.supervisorName ||
+        (currentUser.role === 'pengawas' || currentUser.role === 'admin' ? currentUser.displayName : null) ||
+        supervision.supervisorName ||
+        'Kusnandar, M.Si';
+      setSupervisorName(resolvedSupervisor);
       setStatus(supervision.status || 'completed');
 
       setTelaahScore(supervision.perangkatAjar?.telaahSummary?.finalScore ?? 90);
@@ -380,7 +387,14 @@ export const EditGuruSupervisiModal: React.FC<EditGuruSupervisiModalProps> = ({
                   </label>
                   <select
                     value={schoolId}
-                    onChange={(e) => setSchoolId(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setSchoolId(val);
+                      const targetSch = schools.find(s => s.id === val);
+                      if (targetSch?.supervisorName) {
+                        setSupervisorName(targetSch.supervisorName);
+                      }
+                    }}
                     className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-300 focus:outline-indigo-600 font-semibold bg-white"
                   >
                     {schools.map(s => (

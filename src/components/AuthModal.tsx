@@ -7,7 +7,6 @@ import {
   Building2, 
   Briefcase, 
   GraduationCap, 
-  ShieldCheck, 
   AlertCircle, 
   ArrowRight,
   Sparkles,

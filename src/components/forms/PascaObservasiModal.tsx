@@ -31,6 +31,8 @@ export const PascaObservasiModal: React.FC<PascaObservasiModalProps> = ({
     ? supervision.sambung.uji.pascaObservasi
     : supervision.sambung?.maknai;
 
+  const supervisorName = supervision.supervisorName || 'Pengawas Pembina';
+
   const pList: SambungMaknaiPertanyaanList = maknaiSource?.pertanyaanList || {};
 
   // 10 Pertanyaan Resmi MAKNAI Sesuai Dokumen Pengawas Pembina
@@ -347,7 +349,7 @@ export const PascaObservasiModal: React.FC<PascaObservasiModalProps> = ({
                 Kesepakatan Coaching Alur TIRTA (Tujuan - Identifikasi/Realitas - Rencana/Opsi - Tanggung Jawab/Komitmen)
               </h3>
               <p className="text-[11px] text-emerald-800 mt-0.5">
-                Dialog kemitraan antara Pengawas Pembina Kusnandar, M.Si dan guru untuk memberdayakan potensi murid.
+                Dialog kemitraan antara Pengawas Pembina {supervisorName} dan guru untuk memberdayakan potensi murid.
               </p>
             </div>
 
@@ -413,7 +415,7 @@ export const PascaObservasiModal: React.FC<PascaObservasiModalProps> = ({
           {/* Supervisor Kesan Umum & Saran */}
           <div className="bg-blue-50/70 p-4 sm:p-5 rounded-2xl border border-blue-200 space-y-3">
             <h3 className="font-bold text-blue-900 text-sm">
-              Tanggapan, Kesan Umum &amp; Rekomendasi Pengawas Pembina (Kusnandar, M.Si)
+              Tanggapan, Kesan Umum &amp; Rekomendasi Pengawas Pembina ({supervisorName})
             </h3>
 
             <div>

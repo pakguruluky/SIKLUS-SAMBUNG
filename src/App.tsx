@@ -16,6 +16,7 @@ import { NewSupervisionModal } from './components/forms/NewSupervisionModal';
 import { SambungInstrumentView } from './components/SambungInstrumentView';
 import { KesimpulanSemuaGuruDashboard } from './components/KesimpulanSemuaGuruDashboard';
 import { LocalStorageBackupModal } from './components/LocalStorageBackupModal';
+import { SuperAdminView } from './components/SuperAdminView';
 import { CheckCircle2, AlertCircle } from 'lucide-react';
 
 import { 
@@ -42,7 +43,8 @@ import {
   isQuotaExceeded,
   getQuotaConsoleUrl,
   getHasPendingSync,
-  isQuotaError
+  isQuotaError,
+  isKusnandarAccount
 } from './services/firebase';
 import { 
   loadLocalSupervisions, 
@@ -108,6 +110,7 @@ export default function App() {
   });
   // Pastikan ketika memasukan alamat aplikasi langsung ke halaman beranda (landing) walaupun sudah pernah membuka sebelumnya
   const [activeTab, setActiveTab] = useState<string>('landing');
+  const [activeSupervisorOverride, setActiveSupervisorOverride] = useState<UserProfile | null>(null);
 
   // Modals
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -224,6 +227,7 @@ export default function App() {
     await fbSignOut(auth);
     setCurrentUser(null);
     saveLocalUser(null);
+    setActiveSupervisorOverride(null);
     setActiveTab('landing');
   };
 
@@ -321,10 +325,12 @@ export default function App() {
     }
   };
 
-  // Role-based visibility enforcement:
-  // 1. Pengawas / Admin: melihat semua sekolah dan guru
-  // 2. Kepala Sekolah: hanya melihat instrumen dan kesimpulan sekolahnya saja tanpa bisa melihat sekolah dan guru lain
-  // 3. Guru: hanya melihat instrumen dan kesimpulan akun dia saja
+  // Multi-tenant & Role-based visibility enforcement:
+  // 1. Super Admin: memiliki hak akses ke seluruh pengawas, dapat memilih workspace pengawas mana pun
+  // 2. Akun Lama (Pak Kusnandar): tetap terhubung dengan 10 guru supervisi dan seluruh sekolah binaan bawaan
+  // 3. Akun Pengawas Baru: ruang kerja bersih/kosong (0 guru, 0 sekolah awal), tetap terhubung realtime ke Firebase
+  // 4. Kepala Sekolah: hanya melihat instrumen & kesimpulan sekolahnya
+  // 5. Guru Mapel: hanya melihat instrumen & kesimpulan akun miliknya
   const visibleSupervisions = React.useMemo(() => {
     const deletedSupIds = new Set(getDeletedSupervisionIds());
     const deletedUids = new Set(getDeletedUserIds());
@@ -336,6 +342,26 @@ export default function App() {
     );
 
     if (!currentUser) return cleanSupervisions;
+
+    // Super Admin view
+    if (currentUser.role === 'super_admin') {
+      if (activeSupervisorOverride) {
+        if (isKusnandarAccount(activeSupervisorOverride)) {
+          return cleanSupervisions.filter(s => 
+            !s.supervisorId || 
+            s.supervisorId === 'admin-kusnandar' || 
+            s.supervisorId === 'user-pengawas-kusnandar' || 
+            s.createdBy === 'user-pengawas-kusnandar' ||
+            isKusnandarAccount({ displayName: s.supervisorName } as any)
+          );
+        }
+        return cleanSupervisions.filter(s => 
+          s.supervisorId === activeSupervisorOverride.uid || 
+          s.createdBy === activeSupervisorOverride.uid
+        );
+      }
+      return cleanSupervisions;
+    }
 
     if (currentUser.role === 'guru') {
       const matched = cleanSupervisions.filter(
@@ -354,11 +380,56 @@ export default function App() {
       return matched;
     }
 
-    // Admin / Pengawas sees all non-deleted
-    return cleanSupervisions;
-  }, [supervisions, currentUser]);
+    // Existing Pengawas (Pak Kusnandar): tetap melihat 10 guru binaan yang ada
+    if (isKusnandarAccount(currentUser)) {
+      return cleanSupervisions.filter(s => 
+        !s.supervisorId || 
+        s.supervisorId === 'admin-kusnandar' || 
+        s.supervisorId === 'user-pengawas-kusnandar' || 
+        s.createdBy === 'user-pengawas-kusnandar' ||
+        isKusnandarAccount({ displayName: s.supervisorName } as any)
+      );
+    }
 
-  const isAdminOrPengawas = currentUser?.role === 'admin' || (currentUser?.role as string) === 'pengawas';
+    // Newly added Pengawas: ruang kerja baru yang bersih (aplikasi baru yg kosong)
+    // Hanya menampilkan data yang ditambahkan oleh pengawas ini
+    return cleanSupervisions.filter(
+      s => s.supervisorId === currentUser.uid || s.createdBy === currentUser.uid
+    );
+  }, [supervisions, currentUser, activeSupervisorOverride]);
+
+  const visibleSchools = React.useMemo(() => {
+    if (!currentUser) return schools;
+
+    if (currentUser.role === 'super_admin') {
+      if (activeSupervisorOverride) {
+        if (isKusnandarAccount(activeSupervisorOverride)) {
+          return schools.filter(s => !s.createdBy || s.createdBy === 'system' || s.createdBy === 'user-pengawas-kusnandar');
+        }
+        return schools.filter(s => s.createdBy === activeSupervisorOverride.uid);
+      }
+      return schools;
+    }
+
+    if (currentUser.role === 'kepsek') {
+      const userSch = (currentUser.schoolName || '').toLowerCase().trim();
+      return schools.filter(s => s.id === currentUser.schoolId || (userSch && s.name.toLowerCase().includes(userSch)));
+    }
+
+    if (currentUser.role === 'guru') {
+      return schools.filter(s => s.id === currentUser.schoolId);
+    }
+
+    // Existing Pengawas (Pak Kusnandar): melihat sekolah binaan resmi yang sudah ada
+    if (isKusnandarAccount(currentUser)) {
+      return schools.filter(s => !s.createdBy || s.createdBy === 'system' || s.createdBy === 'user-pengawas-kusnandar' || s.createdBy === currentUser.uid);
+    }
+
+    // Newly added Pengawas: bersih/kosong, melihat sekolah binaan miliknya sendiri
+    return schools.filter(s => s.createdBy === currentUser.uid);
+  }, [schools, currentUser, activeSupervisorOverride]);
+
+  const isAdminOrPengawas = currentUser?.role === 'admin' || (currentUser?.role as string) === 'pengawas' || currentUser?.role === 'super_admin';
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
@@ -423,9 +494,54 @@ export default function App() {
 
         {currentUser && (
           <div className="max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-8 flex-1">
+            {currentUser?.role === 'super_admin' && activeSupervisorOverride && (
+              <div className="mb-6 p-4 rounded-2xl bg-purple-950 text-white flex flex-wrap items-center justify-between gap-3 shadow-lg border border-purple-700">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-purple-800 flex items-center justify-center font-bold text-purple-200">
+                    👁️
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-purple-800 text-purple-200">
+                        Mode Inspeksi Super Admin
+                      </span>
+                      <span className="text-xs text-purple-300">
+                        Melihat ruang kerja pengawas:
+                      </span>
+                    </div>
+                    <p className="text-sm font-bold text-white">
+                      {activeSupervisorOverride.displayName} <span className="text-xs font-normal text-purple-300">(@{activeSupervisorOverride.username})</span>
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setActiveSupervisorOverride(null);
+                    setActiveTab('super-admin');
+                  }}
+                  className="px-4 py-2 rounded-xl bg-white hover:bg-purple-50 text-purple-950 font-bold text-xs shadow-xs transition-colors cursor-pointer"
+                >
+                  ← Kembali ke Panel Super Admin
+                </button>
+              </div>
+            )}
+
+            {activeTab === 'super-admin' && currentUser?.role === 'super_admin' && (
+              <SuperAdminView
+                currentUser={currentUser}
+                supervisions={supervisions}
+                schools={schools}
+                activeSupervisorOverride={activeSupervisorOverride}
+                onSelectSupervisorWorkspace={(supervisor: UserProfile | null) => {
+                  setActiveSupervisorOverride(supervisor);
+                  setActiveTab('dashboard');
+                }}
+              />
+            )}
+
             {activeTab === 'dashboard' && (
               <DashboardOverview
-                schools={schools}
+                schools={visibleSchools}
                 supervisions={visibleSupervisions}
                 currentUser={currentUser}
                 onNavigateSupervisions={() => setActiveTab('sambung')}
@@ -458,7 +574,7 @@ export default function App() {
               <SambungInstrumentView
                 supervisions={visibleSupervisions}
                 currentUser={currentUser}
-                schools={schools}
+                schools={visibleSchools}
                 initialSupervisionId={selectedSambungId}
                 onUpdateSupervision={handleUpdateSupervision}
                 onDeleteSupervision={async (deletedId) => {
@@ -481,7 +597,7 @@ export default function App() {
               <KesimpulanSemuaGuruDashboard
                 supervisions={visibleSupervisions}
                 currentUser={currentUser}
-                schools={schools}
+                schools={visibleSchools}
                 onOpenSambungTeacher={(supervisionId) => {
                   handleOpenSambung(supervisionId);
                 }}
@@ -493,7 +609,7 @@ export default function App() {
 
             {activeTab === 'schools' && isAdminOrPengawas && (
               <SchoolManagement
-                schools={schools}
+                schools={visibleSchools}
                 currentUser={currentUser}
                 onRefreshSchools={handleRefreshSchools}
               />
@@ -502,7 +618,7 @@ export default function App() {
             {activeTab === 'users' && isAdminOrPengawas && (
               <UserManagementView
                 currentUser={currentUser}
-                schools={schools}
+                schools={visibleSchools}
                 onUserAdded={async () => {
                   const updated = await fetchSupervisions();
                   setSupervisions(filterValidSupervisions(updated));
@@ -536,7 +652,11 @@ export default function App() {
         onAuthSuccess={(profile) => {
           setCurrentUser(profile);
           saveLocalUser(profile);
-          setActiveTab('dashboard');
+          if (profile.role === 'super_admin') {
+            setActiveTab('super-admin');
+          } else {
+            setActiveTab('dashboard');
+          }
         }}
       />
 
@@ -545,7 +665,7 @@ export default function App() {
           isOpen={isNewSupervisionModalOpen}
           onClose={() => setIsNewSupervisionModalOpen(false)}
           currentUser={currentUser}
-          schools={schools}
+          schools={visibleSchools}
           onCreated={handleCreateSupervision}
         />
       )}

@@ -6595,57 +6595,18 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
                     <thead>
                       <tr className="bg-slate-100/90 text-slate-800 font-bold border-b border-slate-200 uppercase text-[11px]">
                         <th className="py-3 px-3 text-center w-12">No</th>
-                        <th className="py-3 px-3 text-left w-64">Indikator Perubahan</th>
-                        <th className="py-3 px-3 text-center w-24">Awal (S)</th>
-                        <th className="py-3 px-3 text-center w-24">Akhir (U)</th>
-                        <th className="py-3 px-3 text-center w-24">Selisih</th>
+                        <th className="py-3 px-3 text-left w-72">Indikator Perubahan</th>
                         <th className="py-3 px-3 text-left">Makna &amp; Deskripsi Penilaian</th>
-                        <th className="py-3 px-3 text-left w-48">Bukti Kegiatan</th>
+                        <th className="py-3 px-3 text-left w-56">Bukti Kegiatan</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {(sambungDraft.nyatakan?.dataDampak || []).map((item, idx) => {
-                        const awalNum = parseFloat((item.awal || '0').replace(/[^0-9.]/g, '')) || 0;
-                        const akhirNum = parseFloat((item.akhir || '0').replace(/[^0-9.]/g, '')) || 0;
-                        const delta = Math.round((akhirNum - awalNum) * 10) / 10;
                         return (
                           <tr key={idx} className="hover:bg-slate-50/50 align-top">
                             <td className="py-3 px-3 text-center font-bold text-slate-400">{idx + 1}</td>
                             <td className="py-3 px-3 font-bold text-slate-900 bg-slate-50/40">
                               {item.indikator}
-                            </td>
-                            <td className="py-3 px-3 text-center font-bold text-slate-600 bg-slate-50/30">
-                              <input
-                                type="text"
-                                value={item.awal}
-                                onChange={(e) => {
-                                  const list = [...(sambungDraft.nyatakan?.dataDampak || [])];
-                                  list[idx] = { ...list[idx], awal: e.target.value };
-                                  setSambungDraft({
-                                    ...sambungDraft,
-                                    nyatakan: { ...sambungDraft.nyatakan, dataDampak: list },
-                                  });
-                                }}
-                                className="w-16 text-center font-bold py-1 px-1.5 rounded-lg border border-slate-200 text-xs"
-                              />
-                            </td>
-                            <td className="py-3 px-3 text-center font-bold text-emerald-700 bg-emerald-50/30">
-                              <input
-                                type="text"
-                                value={item.akhir}
-                                onChange={(e) => {
-                                  const list = [...(sambungDraft.nyatakan?.dataDampak || [])];
-                                  list[idx] = { ...list[idx], akhir: e.target.value };
-                                  setSambungDraft({
-                                    ...sambungDraft,
-                                    nyatakan: { ...sambungDraft.nyatakan, dataDampak: list },
-                                  });
-                                }}
-                                className="w-16 text-center font-bold py-1 px-1.5 rounded-lg border border-emerald-300 text-xs bg-emerald-50/50"
-                              />
-                            </td>
-                            <td className="py-3 px-3 text-center font-black text-xs text-indigo-700 bg-indigo-50/30">
-                              +{delta}%
                             </td>
                             <td className="py-3 px-3 space-y-1.5">
                               <textarea

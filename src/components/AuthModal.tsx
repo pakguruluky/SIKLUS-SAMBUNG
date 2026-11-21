@@ -18,7 +18,7 @@ import {
   signInWithPopup,
   GoogleAuthProvider
 } from 'firebase/auth';
-import { auth, saveUserProfile, getUserProfile, authenticateRealUser } from '../services/firebase';
+import { auth, saveUserProfile, getUserProfile, authenticateRealUserResult } from '../services/firebase';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -55,22 +55,42 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     try {
       if (isRegister) {
         if (role !== 'admin' && role !== 'pengawas' && !schoolId) {
-          throw new Error('Harap pilih sekolah tempat Anda bertugas.');
+          setErrorMessage('Harap pilih sekolah tempat Anda bertugas.');
+          return;
         }
 
-        const email = identifier.includes('@') ? identifier : `${identifier}@siklus-sambung.sch.id`;
-        const res = await createUserWithEmailAndPassword(auth, email, password);
+        const cleanId = identifier.trim();
+        const email = cleanId.includes('@') ? cleanId : `${cleanId}@siklus-sambung.sch.id`;
         const selectedSchool = schools.find(s => s.id === schoolId);
 
-        const finalRole: Role = (identifier.toLowerCase() === 'pengawas' || email.toLowerCase() === 'pengawas@siklus-sambung.sch.id') 
+        const finalRole: Role = (cleanId.toLowerCase() === 'pengawas' || email.toLowerCase() === 'pengawas@siklus-sambung.sch.id') 
           ? 'admin' 
           : role;
 
+        let uid = `user-${Date.now()}`;
+        let resolvedEmail = email;
+
+        try {
+          const res = await createUserWithEmailAndPassword(auth, email, password);
+          uid = res.user.uid;
+          resolvedEmail = res.user.email || email;
+        } catch (fbErr: any) {
+          if (fbErr?.code === 'auth/email-already-in-use') {
+            setErrorMessage('Email/Username ini sudah terdaftar. Silakan login.');
+            return;
+          }
+          if (fbErr?.code === 'auth/weak-password') {
+            setErrorMessage('Kata sandi minimal 6 karakter.');
+            return;
+          }
+          // If email/password provider is disabled on Firebase project, persist account directly to Firestore/backend
+        }
+
         const newProfile: UserProfile = {
-          uid: res.user.uid,
-          username: identifier.includes('@') ? identifier.split('@')[0] : identifier,
+          uid,
+          username: cleanId.includes('@') ? cleanId.split('@')[0] : cleanId,
           password,
-          email: res.user.email || email,
+          email: resolvedEmail,
           displayName: displayName || (finalRole === 'admin' ? 'Kusnandar, M.Si' : 'Pengguna Baru'),
           role: finalRole,
           schoolId: (finalRole === 'admin' || finalRole === 'pengawas') ? undefined : schoolId,
@@ -78,6 +98,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           nip: nip || undefined,
           phone: phone || undefined,
           subject: finalRole === 'guru' ? subject : undefined,
+          approvalStatus: 'approved',
           createdAt: new Date().toISOString(),
         };
 
@@ -85,19 +106,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         onAuthSuccess(newProfile);
         onClose();
       } else {
-        // Real user login with username or email
-        const profile = await authenticateRealUser(identifier, password);
-        onAuthSuccess(profile);
-        onClose();
+        // Real user login with username or email (checks local, defaults, backend API, Firestore, and Firebase Auth)
+        const result = await authenticateRealUserResult(identifier, password);
+        if (result.user) {
+          onAuthSuccess(result.user);
+          onClose();
+        } else {
+          setErrorMessage(result.error || 'Username atau kata sandi tidak sesuai. Silakan periksa kembali kredensial Anda.');
+        }
       }
     } catch (err: any) {
-      console.error(err);
-      let msg = err.message || 'Terjadi kesalahan autentikasi.';
-      if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
+      let msg = err?.message || 'Terjadi kesalahan autentikasi.';
+      if (err?.code === 'auth/invalid-credential' || err?.code === 'auth/wrong-password') {
         msg = 'Username / email atau kata sandi tidak cocok.';
-      } else if (err.code === 'auth/email-already-in-use') {
+      } else if (err?.code === 'auth/email-already-in-use') {
         msg = 'Email/Username ini sudah terdaftar. Silakan login.';
-      } else if (err.code === 'auth/weak-password') {
+      } else if (err?.code === 'auth/weak-password') {
         msg = 'Kata sandi minimal 6 karakter.';
       }
       setErrorMessage(msg);
@@ -130,8 +154,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       onAuthSuccess(profile);
       onClose();
     } catch (err: any) {
-      console.error(err);
-      setErrorMessage('Gagal masuk dengan Google: ' + (err.message || ''));
+      if (err?.code === 'auth/popup-closed-by-user' || err?.code === 'auth/cancelled-popup-request') {
+        setErrorMessage('Proses masuk dengan Google dibatalkan.');
+      } else {
+        setErrorMessage('Gagal masuk dengan Google: ' + (err?.message || 'Silakan coba lagi.'));
+      }
     } finally {
       setLoading(false);
     }

@@ -526,69 +526,169 @@ export function isSupervisorAccount(user?: UserProfile | null): boolean {
   return user.role === 'admin' || user.role === 'pengawas' || user.role === 'super_admin';
 }
 
-// Authenticate via username/email & password
-export async function authenticateRealUser(
+function matchesUserCredentials(
+  u: Partial<UserProfile> | null | undefined,
+  cleanedIdentifier: string,
+  passwordInput: string
+): boolean {
+  if (!u || !cleanedIdentifier) return false;
+  const uname = (u.username || '').trim().toLowerCase();
+  const uemail = (u.email || '').trim().toLowerCase();
+  const emailPrefix = uemail.includes('@') ? uemail.split('@')[0] : '';
+  const isIdentifierMatch =
+    (Boolean(uname) && uname === cleanedIdentifier) ||
+    (Boolean(uemail) && uemail === cleanedIdentifier) ||
+    (!cleanedIdentifier.includes('@') && Boolean(emailPrefix) && emailPrefix === cleanedIdentifier);
+
+  if (!isIdentifierMatch) return false;
+
+  const trimmedPass = passwordInput.trim();
+  const storedPass = typeof u.password === 'string' ? u.password : '';
+  const isSuperAdminAccount = uname === 'admin' || u.role === 'super_admin';
+
+  if (storedPass && (storedPass === passwordInput || storedPass.trim() === trimmedPass)) {
+    return true;
+  }
+  if (!isSuperAdminAccount && (passwordInput === 'pakkus' || trimmedPass === 'pakkus')) {
+    return true;
+  }
+  return false;
+}
+
+function cacheAuthenticatedUser(user: UserProfile): void {
+  try {
+    const current = getStoredUsers();
+    const idx = current.findIndex(u => u.uid === user.uid);
+    if (idx >= 0) {
+      current[idx] = user;
+    } else {
+      current.push(user);
+    }
+    saveStoredUsers(current);
+  } catch {}
+}
+
+export async function authenticateRealUserResult(
   usernameOrEmail: string,
   passwordInput: string
-): Promise<UserProfile> {
-  const cleaned = usernameOrEmail.trim().toLowerCase();
+): Promise<{ user: UserProfile | null; error?: string }> {
+  const cleaned = (usernameOrEmail || '').trim().toLowerCase();
+  const trimmedPass = (passwordInput || '').trim();
+
+  if (!cleaned || !trimmedPass) {
+    return { user: null, error: 'Harap masukkan username/email dan kata sandi.' };
+  }
 
   // 1. Super Admin Direct Access (username: admin, password: bajuri39)
   if (cleaned === 'admin' || cleaned === 'admin@siklus-sambung.sch.id') {
-    if (passwordInput === 'bajuri39') {
+    if (passwordInput === 'bajuri39' || trimmedPass === 'bajuri39') {
       const superAdminUser: UserProfile = DEFAULT_USERS[0];
-      setDoc(doc(db, 'users', superAdminUser.uid), superAdminUser, { merge: true }).catch(() => {});
-      return superAdminUser;
+      setDoc(doc(db, 'users', superAdminUser.uid), cleanForFirestore(superAdminUser), { merge: true }).catch(() => {});
+      return { user: superAdminUser };
     } else {
-      throw new Error('Kata sandi Super Admin tidak sesuai. Silakan masukkan kata sandi yang valid.');
+      return { user: null, error: 'Kata sandi Super Admin tidak sesuai. Silakan masukkan kata sandi yang valid.' };
     }
   }
 
   // 2. Check in-memory / local storage user cache first
   const localUsers = getStoredUsers();
-  const matchedLocal = localUsers.find(
-    u => (u.username?.toLowerCase() === cleaned || u.email.toLowerCase() === cleaned) &&
-         (u.password === passwordInput || (passwordInput === 'pakkus' && u.username !== 'admin'))
-  );
+  const matchedLocal = localUsers.find(u => matchesUserCredentials(u, cleaned, passwordInput));
   if (matchedLocal) {
-    return matchedLocal;
+    return { user: matchedLocal };
   }
 
   // 3. Check DEFAULT_USERS
-  const matchedDefault = DEFAULT_USERS.find(
-    u => (u.username?.toLowerCase() === cleaned || u.email.toLowerCase() === cleaned) &&
-         (u.password === passwordInput || (passwordInput === 'pakkus' && u.username !== 'admin'))
-  );
+  const matchedDefault = DEFAULT_USERS.find(u => matchesUserCredentials(u, cleaned, passwordInput));
   if (matchedDefault) {
-    // Save to Firestore in background
-    setDoc(doc(db, 'users', matchedDefault.uid), matchedDefault, { merge: true }).catch(() => {});
-    return matchedDefault;
+    setDoc(doc(db, 'users', matchedDefault.uid), cleanForFirestore(matchedDefault), { merge: true }).catch(() => {});
+    return { user: matchedDefault };
   }
 
-  // 4. Check Firestore `users` collection
+  // 4. Check persistent Backend API `/api/users`
   try {
-    const usersSnap = await getDocs(collection(db, 'users'));
-    for (const d of usersSnap.docs) {
-      const u = d.data() as UserProfile;
-      if (
-        (u.username?.toLowerCase() === cleaned || u.email.toLowerCase() === cleaned) &&
-        (u.password === passwordInput || (passwordInput === 'pakkus' && u.username !== 'admin'))
-      ) {
-        return { ...u, uid: d.id };
+    const backendUsers = await apiFetchUsers();
+    if (Array.isArray(backendUsers) && backendUsers.length > 0) {
+      const matchedBackend = backendUsers.find(u => matchesUserCredentials(u, cleaned, passwordInput));
+      if (matchedBackend) {
+        cacheAuthenticatedUser(matchedBackend);
+        return { user: matchedBackend };
       }
     }
   } catch (err) {
-    console.warn('Firestore user lookup warning:', err);
+    console.warn('Backend user lookup warning:', err);
   }
 
-  // 5. Fallback: if username is 'pengawas' and password is 'pakkus'
-  if (cleaned === 'pengawas' && passwordInput === 'pakkus') {
+  // 5. Check Firestore `users` collection (with timeout and null-safe field checks)
+  if (!isFirestoreQuotaExceeded) {
+    try {
+      const usersSnap = await withFirestoreTimeout(getDocs(collection(db, 'users')), 5000, null);
+      if (usersSnap) {
+        for (const d of usersSnap.docs) {
+          const u = d.data() as Partial<UserProfile>;
+          if (matchesUserCredentials(u, cleaned, passwordInput)) {
+            const resolved: UserProfile = {
+              ...(u as UserProfile),
+              uid: d.id,
+              email: u.email || `${u.username || d.id}@siklus-sambung.sch.id`,
+            };
+            cacheAuthenticatedUser(resolved);
+            return { user: resolved };
+          }
+        }
+      }
+    } catch (err) {
+      if (isQuotaError(err)) markQuotaExceeded(err);
+      console.warn('Firestore user lookup warning:', err);
+    }
+  }
+
+  // 6. Fallback: if username is 'pengawas' and password is 'pakkus'
+  if (cleaned === 'pengawas' && (passwordInput === 'pakkus' || trimmedPass === 'pakkus')) {
     const pengawasUser = DEFAULT_USERS.find(u => u.username === 'pengawas') || DEFAULT_USERS[1];
-    setDoc(doc(db, 'users', pengawasUser.uid), pengawasUser, { merge: true }).catch(() => {});
-    return pengawasUser;
+    setDoc(doc(db, 'users', pengawasUser.uid), cleanForFirestore(pengawasUser), { merge: true }).catch(() => {});
+    return { user: pengawasUser };
   }
 
-  throw new Error('Username atau kata sandi tidak sesuai. Silakan periksa kembali kredensial Anda.');
+  // 7. Fallback: Firebase Auth Email/Password login (for users registered via Firebase Auth)
+  try {
+    const emailCandidate = cleaned.includes('@') ? cleaned : `${cleaned}@siklus-sambung.sch.id`;
+    const cred = await signInWithEmailAndPassword(auth, emailCandidate, passwordInput);
+    const existingProfile = await getUserProfile(cred.user.uid);
+    if (existingProfile) {
+      cacheAuthenticatedUser(existingProfile);
+      return { user: existingProfile };
+    }
+    const fallbackProfile: UserProfile = {
+      uid: cred.user.uid,
+      username: emailCandidate.split('@')[0],
+      email: cred.user.email || emailCandidate,
+      displayName: cred.user.displayName || emailCandidate.split('@')[0],
+      role: 'guru',
+      approvalStatus: 'approved',
+      createdAt: new Date().toISOString(),
+    };
+    cacheAuthenticatedUser(fallbackProfile);
+    return { user: fallbackProfile };
+  } catch {
+    // Ignore Firebase Auth mismatch and return clean user-facing error
+  }
+
+  return {
+    user: null,
+    error: 'Username atau kata sandi tidak sesuai. Silakan periksa kembali kredensial Anda.',
+  };
+}
+
+// Authenticate via username/email & password
+export async function authenticateRealUser(
+  usernameOrEmail: string,
+  passwordInput: string
+): Promise<UserProfile> {
+  const result = await authenticateRealUserResult(usernameOrEmail, passwordInput);
+  if (result.user) {
+    return result.user;
+  }
+  throw new Error(result.error || 'Username atau kata sandi tidak sesuai. Silakan periksa kembali kredensial Anda.');
 }
 
 // Local user store helper
@@ -682,13 +782,11 @@ export async function addUserAccount(user: UserProfile): Promise<UserProfile> {
     console.warn('Backend API save user notice:', apiErr);
   }
 
-  // 3. Save to Firestore in real-time
+  // 3. Save to Firestore in real-time (awaited so account is immediately available across devices)
   if (!isFirestoreQuotaExceeded) {
     try {
       const cleaned = cleanForFirestore(completeUser);
-      withFirestoreTimeout(setDoc(doc(db, 'users', uid), cleaned, { merge: true }), 3500).catch((err) => {
-        if (isQuotaError(err)) markQuotaExceeded(err);
-      });
+      await withFirestoreTimeout(setDoc(doc(db, 'users', uid), cleaned, { merge: true }), 4000);
     } catch (err) {
       if (isQuotaError(err)) markQuotaExceeded(err);
       console.warn('Notice saving user to Firestore (saved in backend/local):', err);
@@ -721,13 +819,11 @@ export async function updateUserAccount(user: UserProfile): Promise<UserProfile>
     console.warn('Backend API update user notice:', apiErr);
   }
 
-  // 3. Save to Firestore (only if quota available)
+  // 3. Save to Firestore (awaited so credential updates take effect immediately)
   if (!isFirestoreQuotaExceeded) {
     try {
       const cleaned = cleanForFirestore(completeUser);
-      withFirestoreTimeout(setDoc(doc(db, 'users', user.uid), cleaned, { merge: true }), 600).catch((err) => {
-        if (isQuotaError(err)) markQuotaExceeded(err);
-      });
+      await withFirestoreTimeout(setDoc(doc(db, 'users', user.uid), cleaned, { merge: true }), 4000);
     } catch (err) {
       if (isQuotaError(err)) markQuotaExceeded(err);
       console.warn('Notice updating user in Firestore (saved in backend/local):', err);

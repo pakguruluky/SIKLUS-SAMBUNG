@@ -24,7 +24,9 @@ import {
   getDocFromServer,
   onSnapshot,
   Unsubscribe,
-  writeBatch
+  writeBatch,
+  enableNetwork,
+  disableNetwork
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 import { School, UserProfile, Supervision, Role } from '../types';
@@ -34,6 +36,7 @@ import {
   saveLocalSchools, 
   loadLocalSupervisions, 
   loadLocalSchools,
+  loadLocalUser,
   clearFormDraft
 } from './localStorageService';
 import { SAMPLE_SUPERVISIONS } from '../data/seedData';
@@ -188,9 +191,107 @@ export function markQuotaExceeded(err?: any) {
   }
 }
 
-// Local sync tracking flags
+// Local sync tracking flags & Realtime Online/Offline Mode
 const HAS_UNSYNCED_KEY = 'pakkus_has_unsynced_changes';
 const LAST_SYNC_TIME_KEY = 'pakkus_last_sync_time';
+const ONLINE_MODE_KEY = 'siklus_sambung_online_mode';
+
+export function getOnlineMode(): boolean {
+  try {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem(ONLINE_MODE_KEY);
+      // Default to ONLINE (true) so app is connected realtime to Firebase by default
+      return stored !== 'false';
+    }
+  } catch {}
+  return true;
+}
+
+let isSyncingOfflineQueue = false;
+
+export function setOnlineModeState(online: boolean, dispatchEvent = true): void {
+  try {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(ONLINE_MODE_KEY, online ? 'true' : 'false');
+      if (dispatchEvent) {
+        window.dispatchEvent(new CustomEvent('pakkus-online-mode-changed', { detail: { online } }));
+      }
+    }
+  } catch {}
+}
+
+export async function toggleOnlineMode(online: boolean): Promise<{
+  online: boolean;
+  synced: boolean;
+  usersCount: number;
+  schoolsCount: number;
+  supervisionsCount: number;
+  lastSyncTime?: string;
+  error?: string;
+}> {
+  if (!online) {
+    setOnlineModeState(false, true);
+    try {
+      await disableNetwork(db);
+    } catch (err) {
+      console.warn('Firestore disableNetwork notice:', err);
+    }
+    return {
+      online: false,
+      synced: false,
+      usersCount: 0,
+      schoolsCount: 0,
+      supervisionsCount: 0,
+    };
+  }
+
+  // Switching OFFLINE -> ONLINE:
+  // 1. Hold onSnapshot overwrites via isSyncingOfflineQueue while pushing localStorage changes to Firebase
+  // 2. Enable Firestore network and verify connection
+  // 3. Push ALL localStorage data & deletions to Firebase/database FIRST
+  // 4. Release guard and notify UI listeners so live sync resumes cleanly
+  isSyncingOfflineQueue = true;
+  isFirestoreQuotaExceeded = false;
+  setOnlineModeState(true, false);
+
+  try {
+    await enableNetwork(db);
+  } catch (err) {
+    console.warn('Firestore enableNetwork notice:', err);
+  }
+
+  try {
+    await testConnection();
+    const res = await syncAllPendingLocalChangesToFirestore();
+    isSyncingOfflineQueue = false;
+    setOnlineModeState(true, true);
+    return {
+      online: true,
+      synced: true,
+      usersCount: res.usersCount,
+      schoolsCount: res.schoolsCount,
+      supervisionsCount: res.supervisionsCount,
+      lastSyncTime: res.lastSyncTime,
+    };
+  } catch (err: any) {
+    isSyncingOfflineQueue = false;
+    setOnlineModeState(true, true);
+    console.warn('Auto-sync when switching online notice:', err);
+    return {
+      online: true,
+      synced: false,
+      usersCount: 0,
+      schoolsCount: 0,
+      supervisionsCount: 0,
+      error: err?.message || 'Tersambung ke mode Online, sinkronisasi sebagian tertunda.',
+    };
+  }
+}
+
+// Enforce initial offline network state if user explicitly left the toggle Offline
+if (typeof window !== 'undefined' && !getOnlineMode()) {
+  disableNetwork(db).catch(() => {});
+}
 
 export function markDataModifiedLocally() {
   try {
@@ -222,11 +323,11 @@ export function getLastSyncTime(): string | null {
 // Safe timeout wrapper for all Firestore network promises to guarantee UI never freezes or hangs
 export async function withFirestoreTimeout<T>(
   promise: Promise<T>,
-  timeoutMs = 3500,
+  timeoutMs = 4500,
   fallbackValue?: T
 ): Promise<T> {
-  // If quota is already known to be exceeded, do not attempt to contact Firestore
-  if (isFirestoreQuotaExceeded) {
+  // Respect Offline Mode & temporary quota limit
+  if (!getOnlineMode() || isFirestoreQuotaExceeded) {
     return fallbackValue as T;
   }
 
@@ -716,7 +817,17 @@ function saveStoredUsers(users: UserProfile[]) {
 export async function fetchAllUsers(): Promise<UserProfile[]> {
   let currentUsers = getStoredUsers();
 
-  // 1. Fetch from persistent backend API first
+  const deletedUids = new Set(getDeletedUserIds());
+  const deletedNames = new Set(getDeletedUserNames().map(n => n.toLowerCase().trim()));
+  const filterUsers = (list: UserProfile[]) =>
+    list.filter(u => !deletedUids.has(u.uid) && (!u.displayName || !deletedNames.has(u.displayName.toLowerCase().trim())));
+
+  // If in Offline mode, serve directly from Local Storage
+  if (!getOnlineMode()) {
+    return filterUsers(currentUsers);
+  }
+
+  // 1. Fetch from persistent backend API
   try {
     const backendUsers = await apiFetchUsers();
     if (backendUsers && backendUsers.length > 0) {
@@ -731,9 +842,9 @@ export async function fetchAllUsers(): Promise<UserProfile[]> {
     console.warn('Backend API users notice:', err);
   }
 
-  // 2. Non-blocking Firestore sync
+  // 2. Live Firestore sync
   try {
-    const snap = await withFirestoreTimeout(getDocs(collection(db, 'users')), 600, null);
+    const snap = await withFirestoreTimeout(getDocs(collection(db, 'users')), 4000, null);
     if (snap && !snap.empty) {
       const firestoreUsers = snap.docs.map(d => ({ ...d.data(), uid: d.id } as UserProfile));
       const map = new Map<string, UserProfile>();
@@ -746,9 +857,7 @@ export async function fetchAllUsers(): Promise<UserProfile[]> {
     console.warn('Notice fetching users from Firestore (using backend/local):', err);
   }
 
-  const deletedUids = new Set(getDeletedUserIds());
-  const deletedNames = new Set(getDeletedUserNames());
-  return currentUsers.filter(u => !deletedUids.has(u.uid) && (!u.displayName || !deletedNames.has(u.displayName.toLowerCase().trim())));
+  return filterUsers(currentUsers);
 }
 
 export async function addUserAccount(user: UserProfile): Promise<UserProfile> {
@@ -765,7 +874,7 @@ export async function addUserAccount(user: UserProfile): Promise<UserProfile> {
   removeDeletedUserId(uid);
   if (user.displayName) removeDeletedUserName(user.displayName);
 
-  // 1. Save local
+  // 1. Always save locally first (instant 0ms response)
   const current = getStoredUsers();
   const existingIdx = current.findIndex(u => u.uid === uid || (user.username && u.username === user.username));
   if (existingIdx >= 0) {
@@ -775,6 +884,16 @@ export async function addUserAccount(user: UserProfile): Promise<UserProfile> {
   }
   saveStoredUsers(current);
 
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('pakkus-local-users-updated'));
+  }
+
+  // If Offline Mode: store in localStorage and flag for automatic sync when switched back Online
+  if (!getOnlineMode()) {
+    markDataModifiedLocally();
+    return completeUser;
+  }
+
   // 2. Save to backend API
   try {
     await apiSaveUser(completeUser);
@@ -782,11 +901,11 @@ export async function addUserAccount(user: UserProfile): Promise<UserProfile> {
     console.warn('Backend API save user notice:', apiErr);
   }
 
-  // 3. Save to Firestore in real-time (awaited so account is immediately available across devices)
+  // 3. Save to Firestore in real-time (awaited so account is immediately synced across devices)
   if (!isFirestoreQuotaExceeded) {
     try {
       const cleaned = cleanForFirestore(completeUser);
-      await withFirestoreTimeout(setDoc(doc(db, 'users', uid), cleaned, { merge: true }), 4000);
+      await withFirestoreTimeout(setDoc(doc(db, 'users', uid), cleaned, { merge: true }), 4500);
     } catch (err) {
       if (isQuotaError(err)) markQuotaExceeded(err);
       console.warn('Notice saving user to Firestore (saved in backend/local):', err);
@@ -802,7 +921,7 @@ export async function updateUserAccount(user: UserProfile): Promise<UserProfile>
     updatedAt: new Date().toISOString(),
   };
 
-  // 1. Save local
+  // 1. Always save locally first
   const current = getStoredUsers();
   const existingIdx = current.findIndex(u => u.uid === user.uid || (user.username && u.username === user.username));
   if (existingIdx >= 0) {
@@ -812,22 +931,31 @@ export async function updateUserAccount(user: UserProfile): Promise<UserProfile>
   }
   saveStoredUsers(current);
 
-  // 2. Save to backend API
-  try {
-    await apiSaveUser(completeUser);
-  } catch (apiErr) {
-    console.warn('Backend API update user notice:', apiErr);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('pakkus-local-users-updated'));
   }
 
-  // 3. Save to Firestore (awaited so credential updates take effect immediately)
-  if (!isFirestoreQuotaExceeded) {
+  const isOnline = getOnlineMode();
+
+  // 2. Save to backend API & Firestore only when Online
+  if (isOnline) {
     try {
-      const cleaned = cleanForFirestore(completeUser);
-      await withFirestoreTimeout(setDoc(doc(db, 'users', user.uid), cleaned, { merge: true }), 4000);
-    } catch (err) {
-      if (isQuotaError(err)) markQuotaExceeded(err);
-      console.warn('Notice updating user in Firestore (saved in backend/local):', err);
+      await apiSaveUser(completeUser);
+    } catch (apiErr) {
+      console.warn('Backend API update user notice:', apiErr);
     }
+
+    if (!isFirestoreQuotaExceeded) {
+      try {
+        const cleaned = cleanForFirestore(completeUser);
+        await withFirestoreTimeout(setDoc(doc(db, 'users', user.uid), cleaned, { merge: true }), 4500);
+      } catch (err) {
+        if (isQuotaError(err)) markQuotaExceeded(err);
+        console.warn('Notice updating user in Firestore (saved in backend/local):', err);
+      }
+    }
+  } else {
+    markDataModifiedLocally();
   }
 
   // 4. Update related supervisions if teacher information changed
@@ -851,13 +979,15 @@ export async function updateUserAccount(user: UserProfile): Promise<UserProfile>
     });
     if (supModified) {
       saveLocalSupervisions(updatedSupervisions);
-      for (const s of updatedSupervisions) {
-        if (s.teacherId === user.uid || (user.username && s.teacherId === user.username)) {
-          apiSaveSupervision(s).catch(() => {});
-          if (!isFirestoreQuotaExceeded) {
-            withFirestoreTimeout(setDoc(doc(db, 'supervisions', s.id), cleanForFirestore(s), { merge: true }), 500).catch((err) => {
-              if (isQuotaError(err)) markQuotaExceeded(err);
-            });
+      if (isOnline) {
+        for (const s of updatedSupervisions) {
+          if (s.teacherId === user.uid || (user.username && s.teacherId === user.username)) {
+            apiSaveSupervision(s).catch(() => {});
+            if (!isFirestoreQuotaExceeded) {
+              await withFirestoreTimeout(setDoc(doc(db, 'supervisions', s.id), cleanForFirestore(s), { merge: true }), 3500).catch((err) => {
+                if (isQuotaError(err)) markQuotaExceeded(err);
+              });
+            }
           }
         }
       }
@@ -1065,61 +1195,97 @@ export async function purgeTeacherDataCompletely(target: {
     console.warn('Notice cleaning local users:', err);
   }
 
-  // 5. Backend Server API Purge
-  try {
-    await apiPurgeTeacher({
-      teacherName: target.teacherName || '',
-      teacherId: teacherId,
-      supervisionId: target.id,
-    });
-  } catch (err) {
-    console.warn('Notice calling backend purge:', err);
-  }
+  const isOnline = getOnlineMode();
 
-  // 6. Delete clean from Firebase Firestore
-  if (!isFirestoreQuotaExceeded) {
+  if (isOnline) {
+    // 5. Backend Server API Purge
     try {
-      if (targetId) {
-        withFirestoreTimeout(deleteDoc(doc(db, 'supervisions', targetId)), 600).catch((err) => {
-          if (isQuotaError(err)) markQuotaExceeded(err);
-        });
-      }
-
-      if (teacherId) {
-        withFirestoreTimeout(deleteDoc(doc(db, 'users', teacherId)), 600).catch((err) => {
-          if (isQuotaError(err)) markQuotaExceeded(err);
-        });
-      }
-
-      if (effectiveCleanName && target.teacherName) {
-        withFirestoreTimeout(
-          getDocs(query(collection(db, 'supervisions'), where('teacherName', '==', target.teacherName))),
-          800
-        ).then(snap => {
-          snap.forEach(d => {
-            deleteDoc(doc(db, 'supervisions', d.id)).catch(() => {});
-          });
-        }).catch(() => {});
-
-        withFirestoreTimeout(
-          getDocs(query(collection(db, 'users'), where('displayName', '==', target.teacherName))),
-          800
-        ).then(snap => {
-          snap.forEach(d => {
-            deleteDoc(doc(db, 'users', d.id)).catch(() => {});
-          });
-        }).catch(() => {});
-      }
+      await apiPurgeTeacher({
+        teacherName: target.teacherName || '',
+        teacherId: teacherId,
+        supervisionId: target.id,
+      });
     } catch (err) {
-      if (isQuotaError(err)) markQuotaExceeded(err);
-      console.warn('Notice deleting teacher data from Firestore:', err);
+      console.warn('Notice calling backend purge:', err);
     }
+
+    // 6. Delete clean from Firebase Firestore in real-time
+    if (!isFirestoreQuotaExceeded) {
+      try {
+        const deletePromises: Promise<any>[] = [];
+        if (targetId) {
+          deletePromises.push(
+            withFirestoreTimeout(deleteDoc(doc(db, 'supervisions', targetId)), 4000).catch((err) => {
+              if (isQuotaError(err)) markQuotaExceeded(err);
+            })
+          );
+        }
+
+        if (teacherId) {
+          deletePromises.push(
+            withFirestoreTimeout(deleteDoc(doc(db, 'users', teacherId)), 4000).catch((err) => {
+              if (isQuotaError(err)) markQuotaExceeded(err);
+            })
+          );
+        }
+
+        if (effectiveCleanName && target.teacherName) {
+          deletePromises.push(
+            withFirestoreTimeout(
+              getDocs(query(collection(db, 'supervisions'), where('teacherName', '==', target.teacherName))),
+              3500,
+              null
+            ).then(async (snap) => {
+              if (!snap) return;
+              await Promise.all(snap.docs.map(d => deleteDoc(doc(db, 'supervisions', d.id)).catch(() => {})));
+            }).catch(() => {})
+          );
+
+          deletePromises.push(
+            withFirestoreTimeout(
+              getDocs(query(collection(db, 'users'), where('displayName', '==', target.teacherName))),
+              3500,
+              null
+            ).then(async (snap) => {
+              if (!snap) return;
+              await Promise.all(snap.docs.map(d => deleteDoc(doc(db, 'users', d.id)).catch(() => {})));
+            }).catch(() => {})
+          );
+        }
+
+        await Promise.all(deletePromises);
+
+        const now = new Date().toISOString();
+        const updatedLocalList = loadLocalSupervisions() || [];
+        const localUser = loadLocalUser();
+        withFirestoreTimeout(
+          setDoc(doc(db, 'system', 'sync_state'), {
+            lastSyncedAt: now,
+            lastSyncedBy: localUser?.email || auth.currentUser?.email || 'admin',
+            lastSyncedByName: localUser?.displayName || auth.currentUser?.displayName || 'Pengawas Pembina',
+            supervisionsCount: updatedLocalList.length,
+            supervisionIds: updatedLocalList.map(s => s.id),
+            timestamp: Date.now(),
+          }, { merge: true }),
+          3500
+        ).catch(() => {});
+
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(LAST_SYNC_TIME_KEY, now);
+          window.dispatchEvent(new CustomEvent('pakkus-sync-completed', { detail: { syncTime: now, count: updatedLocalList.length } }));
+        }
+      } catch (err) {
+        if (isQuotaError(err)) markQuotaExceeded(err);
+        console.warn('Notice deleting teacher data from Firestore:', err);
+      }
+    }
+  } else {
+    markDataModifiedLocally();
   }
 
-  markDataModifiedLocally();
   if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('pakkus-local-users-updated'));
     window.dispatchEvent(new CustomEvent('pakkus-local-supervisions-updated'));
-    window.dispatchEvent(new CustomEvent('pakkus-local-data-modified'));
   }
 }
 
@@ -1148,16 +1314,40 @@ export async function saveUserProfile(profile: UserProfile): Promise<void> {
 }
 
 export async function updateUserApprovalStatus(uid: string, status: 'approved' | 'rejected' | 'pending'): Promise<void> {
+  const now = new Date().toISOString();
   const current = getStoredUsers();
   const idx = current.findIndex(u => u.uid === uid);
+  let updatedUser: UserProfile | null = null;
   if (idx >= 0) {
-    current[idx] = { ...current[idx], approvalStatus: status, updatedAt: new Date().toISOString() };
+    updatedUser = { ...current[idx], approvalStatus: status, updatedAt: now };
+    current[idx] = updatedUser;
     saveStoredUsers(current);
   }
-  try {
-    await setDoc(doc(db, 'users', uid), { approvalStatus: status, updatedAt: new Date().toISOString() }, { merge: true });
-  } catch (err) {
-    console.warn('Could not update user approval in Firestore, updated state locally', err);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('pakkus-local-users-updated'));
+  }
+
+  if (!getOnlineMode()) {
+    markDataModifiedLocally();
+    return;
+  }
+
+  if (updatedUser) {
+    try {
+      await apiSaveUser(updatedUser);
+    } catch {}
+  }
+
+  if (!isFirestoreQuotaExceeded) {
+    try {
+      await withFirestoreTimeout(
+        setDoc(doc(db, 'users', uid), { approvalStatus: status, updatedAt: now }, { merge: true }),
+        4000
+      );
+    } catch (err) {
+      if (isQuotaError(err)) markQuotaExceeded(err);
+      console.warn('Could not update user approval in Firestore, updated state locally', err);
+    }
   }
 }
 
@@ -1167,26 +1357,71 @@ export async function fetchUsersBySchool(schoolId?: string): Promise<UserProfile
   return all.filter(u => u.schoolId === schoolId);
 }
 
-// Subscribe to real-time users updates
+// Subscribe to real-time users updates (Firestore onSnapshot + Local fallback)
 export function subscribeToUsers(callback: (users: UserProfile[]) => void): Unsubscribe {
+  const getFilteredLocalUsers = () => {
+    const deletedUids = new Set(getDeletedUserIds());
+    const deletedNames = new Set(getDeletedUserNames().map(n => n.toLowerCase().trim()));
+    return getStoredUsers().filter(u => {
+      if (deletedUids.has(u.uid)) return false;
+      if (u.displayName && deletedNames.has(u.displayName.toLowerCase().trim())) return false;
+      return true;
+    });
+  };
+
+  callback(getFilteredLocalUsers());
+
+  let unsubscribeFirestore: Unsubscribe = () => {};
   try {
-    return onSnapshot(collection(db, 'users'), (snap) => {
-      const firestoreUsers = snap.docs.map(d => ({ ...d.data(), uid: d.id } as UserProfile));
+    unsubscribeFirestore = onSnapshot(collection(db, 'users'), (snap) => {
+      if (!getOnlineMode() || isSyncingOfflineQueue) return;
+      const deletedUids = new Set(getDeletedUserIds());
+      const deletedNames = new Set(getDeletedUserNames().map(n => n.toLowerCase().trim()));
+      const firestoreUsers = snap.docs
+        .map(d => ({ ...d.data(), uid: d.id } as UserProfile))
+        .filter(u => {
+          if (deletedUids.has(u.uid)) return false;
+          if (u.displayName && deletedNames.has(u.displayName.toLowerCase().trim())) return false;
+          return true;
+        });
+
       const map = new Map<string, UserProfile>();
-      DEFAULT_USERS.forEach(u => map.set(u.uid, u));
+      DEFAULT_USERS.forEach(u => {
+        if (!deletedUids.has(u.uid)) map.set(u.uid, u);
+      });
+      getFilteredLocalUsers().forEach(u => map.set(u.uid, u));
       firestoreUsers.forEach(u => map.set(u.uid, u));
       const combined = Array.from(map.values());
       saveStoredUsers(combined);
       callback(combined);
     }, (err) => {
       console.warn('Real-time users subscription warning:', err);
-      callback(getStoredUsers());
+      callback(getFilteredLocalUsers());
     });
   } catch (err) {
     console.warn('Failed to attach real-time users listener:', err);
-    callback(getStoredUsers());
-    return () => {};
+    callback(getFilteredLocalUsers());
   }
+
+  const handleLocalChange = () => {
+    callback(getFilteredLocalUsers());
+  };
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener('pakkus-local-users-updated', handleLocalChange);
+    window.addEventListener('pakkus-sync-completed', handleLocalChange);
+    window.addEventListener('pakkus-online-mode-changed', handleLocalChange);
+    return () => {
+      unsubscribeFirestore();
+      window.removeEventListener('pakkus-local-users-updated', handleLocalChange);
+      window.removeEventListener('pakkus-sync-completed', handleLocalChange);
+      window.removeEventListener('pakkus-online-mode-changed', handleLocalChange);
+    };
+  }
+
+  return () => {
+    unsubscribeFirestore();
+  };
 }
 
 // Real-time synchronization listener for Schools (Firestore onSnapshot + Local fallback)
@@ -1197,6 +1432,7 @@ export function subscribeToSchools(callback: (schools: School[]) => void): Unsub
   let unsubscribeFirestore: Unsubscribe = () => {};
   try {
     unsubscribeFirestore = onSnapshot(collection(db, 'schools'), (snap) => {
+      if (!getOnlineMode() || isSyncingOfflineQueue) return;
       if (!snap.empty) {
         const firestoreSchools = snap.docs.map(d => normalizeSchoolData({ id: d.id, ...d.data() } as School));
         const merged = mergeSchoolsByTimestamp(firestoreSchools, loadLocalSchools() || DEFAULT_SCHOOLS);
@@ -1218,10 +1454,12 @@ export function subscribeToSchools(callback: (schools: School[]) => void): Unsub
   if (typeof window !== 'undefined') {
     window.addEventListener('pakkus-local-schools-updated', handleLocalChange);
     window.addEventListener('pakkus-sync-completed', handleLocalChange);
+    window.addEventListener('pakkus-online-mode-changed', handleLocalChange);
     return () => {
       unsubscribeFirestore();
       window.removeEventListener('pakkus-local-schools-updated', handleLocalChange);
       window.removeEventListener('pakkus-sync-completed', handleLocalChange);
+      window.removeEventListener('pakkus-online-mode-changed', handleLocalChange);
     };
   }
 
@@ -1274,6 +1512,10 @@ export async function fetchAllSchools(): Promise<School[]> {
   const local = loadLocalSchools();
   let currentList = local && local.length > 0 ? local : DEFAULT_SCHOOLS;
 
+  if (!getOnlineMode()) {
+    return currentList;
+  }
+
   // 1. Fetch from persistent backend API first
   try {
     const backendSchools = await apiFetchSchools();
@@ -1285,12 +1527,12 @@ export async function fetchAllSchools(): Promise<School[]> {
     console.warn('Backend API schools notice:', backendErr);
   }
 
-  // 2. Non-blocking Firestore sync (only if newer)
+  // 2. Fetch latest schools from Firebase Firestore
   try {
-    const snap = await withFirestoreTimeout(getDocs(collection(db, 'schools')), 600, null);
+    const snap = await withFirestoreTimeout(getDocs(collection(db, 'schools')), 3500, null);
     if (snap && !snap.empty) {
       const firestoreSchools = snap.docs.map(doc => normalizeSchoolData({ id: doc.id, ...doc.data() } as School));
-      currentList = mergeSchoolsByTimestamp(currentList, firestoreSchools);
+      currentList = mergeSchoolsByTimestamp(firestoreSchools, currentList);
       saveLocalSchools(currentList);
     }
   } catch (err) {
@@ -1313,6 +1555,15 @@ export async function addSchool(data: Omit<School, 'id'>): Promise<School> {
   const current = loadLocalSchools() || DEFAULT_SCHOOLS;
   saveLocalSchools([...current.filter(s => s.id !== school.id), school]);
 
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('pakkus-local-schools-updated'));
+  }
+
+  if (!getOnlineMode()) {
+    markDataModifiedLocally();
+    return school;
+  }
+
   // Persist to backend API (disk)
   try {
     await apiSaveSchool(school);
@@ -1320,13 +1571,15 @@ export async function addSchool(data: Omit<School, 'id'>): Promise<School> {
     console.warn('Backend API save school notice:', err);
   }
 
-  // Fire-and-forget to Firestore without blocking UI (if quota available)
+  // Persist real-time to Firebase Firestore
   if (!isFirestoreQuotaExceeded) {
     try {
       const cleaned = cleanForFirestore(school);
-      withFirestoreTimeout(setDoc(doc(db, 'schools', targetId), cleaned), 600).catch((err) => {
-        if (isQuotaError(err)) markQuotaExceeded(err);
-      });
+      await withFirestoreTimeout(setDoc(doc(db, 'schools', targetId), cleaned, { merge: true }), 4000);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(LAST_SYNC_TIME_KEY, now);
+        window.dispatchEvent(new CustomEvent('pakkus-sync-completed', { detail: { syncTime: now } }));
+      }
     } catch (err) {
       if (isQuotaError(err)) markQuotaExceeded(err);
       console.warn('Notice saving school to Firestore (saved locally & backend):', err);
@@ -1394,6 +1647,15 @@ export async function updateSchool(id: string, data: Partial<School>): Promise<v
     }
   }
 
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('pakkus-local-schools-updated'));
+  }
+
+  if (!getOnlineMode()) {
+    markDataModifiedLocally();
+    return;
+  }
+
   // Persist to backend API (takes ~5ms, guaranteed persistence on disk)
   try {
     await apiUpdateSchool(id, updatedSchool);
@@ -1401,13 +1663,15 @@ export async function updateSchool(id: string, data: Partial<School>): Promise<v
     console.warn('Backend API update school notice:', apiErr);
   }
 
-  // Non-blocking Firestore push (only if quota available)
+  // Persist real-time to Firebase Firestore
   if (!isFirestoreQuotaExceeded) {
     try {
       const cleaned = cleanForFirestore(updatedSchool);
-      withFirestoreTimeout(setDoc(doc(db, 'schools', id), cleaned, { merge: true }), 600).catch((err) => {
-        if (isQuotaError(err)) markQuotaExceeded(err);
-      });
+      await withFirestoreTimeout(setDoc(doc(db, 'schools', id), cleaned, { merge: true }), 4000);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(LAST_SYNC_TIME_KEY, now);
+        window.dispatchEvent(new CustomEvent('pakkus-sync-completed', { detail: { syncTime: now } }));
+      }
     } catch (err) {
       if (isQuotaError(err)) markQuotaExceeded(err);
       console.warn('Notice updating school in Firestore (saved locally & backend):', err);
@@ -1419,15 +1683,27 @@ export async function deleteSchool(id: string): Promise<void> {
   const current = (loadLocalSchools() || DEFAULT_SCHOOLS).filter(s => s.id !== id);
   saveLocalSchools(current);
 
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('pakkus-local-schools-updated'));
+  }
+
+  if (!getOnlineMode()) {
+    markDataModifiedLocally();
+    return;
+  }
+
   try {
     await apiDeleteSchool(id);
   } catch {}
 
   if (!isFirestoreQuotaExceeded) {
     try {
-      withFirestoreTimeout(deleteDoc(doc(db, 'schools', id)), 600).catch((err) => {
-        if (isQuotaError(err)) markQuotaExceeded(err);
-      });
+      await withFirestoreTimeout(deleteDoc(doc(db, 'schools', id)), 4000);
+      if (typeof window !== 'undefined') {
+        const now = new Date().toISOString();
+        localStorage.setItem(LAST_SYNC_TIME_KEY, now);
+        window.dispatchEvent(new CustomEvent('pakkus-sync-completed', { detail: { syncTime: now } }));
+      }
     } catch (err) {
       if (isQuotaError(err)) markQuotaExceeded(err);
       console.warn('Notice deleting school from Firestore:', err);
@@ -1521,6 +1797,14 @@ export async function fetchSupervisions(userProfile?: UserProfile | null): Promi
     }
     return list;
   };
+
+  // If OFFLINE mode is active, serve strictly from localStorage without hitting cloud/network
+  if (!getOnlineMode()) {
+    const localCached = loadLocalSupervisions();
+    let results: Supervision[] = localCached && localCached.length > 0 ? localCached : SAMPLE_SUPERVISIONS;
+    results = results.map(s => normalizeSupervisionData(s)).filter(s => !isSupDeleted(s));
+    return filterForUser(results);
+  }
 
   // 1. AUTHORITATIVE CLOUD FIRST: Fetch from Firestore (latest synced state across devices)
   try {
@@ -1644,6 +1928,7 @@ export function subscribeToSupervisions(
   try {
     const supervisionsCol = collection(db, 'supervisions');
     unsubscribeFirestore = onSnapshot(supervisionsCol, (snapshot) => {
+      if (!getOnlineMode() || isSyncingOfflineQueue) return;
       if (!snapshot.empty) {
         const deletedIds = new Set(getDeletedSupervisionIds());
         const deletedNames = new Set(getDeletedUserNames().map(n => n.toLowerCase().trim()));
@@ -1683,10 +1968,12 @@ export function subscribeToSupervisions(
   if (typeof window !== 'undefined') {
     window.addEventListener('pakkus-local-supervisions-updated', handleLocalChange);
     window.addEventListener('pakkus-sync-completed', handleLocalChange);
+    window.addEventListener('pakkus-online-mode-changed', handleLocalChange);
     return () => {
       unsubscribeFirestore();
       window.removeEventListener('pakkus-local-supervisions-updated', handleLocalChange);
       window.removeEventListener('pakkus-sync-completed', handleLocalChange);
+      window.removeEventListener('pakkus-online-mode-changed', handleLocalChange);
     };
   }
 
@@ -1695,8 +1982,9 @@ export function subscribeToSupervisions(
   };
 }
 
-// Save Supervision with immediate local storage + backend API disk persistence.
-// Data penambahan baru tersimpan realtime ke Firebase Firestore & disiarkan langsung ke semua perangkat
+// Save Supervision:
+// - Ketika mode ONLINE aktif: otomatis tersimpan realtime ke Firebase Firestore & backend database.
+// - Ketika mode OFFLINE aktif: tersimpan di localStorage dan otomatis disinkronkan saat beralih ke ONLINE.
 export async function saveSupervision(
   supervision: Partial<Supervision> & { id?: string },
   forceSyncToFirestore = false
@@ -1709,11 +1997,6 @@ export async function saveSupervision(
   if (supervision.teacherId) removeDeletedUserId(supervision.teacherId);
   if (supervision.teacherName) removeDeletedUserName(supervision.teacherName);
 
-  // Periksa apakah ini data penambahan baru
-  const existingLocal = loadLocalSupervisions() || [];
-  const isExisting = existingLocal.some(s => s.id === targetId);
-  const isNewAddition = !isExisting || Boolean((supervision as any).isNewSupervision);
-
   const fullData: Supervision = {
     ...supervision,
     id: targetId,
@@ -1724,27 +2007,38 @@ export async function saveSupervision(
 
   // 1. SELALU simpan langsung ke local storage perangkat (0ms render instan)
   saveSingleLocalSupervision(fullData);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('pakkus-local-supervisions-updated'));
+  }
 
-  // 2. SELALU simpan ke persistent disk backend API (< 10ms)
+  const isOnline = getOnlineMode();
+  const shouldSyncCloud = isOnline || forceSyncToFirestore;
+
+  // Jika mode OFFLINE aktif, simpan di localStorage saja dan tandai untuk sinkronisasi otomatis saat kembali ONLINE
+  if (!shouldSyncCloud) {
+    markDataModifiedLocally();
+    return targetId;
+  }
+
+  // 2. Simpan ke persistent disk backend API (< 10ms)
   try {
     await apiSaveSupervision(fullData);
   } catch (apiErr) {
     console.warn('Backend API save supervision notice:', apiErr);
   }
 
-  // 3. Data penambahan atau jika forceSyncToFirestore: LANGSUNG simpan realtime ke Firebase Firestore
-  const shouldSyncFirestore = forceSyncToFirestore || isNewAddition;
-
-  if (shouldSyncFirestore && !isFirestoreQuotaExceeded) {
+  // 3. Mode ONLINE aktif: LANGSUNG simpan realtime ke Firebase Firestore
+  if (!isFirestoreQuotaExceeded) {
     try {
       const docRef = doc(db, 'supervisions', targetId);
       const cleaned = cleanForFirestore(fullData);
-      await withFirestoreTimeout(setDoc(docRef, cleaned, { merge: true }), 4000);
+      await withFirestoreTimeout(setDoc(docRef, cleaned, { merge: true }), 4500);
 
       // Perbarui metadata sync di Firestore agar perangkat lain (Device B, dll) menerima update realtime
       const updatedLocalList = loadLocalSupervisions() || [];
-      const userEmail = auth.currentUser?.email || 'admin';
-      const userName = auth.currentUser?.displayName || 'Kusnandar, M.Si';
+      const localUser = loadLocalUser();
+      const userEmail = localUser?.email || auth.currentUser?.email || 'admin';
+      const userName = localUser?.displayName || auth.currentUser?.displayName || 'Pengawas Pembina';
       withFirestoreTimeout(
         setDoc(doc(db, 'system', 'sync_state'), {
           lastSyncedAt: now,
@@ -1759,6 +2053,7 @@ export async function saveSupervision(
 
       if (typeof window !== 'undefined') {
         localStorage.setItem(LAST_SYNC_TIME_KEY, now);
+        localStorage.removeItem(HAS_UNSYNCED_KEY);
         window.dispatchEvent(new CustomEvent('pakkus-sync-completed', { detail: { syncTime: now, count: updatedLocalList.length } }));
       }
       return targetId;
@@ -1768,10 +2063,10 @@ export async function saveSupervision(
       } else {
         console.warn('Firestore write notice (saved in local and backend storage):', err);
       }
+      markDataModifiedLocally();
       return targetId;
     }
   } else {
-    // Tandai jika ada modifikasi pengisian instrumen lokal yang siap disinkronkan saat klik Cloud Sinkron
     markDataModifiedLocally();
   }
 
@@ -1799,7 +2094,13 @@ export async function syncAllPendingLocalChangesToFirestore(): Promise<{
   supervisionsCount: number;
   lastSyncTime: string;
 }> {
-  // When user clicks Cloud Sinkron, reset temporary quota flag to attempt live Firestore write
+  // When user clicks Cloud Sinkron or switches Online, ensure Online mode & Firestore network are active
+  if (!getOnlineMode()) {
+    setOnlineModeState(true, false);
+    try {
+      await enableNetwork(db);
+    } catch {}
+  }
   isFirestoreQuotaExceeded = false;
   if (typeof window !== 'undefined') {
     localStorage.removeItem('firestore_quota_exceeded_date');
@@ -1881,11 +2182,14 @@ export async function syncAllPendingLocalChangesToFirestore(): Promise<{
     }
 
     // Record cloud sync state so all devices know the exact author, count, and timestamp of the latest sync
+    const localUser = loadLocalUser();
+    const syncedByEmail = localUser?.email || auth.currentUser?.email || 'admin';
+    const syncedByName = localUser?.displayName || auth.currentUser?.displayName || 'Pengawas Pembina';
     const syncMetaDoc = doc(db, 'system', 'sync_state');
     batch.set(syncMetaDoc, {
       lastSyncedAt: new Date().toISOString(),
-      lastSyncedBy: auth.currentUser?.email || 'admin',
-      lastSyncedByName: auth.currentUser?.displayName || 'Kusnandar, M.Si',
+      lastSyncedBy: syncedByEmail,
+      lastSyncedByName: syncedByName,
       supervisionsCount: validSupervisions.length,
       supervisionIds: validSupervisions.map(s => s.id),
       schoolsCount: validSchools.length,
@@ -1893,9 +2197,12 @@ export async function syncAllPendingLocalChangesToFirestore(): Promise<{
       timestamp: Date.now(),
     }, { merge: true });
 
-    // Clean up any deleted records in Firestore
+    // Clean up any deleted records in Firestore (supervisions & users)
     for (const delId of deletedIds) {
       batch.delete(doc(db, 'supervisions', delId));
+    }
+    for (const delUid of deletedUids) {
+      batch.delete(doc(db, 'users', delUid));
     }
 
     // Commit all documents in one real-time batch
@@ -1936,11 +2243,22 @@ export async function syncAllPendingLocalChangesToFirestore(): Promise<{
         console.warn('Sync supervision fallback notice:', e);
       }
     }
+    for (const delId of deletedIds) {
+      try {
+        await withFirestoreTimeout(deleteDoc(doc(db, 'supervisions', delId)), 2500);
+      } catch {}
+    }
+    for (const delUid of deletedUids) {
+      try {
+        await withFirestoreTimeout(deleteDoc(doc(db, 'users', delUid)), 2500);
+      } catch {}
+    }
     try {
+      const localUser = loadLocalUser();
       await withFirestoreTimeout(setDoc(doc(db, 'system', 'sync_state'), {
         lastSyncedAt: new Date().toISOString(),
-        lastSyncedBy: auth.currentUser?.email || 'admin',
-        lastSyncedByName: auth.currentUser?.displayName || 'Kusnandar, M.Si',
+        lastSyncedBy: localUser?.email || auth.currentUser?.email || 'admin',
+        lastSyncedByName: localUser?.displayName || auth.currentUser?.displayName || 'Pengawas Pembina',
         supervisionsCount: validSupervisions.length,
         supervisionIds: validSupervisions.map(s => s.id),
         schoolsCount: validSchools.length,
@@ -1955,6 +2273,8 @@ export async function syncAllPendingLocalChangesToFirestore(): Promise<{
     localStorage.setItem(LAST_SYNC_TIME_KEY, syncTime);
     localStorage.removeItem(HAS_UNSYNCED_KEY);
     window.dispatchEvent(new CustomEvent('pakkus-sync-completed', { detail: { syncTime, count: supCount } }));
+    window.dispatchEvent(new CustomEvent('pakkus-local-users-updated'));
+    window.dispatchEvent(new CustomEvent('pakkus-local-schools-updated'));
     window.dispatchEvent(new CustomEvent('pakkus-local-supervisions-updated'));
   }
 
@@ -1991,7 +2311,7 @@ export function subscribeToSyncState(callback: (state: CloudSyncState | null) =>
 
 // Master boot initialization to ensure Firestore collections exist with full data
 export async function syncAllInitialDataToFirestore() {
-  if (isFirestoreQuotaExceeded) {
+  if (!getOnlineMode() || isFirestoreQuotaExceeded) {
     return;
   }
 

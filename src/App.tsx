@@ -44,7 +44,9 @@ import {
   getQuotaConsoleUrl,
   getHasPendingSync,
   isQuotaError,
-  isKusnandarAccount
+  isKusnandarAccount,
+  getOnlineMode,
+  testConnection
 } from './services/firebase';
 import { 
   loadLocalSupervisions, 
@@ -132,21 +134,52 @@ export default function App() {
     const onModified = () => setHasPendingSync(true);
     const onCompleted = () => setHasPendingSync(false);
 
+    const handleOnlineModeChanged = async (event: Event) => {
+      const detail = (event as CustomEvent)?.detail;
+      if (detail?.online) {
+        try {
+          const [refreshedSchools, refreshedSups] = await Promise.all([
+            fetchAllSchools(),
+            fetchSupervisions(currentUser),
+          ]);
+          if (refreshedSchools && refreshedSchools.length > 0) {
+            setSchools(refreshedSchools);
+            saveLocalSchools(refreshedSchools);
+          }
+          if (refreshedSups && refreshedSups.length > 0) {
+            const valid = filterValidSupervisions(refreshedSups);
+            setSupervisions(valid);
+            saveLocalSupervisions(valid);
+          }
+        } catch (err) {
+          console.warn('Notice refreshing data after switching online:', err);
+        }
+        setHasPendingSync(getHasPendingSync());
+      }
+    };
+
     window.addEventListener('firestore-quota-exceeded', handleQuota);
     window.addEventListener('pakkus-local-data-modified', onModified);
     window.addEventListener('pakkus-sync-completed', onCompleted);
+    window.addEventListener('pakkus-online-mode-changed', handleOnlineModeChanged);
 
     return () => {
       window.removeEventListener('firestore-quota-exceeded', handleQuota);
       window.removeEventListener('pakkus-local-data-modified', onModified);
       window.removeEventListener('pakkus-sync-completed', onCompleted);
+      window.removeEventListener('pakkus-online-mode-changed', handleOnlineModeChanged);
     };
-  }, []);
+  }, [currentUser?.uid]);
 
-  // Initialize app data from local storage and backend server disk
+  // Initialize app data from Firebase Firestore (realtime when Online) or local storage (when Offline)
   useEffect(() => {
     const initApp = async () => {
-      // 1. Fetch schools from persistent backend API / local
+      if (getOnlineMode()) {
+        testConnection().catch(() => {});
+        syncAllInitialDataToFirestore().catch(() => {});
+      }
+
+      // 1. Fetch schools from persistent backend API / Firestore / local
       try {
         const loadedSchools = await fetchAllSchools();
         if (loadedSchools && loadedSchools.length > 0) {
@@ -157,7 +190,7 @@ export default function App() {
         console.warn('Notice loading schools on boot:', schErr);
       }
 
-      // 2. Fetch persistent supervisions from backend API / local
+      // 2. Fetch persistent supervisions from Firestore / backend API / local
       try {
         const loadedSupervisions = await fetchSupervisions(currentUser);
         if (loadedSupervisions && loadedSupervisions.length > 0) {
@@ -290,9 +323,11 @@ export default function App() {
       return next;
     });
     setSelectedSupervision(updated);
-    // Saved in local storage & backend disk (0 Firestore quota consumed during instrument filling)
-    await saveSupervision(updated, false);
-    setHasPendingSync(true);
+    const isOnline = getOnlineMode();
+    // Jika mode Online aktif, langsung tersimpan realtime ke Firebase Firestore & backend database.
+    // Jika mode Offline aktif, tersimpan di localStorage dan otomatis disinkronkan saat pindah ke Online.
+    await saveSupervision(updated, isOnline);
+    setHasPendingSync(!isOnline);
   };
 
   const handleCreateSupervision = async (newSup: Supervision) => {
@@ -303,9 +338,10 @@ export default function App() {
     });
     setSelectedSambungId(newSup.id);
     setActiveTab('sambung');
-    // Data penambahan langsung tersimpan realtime ke Firebase Firestore
-    await saveSupervision(newSup, true);
-    setHasPendingSync(false);
+    const isOnline = getOnlineMode();
+    // Jika mode Online aktif, data penambahan langsung tersimpan realtime ke Firebase Firestore
+    await saveSupervision(newSup, isOnline);
+    setHasPendingSync(!isOnline);
   };
 
   const handleRestoreData = async (restoredSupervisions: Supervision[], restoredSchools: School[]) => {

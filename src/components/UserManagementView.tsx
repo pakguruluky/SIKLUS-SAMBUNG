@@ -19,9 +19,24 @@ import {
   Eye,
   EyeOff,
   Key,
-  Check
+  Check,
+  Wifi,
+  WifiOff,
+  Cloud,
+  HardDrive
 } from 'lucide-react';
-import { fetchAllUsers, addUserAccount, updateUserAccount, deleteUserAccount, saveSupervision } from '../services/firebase';
+import {
+  fetchAllUsers,
+  subscribeToUsers,
+  addUserAccount,
+  updateUserAccount,
+  deleteUserAccount,
+  saveSupervision,
+  getOnlineMode,
+  toggleOnlineMode,
+  getHasPendingSync,
+  getLastSyncTime
+} from '../services/firebase';
 import { createEmptySambungData } from '../data/sambungSeed';
 
 interface UserManagementViewProps {
@@ -45,6 +60,10 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isOnlineMode, setIsOnlineMode] = useState<boolean>(() => getOnlineMode());
+  const [isTogglingMode, setIsTogglingMode] = useState<boolean>(false);
+  const [hasPendingSync, setHasPendingSync] = useState<boolean>(() => getHasPendingSync());
+  const [lastSyncTime, setLastSyncTime] = useState<string | null>(() => getLastSyncTime());
 
   // Form states - Add User
   const [newUsername, setNewUsername] = useState('');
@@ -75,21 +94,105 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
   const [savingEditUser, setSavingEditUser] = useState(false);
   const [editFormError, setEditFormError] = useState('');
 
+  const showToast = (message: string, duration = 4500) => {
+    setToastMessage(message);
+    setTimeout(() => {
+      setToastMessage(prev => (prev === message ? null : prev));
+    }, duration);
+  };
+
   const loadUsers = async () => {
     setLoading(true);
     try {
       const all = await fetchAllUsers();
       setUsers(all);
     } catch (err) {
-      console.error(err);
+      console.warn('Notice loading users:', err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadUsers();
+    // Real-time subscription to Firebase Firestore users + local storage fallback
+    const unsubscribe = subscribeToUsers((liveUsers) => {
+      setUsers(liveUsers);
+      setLoading(false);
+    });
+
+    // Also run an initial authoritative fetch when online
+    if (getOnlineMode()) {
+      fetchAllUsers()
+        .then((all) => {
+          if (all && all.length > 0) setUsers(all);
+        })
+        .catch(() => {})
+        .finally(() => setLoading(false));
+    }
+
+    const handleModeChange = (e: Event) => {
+      const detail = (e as CustomEvent)?.detail;
+      if (typeof detail?.online === 'boolean') {
+        setIsOnlineMode(detail.online);
+      } else {
+        setIsOnlineMode(getOnlineMode());
+      }
+      setHasPendingSync(getHasPendingSync());
+    };
+    const handleModified = () => setHasPendingSync(true);
+    const handleSynced = () => {
+      setHasPendingSync(false);
+      setLastSyncTime(getLastSyncTime());
+    };
+
+    window.addEventListener('pakkus-online-mode-changed', handleModeChange);
+    window.addEventListener('pakkus-local-data-modified', handleModified);
+    window.addEventListener('pakkus-sync-completed', handleSynced);
+
+    return () => {
+      unsubscribe();
+      window.removeEventListener('pakkus-online-mode-changed', handleModeChange);
+      window.removeEventListener('pakkus-local-data-modified', handleModified);
+      window.removeEventListener('pakkus-sync-completed', handleSynced);
+    };
   }, []);
+
+  const handleToggleOnlineMode = async () => {
+    if (isTogglingMode) return;
+    const nextOnline = !isOnlineMode;
+    setIsTogglingMode(true);
+    try {
+      const result = await toggleOnlineMode(nextOnline);
+      setIsOnlineMode(result.online);
+      if (result.online) {
+        setHasPendingSync(!result.synced);
+        setLastSyncTime(result.lastSyncTime || getLastSyncTime());
+        await loadUsers();
+        if (onUserAdded) onUserAdded();
+        if (result.synced) {
+          showToast(
+            `Mode ONLINE aktif! Terhubung realtime ke Firebase & ${result.usersCount} akun, ${result.schoolsCount} sekolah, ${result.supervisionsCount} supervisi otomatis tersinkron.`,
+            5500
+          );
+        } else {
+          showToast(
+            'Mode ONLINE aktif. Terhubung ke database, namun sinkronisasi penuh akan dicoba kembali saat koneksi stabil.',
+            5000
+          );
+        }
+      } else {
+        showToast(
+          'Mode OFFLINE aktif. Perubahan data akan tersimpan di Local Storage dan otomatis tersinkron ke Firebase saat dipindahkan ke Online.',
+          5000
+        );
+      }
+    } catch (err: any) {
+      console.warn('Toggle online/offline notice:', err);
+      showToast('Gagal mengubah status koneksi. Silakan coba lagi.', 4000);
+    } finally {
+      setIsTogglingMode(false);
+    }
+  };
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -233,13 +336,16 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
             summaryNotes: '',
           },
         };
-        await saveSupervision(newSup, true);
+        await saveSupervision(newSup, isOnlineMode);
       }
 
       await loadUsers();
       setIsAddModalOpen(false);
-      setToastMessage(`Akun ${newUser.displayName} (${cleanUsername}) berhasil didaftarkan dan disimpan ke Firebase!`);
-      setTimeout(() => setToastMessage(null), 4000);
+      showToast(
+        isOnlineMode
+          ? `Akun ${newUser.displayName} (${cleanUsername}) berhasil didaftarkan dan tersimpan realtime ke Firebase!`
+          : `Akun ${newUser.displayName} (${cleanUsername}) disimpan di Local Storage (Mode Offline). Akan otomatis tersinkron saat beralih ke Online.`
+      );
 
       // Reset form
       setNewUsername('');
@@ -338,10 +444,13 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
 
       setIsEditModalOpen(false);
       setEditingUser(null);
-      setToastMessage(`Akun ${updatedUser.displayName} (@${cleanUsername}) berhasil diperbarui dan tersimpan di Firebase!`);
-      setTimeout(() => setToastMessage(null), 4000);
+      showToast(
+        isOnlineMode
+          ? `Akun ${updatedUser.displayName} (@${cleanUsername}) berhasil diperbarui dan tersimpan realtime di Firebase!`
+          : `Akun ${updatedUser.displayName} (@${cleanUsername}) diperbarui di Local Storage (Mode Offline).`
+      );
     } catch (err: any) {
-      console.error(err);
+      console.warn('Edit user error:', err);
       setEditFormError('Gagal memperbarui akun: ' + (err.message || ''));
     } finally {
       setSavingEditUser(false);
@@ -350,7 +459,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
 
   const handleDelete = async (user: UserProfile) => {
     if (user.username === 'pengawas' || user.uid === currentUser.uid) {
-      alert('Akun pengawas utama tidak dapat dihapus.');
+      showToast('Akun pengawas utama tidak dapat dihapus.', 3500);
       return;
     }
     if (!confirm(`Hapus akun ${user.displayName} (@${user.username})? Tindakan ini akan menghapus akun dan seluruh data supervisinya dari sistem.`)) {
@@ -362,11 +471,15 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
       if (onUserDeleted) {
         await onUserDeleted(user.uid);
       }
-      setToastMessage(`Akun ${user.displayName} dan data supervisinya berhasil dihapus.`);
-      setTimeout(() => setToastMessage(null), 3000);
+      showToast(
+        isOnlineMode
+          ? `Akun ${user.displayName} dan data supervisinya berhasil dihapus realtime dari Firebase.`
+          : `Akun ${user.displayName} dihapus di Local Storage (akan disinkronkan saat pindah ke Online).`,
+        3500
+      );
     } catch (err) {
-      console.error(err);
-      alert('Gagal menghapus akun.');
+      console.warn('Delete user error:', err);
+      showToast('Gagal menghapus akun.', 3500);
     }
   };
 
@@ -408,15 +521,68 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
               Manajemen Pengguna &amp; Akun Real
             </h1>
             <p className="text-xs sm:text-sm text-indigo-200 mt-1 max-w-xl">
-              Pengawas dapat menambahkan akun baru untuk Pengawas, Kepala Sekolah, dan Guru Mata Pelajaran. Semua akun tersimpan langsung di Firebase Firestore.
+              Pengawas dapat menambahkan akun baru untuk Pengawas, Kepala Sekolah, dan Guru Mata Pelajaran. Saat mode Online aktif, seluruh perubahan tersimpan otomatis secara realtime ke Firebase Database.
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Tombol Toggle Online / Offline */}
+            <button
+              type="button"
+              role="switch"
+              aria-checked={isOnlineMode}
+              disabled={isTogglingMode}
+              onClick={handleToggleOnlineMode}
+              className={`inline-flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all shadow-md ${
+                isOnlineMode
+                  ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-100 border-emerald-400/50 shadow-emerald-500/10'
+                  : 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-100 border-amber-400/50 shadow-amber-500/10'
+              } ${isTogglingMode ? 'opacity-70 cursor-wait' : 'cursor-pointer'}`}
+              title={
+                isOnlineMode
+                  ? 'Mode Online aktif (Realtime Firebase). Klik untuk beralih ke mode Offline (Local Storage).'
+                  : 'Mode Offline aktif (Local Storage). Klik untuk beralih ke Online & sinkronisasi otomatis ke Firebase.'
+              }
+            >
+              {isTogglingMode ? (
+                <RefreshCw className="w-4 h-4 animate-spin text-emerald-300 shrink-0" />
+              ) : isOnlineMode ? (
+                <Wifi className="w-4 h-4 text-emerald-300 shrink-0" />
+              ) : (
+                <WifiOff className="w-4 h-4 text-amber-300 shrink-0" />
+              )}
+
+              <div className="text-left leading-tight">
+                <div className="flex items-center gap-1.5">
+                  <span className="tracking-wide">
+                    {isTogglingMode ? 'Menyinkronkan...' : isOnlineMode ? 'ONLINE' : 'OFFLINE'}
+                  </span>
+                </div>
+                <span className="block text-[10px] font-medium opacity-85">
+                  {isOnlineMode ? 'Realtime Firebase' : 'Local Storage'}
+                </span>
+              </div>
+
+              {/* Visual Switch Pill */}
+              <span
+                className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors border ${
+                  isOnlineMode
+                    ? 'bg-emerald-400 border-emerald-300'
+                    : 'bg-slate-700 border-slate-500'
+                }`}
+              >
+                <span
+                  className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-xs transition-transform ${
+                    isOnlineMode ? 'translate-x-4.5' : 'translate-x-0.5'
+                  }`}
+                />
+              </span>
+            </button>
+
             <button
               onClick={loadUsers}
               className="p-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-semibold backdrop-blur-xs transition-colors border border-white/20"
-              title="Perbarui data dari Firebase"
+              title={isOnlineMode ? 'Perbarui data realtime dari Firebase' : 'Muat ulang data dari Local Storage'}
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
@@ -429,6 +595,60 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Status Koneksi Database (Online Realtime vs Offline Local Storage) */}
+      <div
+        className={`rounded-2xl px-4 py-3 border flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors ${
+          isOnlineMode
+            ? 'bg-emerald-50/80 border-emerald-200 text-emerald-900'
+            : 'bg-amber-50/90 border-amber-200 text-amber-950'
+        }`}
+      >
+        <div className="flex items-start sm:items-center gap-3">
+          <div
+            className={`p-2 rounded-xl shrink-0 ${
+              isOnlineMode ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+            }`}
+          >
+            {isOnlineMode ? <Cloud className="w-4 h-4" /> : <HardDrive className="w-4 h-4" />}
+          </div>
+          <div className="text-xs">
+            <div className="font-bold flex flex-wrap items-center gap-2">
+              <span>
+                {isOnlineMode
+                  ? 'Mode ONLINE Aktif — Terhubung Realtime ke Firebase Database'
+                  : 'Mode OFFLINE Aktif — Data Tersimpan di Local Storage'}
+              </span>
+              {!isOnlineMode && hasPendingSync && (
+                <span className="px-2 py-0.5 rounded-full bg-amber-200/80 text-amber-900 text-[10px] font-bold">
+                  Ada perubahan lokal siap sinkron
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] opacity-80 mt-0.5">
+              {isOnlineMode
+                ? `Setiap penambahan, perubahan, maupun penghapusan akun & data supervisi langsung tersimpan otomatis secara realtime ke Firebase.${
+                    lastSyncTime
+                      ? ` Sinkronisasi terakhir: ${new Date(lastSyncTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}.`
+                      : ''
+                  }`
+                : 'Semua data yang Anda tambah atau ubah tersimpan aman di Local Storage perangkat. Pindahkan tombol ke ONLINE untuk menghubungkan dan menyinkronkan otomatis ke Firebase Database.'}
+            </p>
+          </div>
+        </div>
+
+        {!isOnlineMode && (
+          <button
+            type="button"
+            disabled={isTogglingMode}
+            onClick={handleToggleOnlineMode}
+            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs shrink-0 transition-colors disabled:opacity-60"
+          >
+            <Wifi className="w-3.5 h-3.5" />
+            <span>{isTogglingMode ? 'Menyinkronkan...' : 'Pindahkan ke Online & Sinkronkan'}</span>
+          </button>
+        )}
       </div>
 
       {/* Filter & Search Bar */}

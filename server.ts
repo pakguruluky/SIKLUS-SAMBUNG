@@ -22,6 +22,7 @@ import {
   deleteTeacherCompletely,
   bulkSync,
   restoreBackupData,
+  getWorkspaceSnapshot,
 } from './src/server/db.ts';
 
 dotenv.config();
@@ -78,10 +79,21 @@ async function startServer() {
     }
   });
 
-  // Schools Endpoints
-  app.get('/api/schools', (_req, res) => {
+  // Per-Pengawas Isolated Workspace Endpoint
+  app.get('/api/workspaces/:supervisorId', (req, res) => {
     try {
-      const schools = getAllSchools();
+      const workspace = getWorkspaceSnapshot(req.params.supervisorId);
+      res.json({ success: true, workspace });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // Schools Endpoints
+  app.get('/api/schools', (req, res) => {
+    try {
+      const supervisorId = typeof req.query.supervisorId === 'string' ? req.query.supervisorId : undefined;
+      const schools = getAllSchools(supervisorId);
       res.json({ success: true, schools });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
@@ -135,9 +147,10 @@ async function startServer() {
   });
 
   // Supervisions Endpoints
-  app.get('/api/supervisions', (_req, res) => {
+  app.get('/api/supervisions', (req, res) => {
     try {
-      const supervisions = getAllSupervisions();
+      const supervisorId = typeof req.query.supervisorId === 'string' ? req.query.supervisorId : undefined;
+      const supervisions = getAllSupervisions(supervisorId);
       res.json({ success: true, supervisions });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
@@ -182,9 +195,10 @@ async function startServer() {
   });
 
   // Users Endpoints
-  app.get('/api/users', (_req, res) => {
+  app.get('/api/users', (req, res) => {
     try {
-      const users = getAllUsers();
+      const supervisorId = typeof req.query.supervisorId === 'string' ? req.query.supervisorId : undefined;
+      const users = getAllUsers(supervisorId);
       res.json({ success: true, users });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });

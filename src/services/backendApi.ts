@@ -24,9 +24,10 @@ export async function apiGetBootstrapData(): Promise<BootstrapResponse | null> {
 }
 
 // Schools API
-export async function apiFetchSchools(): Promise<School[] | null> {
+export async function apiFetchSchools(supervisorId?: string): Promise<School[] | null> {
   try {
-    const res = await fetch(`${API_BASE}/schools`, { signal: AbortSignal.timeout(3000) });
+    const qs = supervisorId ? `?supervisorId=${encodeURIComponent(supervisorId)}` : '';
+    const res = await fetch(`${API_BASE}/schools${qs}`, { signal: AbortSignal.timeout(3000) });
     if (!res.ok) return null;
     const json = await res.json();
     return json.schools || null;
@@ -97,9 +98,10 @@ export async function apiResetSchools(): Promise<School[] | null> {
 }
 
 // Supervisions API
-export async function apiFetchSupervisions(): Promise<Supervision[] | null> {
+export async function apiFetchSupervisions(supervisorId?: string): Promise<Supervision[] | null> {
   try {
-    const res = await fetch(`${API_BASE}/supervisions`, { signal: AbortSignal.timeout(3500) });
+    const qs = supervisorId ? `?supervisorId=${encodeURIComponent(supervisorId)}` : '';
+    const res = await fetch(`${API_BASE}/supervisions${qs}`, { signal: AbortSignal.timeout(3500) });
     if (!res.ok) return null;
     const json = await res.json();
     return json.supervisions || null;
@@ -139,9 +141,10 @@ export async function apiDeleteSupervision(id: string): Promise<boolean> {
 }
 
 // Users API
-export async function apiFetchUsers(): Promise<UserProfile[] | null> {
+export async function apiFetchUsers(supervisorId?: string): Promise<UserProfile[] | null> {
   try {
-    const res = await fetch(`${API_BASE}/users`, { signal: AbortSignal.timeout(3000) });
+    const qs = supervisorId ? `?supervisorId=${encodeURIComponent(supervisorId)}` : '';
+    const res = await fetch(`${API_BASE}/users${qs}`, { signal: AbortSignal.timeout(3000) });
     if (!res.ok) return null;
     const json = await res.json();
     return json.users || null;
@@ -183,6 +186,7 @@ export async function apiPurgeTeacher(payload: {
   teacherName: string;
   teacherId?: string;
   supervisionId?: string;
+  supervisorId?: string;
 }): Promise<boolean> {
   try {
     const res = await fetch(`${API_BASE}/teachers/purge`, {
@@ -200,6 +204,7 @@ export async function apiPurgeTeacher(payload: {
 
 // Bulk Sync & Restore API
 export async function apiSyncAll(payload: {
+  supervisorId?: string;
   schools?: School[];
   supervisions?: Supervision[];
   users?: UserProfile[];

@@ -219,11 +219,12 @@ export const SambungInstrumentView: React.FC<SambungInstrumentViewProps> = ({
     try {
       setIsDeleting(true);
 
-      // Purge completely from Firestore, LocalStorage, and Backend Database
+      // Purge completely from Firestore workspace, LocalStorage, and Backend Database
       await purgeTeacherDataCompletely({
         id: target.id,
         teacherId: target.teacherId,
         teacherName: target.teacherName,
+        supervisorId: target.supervisorWorkspaceId || target.supervisorId,
       });
 
       // Immediately switch selectedId to remaining teacher

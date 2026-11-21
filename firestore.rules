@@ -10,26 +10,54 @@ service cloud.firestore {
       return isSignedIn() && (
         request.auth.token.email == 'pakguruluky@gmail.com' ||
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'pengawas', 'super_admin'])
       );
     }
 
-    // Schools Collection: public read, write for setup and admin
+    function hasValidId(val) {
+      return val is string && val.size() > 0 && val.size() <= 128;
+    }
+
+    // Per-Pengawas isolated workspaces: setiap pengawas memiliki jalur penyimpanan sendiri di Firebase
+    match /pengawas_workspaces/{supervisorId} {
+      allow read, write: if hasValidId(supervisorId);
+
+      match /schools/{schoolId} {
+        allow read: if hasValidId(supervisorId);
+        allow write: if hasValidId(supervisorId) && hasValidId(schoolId);
+      }
+
+      match /supervisions/{supervisionId} {
+        allow read: if hasValidId(supervisorId);
+        allow write: if hasValidId(supervisorId) && hasValidId(supervisionId);
+      }
+
+      match /users/{userId} {
+        allow read: if hasValidId(supervisorId);
+        allow write: if hasValidId(supervisorId) && hasValidId(userId);
+      }
+
+      match /meta/{docId} {
+        allow read, write: if hasValidId(supervisorId) && hasValidId(docId);
+      }
+    }
+
+    // Schools Collection: indeks global (kompatibilitas & tampilan Super Admin)
     match /schools/{schoolId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if hasValidId(schoolId);
     }
 
-    // Users Collection: read and write for authenticated users or user management
+    // Users Collection: indeks global autentikasi & manajemen Super Admin
     match /users/{userId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if hasValidId(userId);
     }
 
-    // Supervisions Collection: accessible by users, supervised teachers, and administrators
+    // Supervisions Collection: indeks global (kompatibilitas & tampilan Super Admin)
     match /supervisions/{supervisionId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if hasValidId(supervisionId);
     }
 
     // Healthcheck / Connection test collection

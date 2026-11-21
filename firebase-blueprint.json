@@ -2,7 +2,7 @@
   "entities": {
     "School": {
       "title": "School",
-      "description": "SMA target sekolah pengawasan",
+      "description": "SMA target sekolah pengawasan (terisolasi per ruang kerja pengawas)",
       "type": "object",
       "properties": {
         "npsn": { "type": "string", "maxLength": 16, "description": "Nomor Pokok Sekolah Nasional" },
@@ -10,6 +10,9 @@
         "address": { "type": "string", "maxLength": 250, "description": "Alamat Lengkap Sekolah" },
         "principalName": { "type": "string", "maxLength": 100, "description": "Nama Kepala Sekolah dan Gelar" },
         "accreditation": { "type": "string", "enum": ["A", "B", "C", "Belum Terakreditasi"], "description": "Peringkat Akreditasi" },
+        "supervisorId": { "type": "string", "maxLength": 128, "description": "UID Pengawas Pembina pemilik ruang kerja" },
+        "supervisorWorkspaceId": { "type": "string", "maxLength": 128, "description": "ID Ruang Kerja Firebase Pengawas" },
+        "supervisorName": { "type": "string", "maxLength": 100, "description": "Nama Pengawas Pembina" },
         "createdAt": { "type": "string", "format": "date-time", "description": "Waktu pembuatan data" },
         "createdBy": { "type": "string", "maxLength": 128, "description": "UID Pembuat data" }
       },
@@ -17,13 +20,17 @@
     },
     "UserProfile": {
       "title": "UserProfile",
-      "description": "Profil Pengguna SIKLUS SAMBUNG (Admin, Kepsek, Guru)",
+      "description": "Profil Pengguna SIKLUS SAMBUNG (Super Admin, Pengawas, Admin, Kepsek, Guru)",
       "type": "object",
       "properties": {
         "email": { "type": "string", "format": "email", "maxLength": 120, "description": "Email Akun" },
+        "username": { "type": "string", "maxLength": 64, "description": "Username Login" },
         "displayName": { "type": "string", "maxLength": 100, "description": "Nama Lengkap dan Gelar" },
-        "role": { "type": "string", "enum": ["admin", "kepsek", "guru"], "description": "Peran Pengguna" },
-        "schoolId": { "type": "string", "maxLength": 128, "description": "ID Sekolah asal (kosong untuk Admin pusat)" },
+        "role": { "type": "string", "enum": ["super_admin", "pengawas", "admin", "kepsek", "guru"], "description": "Peran Pengguna" },
+        "schoolId": { "type": "string", "maxLength": 128, "description": "ID Sekolah asal (kosong untuk Admin/Pengawas)" },
+        "supervisorId": { "type": "string", "maxLength": 128, "description": "UID Pengawas Pembina" },
+        "supervisorWorkspaceId": { "type": "string", "maxLength": 128, "description": "ID Ruang Kerja Firebase Pengawas" },
+        "supervisorName": { "type": "string", "maxLength": 100, "description": "Nama Pengawas Pembina" },
         "nip": { "type": "string", "maxLength": 30, "description": "NIP atau NUPTK Guru/Kepsek" },
         "phone": { "type": "string", "maxLength": 20, "description": "Nomor WhatsApp aktif" },
         "subject": { "type": "string", "maxLength": 80, "description": "Mata Pelajaran yang diampu (khusus Guru)" },
@@ -34,7 +41,7 @@
     },
     "Supervision": {
       "title": "Supervision",
-      "description": "Data Rekam Supervisi Akademik Guru SMA Lengkap",
+      "description": "Data Rekam Supervisi Akademik Guru SMA Lengkap (terisolasi per ruang kerja pengawas)",
       "type": "object",
       "properties": {
         "schoolId": { "type": "string", "maxLength": 128, "description": "ID Sekolah" },
@@ -47,30 +54,61 @@
         "semester": { "type": "string", "enum": ["Ganjil", "Genap"], "description": "Semester" },
         "schoolYear": { "type": "string", "maxLength": 20, "description": "Tahun Pelajaran contoh 2025/2026" },
         "status": { "type": "string", "enum": ["draft", "submitted", "in_progress", "completed"], "description": "Status Supervisi" },
-        "supervisorId": { "type": "string", "maxLength": 128, "description": "UID Penelaah/Supervisor" },
+        "supervisorId": { "type": "string", "maxLength": 128, "description": "UID Penelaah/Supervisor pemilik ruang kerja" },
+        "supervisorWorkspaceId": { "type": "string", "maxLength": 128, "description": "ID Ruang Kerja Firebase Pengawas" },
         "supervisorName": { "type": "string", "maxLength": 100, "description": "Nama Pengawas / Kepala Sekolah" },
         "createdAt": { "type": "string", "format": "date-time", "description": "Waktu pembuatan berkas" },
         "updatedAt": { "type": "string", "format": "date-time", "description": "Waktu update berkas" }
       },
       "required": ["schoolId", "teacherId", "teacherName", "subject", "schoolYear", "status", "createdAt"]
+    },
+    "WorkspaceMeta": {
+      "title": "WorkspaceMeta",
+      "description": "Metadata profil dan status sinkronisasi realtime masing-masing ruang kerja pengawas",
+      "type": "object",
+      "properties": {
+        "supervisorId": { "type": "string", "maxLength": 128, "description": "UID Pengawas pemilik ruang kerja" },
+        "supervisorName": { "type": "string", "maxLength": 100, "description": "Nama Pengawas" },
+        "lastSyncedAt": { "type": "string", "format": "date-time", "description": "Waktu sinkronisasi terakhir" },
+        "supervisionsCount": { "type": "number", "description": "Jumlah dokumen supervisi dalam ruang kerja" },
+        "schoolsCount": { "type": "number", "description": "Jumlah sekolah binaan dalam ruang kerja" },
+        "usersCount": { "type": "number", "description": "Jumlah akun dalam ruang kerja" }
+      },
+      "required": ["supervisorId"]
     }
   },
   "firestore": {
     "/schools/{schoolId}": {
       "schema": { "$ref": "#/entities/School" },
-      "description": "Daftar Satuan Pendidikan SMA binaan pengawas"
+      "description": "Indeks global Satuan Pendidikan SMA (untuk inspeksi Super Admin & kompatibilitas)"
     },
     "/users/{userId}": {
       "schema": { "$ref": "#/entities/UserProfile" },
-      "description": "Profil Pengguna dan Penetapan Peran"
+      "description": "Indeks global Profil Pengguna untuk autentikasi dan manajemen Super Admin"
     },
     "/supervisions/{supervisionId}": {
       "schema": { "$ref": "#/entities/Supervision" },
-      "description": "Dokumen Rekam Jejak Supervisi Akademik Guru Lengkap"
+      "description": "Indeks global Dokumen Supervisi (untuk inspeksi Super Admin & kompatibilitas)"
     },
     "/system/{docId}": {
+      "schema": { "$ref": "#/entities/WorkspaceMeta" },
+      "description": "Metadata status sinkronisasi realtime cloud global"
+    },
+    "/pengawas_workspaces/{supervisorId}/schools/{schoolId}": {
+      "schema": { "$ref": "#/entities/School" },
+      "description": "Penyimpanan sekolah binaan terpisah per pengawas"
+    },
+    "/pengawas_workspaces/{supervisorId}/supervisions/{supervisionId}": {
       "schema": { "$ref": "#/entities/Supervision" },
-      "description": "Metadata status sinkronisasi realtime cloud"
+      "description": "Penyimpanan dokumen supervisi SAMBUNG terpisah per pengawas"
+    },
+    "/pengawas_workspaces/{supervisorId}/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Penyimpanan akun pengawas, kepala sekolah, dan guru binaan terpisah per pengawas"
+    },
+    "/pengawas_workspaces/{supervisorId}/meta/{docId}": {
+      "schema": { "$ref": "#/entities/WorkspaceMeta" },
+      "description": "Profil workspace & metadata sinkronisasi realtime terpisah per pengawas"
     }
   }
 }

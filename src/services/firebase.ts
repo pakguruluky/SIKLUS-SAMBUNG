@@ -33,7 +33,10 @@ import { School, UserProfile, Supervision, Role } from '../types';
 import { 
   saveSingleLocalSupervision, 
   saveLocalSupervisions, 
+  mergeLocalSupervisions,
+  saveSingleLocalSchool,
   saveLocalSchools, 
+  mergeLocalSchools,
   loadLocalSupervisions, 
   loadLocalSchools,
   loadLocalUser,
@@ -42,8 +45,8 @@ import {
 import { SAMPLE_SUPERVISIONS } from '../data/seedData';
 import { generateTeacherMaknaiData, generateAmatiData, generateBerdayakanTelaahPerbaikanData, generateUjiData, getTeacherAutoFillData } from '../data/autoFillData';
 import { DEFAULT_MATRIKS_BEFORE, createDefaultSambungForTeacher, createEmptySambungData } from '../data/sambungSeed';
-import { DEFAULT_SCHOOLS, DEFAULT_USERS } from './firebaseDefaults';
-export { DEFAULT_SCHOOLS, DEFAULT_USERS };
+import { DEFAULT_SCHOOLS, DEFAULT_USERS, KUSNANDAR_SUPERVISOR_ID, KUSNANDAR_SUPERVISOR_NAME } from './firebaseDefaults';
+export { DEFAULT_SCHOOLS, DEFAULT_USERS, KUSNANDAR_SUPERVISOR_ID, KUSNANDAR_SUPERVISOR_NAME };
 import {
   apiFetchSchools,
   apiSaveSchool,
@@ -608,13 +611,20 @@ function normalizeSupervisionData(sup: Supervision): Supervision {
   return normalized;
 }
 
+export const KUSNANDAR_UID = KUSNANDAR_SUPERVISOR_ID;
+
+export function isKusnandarOwnerId(id?: string | null): boolean {
+  if (!id) return false;
+  return id === KUSNANDAR_UID || id === 'admin-kusnandar' || id === 'system';
+}
+
 export function isKusnandarAccount(user?: UserProfile | null): boolean {
   if (!user) return false;
   const uid = user.uid || '';
   const username = (user.username || '').toLowerCase().trim();
   const name = (user.displayName || '').toLowerCase().trim();
   return (
-    uid === 'user-pengawas-kusnandar' ||
+    uid === KUSNANDAR_UID ||
     uid === 'admin-kusnandar' ||
     username === 'pengawas' ||
     username === 'kusnandar' ||
@@ -625,6 +635,189 @@ export function isKusnandarAccount(user?: UserProfile | null): boolean {
 export function isSupervisorAccount(user?: UserProfile | null): boolean {
   if (!user) return false;
   return user.role === 'admin' || user.role === 'pengawas' || user.role === 'super_admin';
+}
+
+export function isSuperAdminAccount(user?: Partial<UserProfile> | null): boolean {
+  if (!user) return false;
+  return user.role === 'super_admin' || user.uid === 'user-super-admin' || (user.username || '').toLowerCase().trim() === 'admin';
+}
+
+/**
+ * Resolve the isolated Firestore workspace ID for a logged-in user.
+ * Returns null for Super Admin (global view) or unauthenticated sessions.
+ */
+export function resolveWorkspaceOwnerForUser(user?: UserProfile | null): string | null {
+  if (!user || isSuperAdminAccount(user)) return null;
+  if (user.role === 'admin' || user.role === 'pengawas') {
+    return isKusnandarAccount(user) ? KUSNANDAR_UID : (user.supervisorWorkspaceId || user.uid);
+  }
+  if (user.supervisorWorkspaceId && !isKusnandarOwnerId(user.supervisorWorkspaceId)) {
+    return user.supervisorWorkspaceId;
+  }
+  if (user.supervisorId && !isKusnandarOwnerId(user.supervisorId)) {
+    return user.supervisorId;
+  }
+  if (user.createdBy && !isKusnandarOwnerId(user.createdBy) && user.createdBy !== 'user-super-admin') {
+    return user.createdBy;
+  }
+  if (user.schoolId) {
+    const schools = loadLocalSchools() || [];
+    const sch = schools.find(s => s.id === user.schoolId);
+    const schOwner = sch?.supervisorWorkspaceId || sch?.supervisorId || sch?.createdBy;
+    if (schOwner && !isKusnandarOwnerId(schOwner) && schOwner !== 'user-super-admin') {
+      return schOwner;
+    }
+  }
+  return KUSNANDAR_UID;
+}
+
+/**
+ * Resolve the canonical Pengawas workspace owner UID for any record (School, Supervision, UserProfile).
+ */
+export function resolveRecordOwnerUid(record?: any, fallbackActor?: UserProfile | null): string {
+  if (!record) {
+    return resolveWorkspaceOwnerForUser(fallbackActor) || KUSNANDAR_UID;
+  }
+  if (isSuperAdminAccount(record)) {
+    return 'user-super-admin';
+  }
+  if (record.role === 'pengawas' || record.role === 'admin') {
+    return isKusnandarAccount(record) ? KUSNANDAR_UID : (record.supervisorWorkspaceId || record.uid || KUSNANDAR_UID);
+  }
+  if (record.supervisorWorkspaceId && !isKusnandarOwnerId(record.supervisorWorkspaceId) && record.supervisorWorkspaceId !== 'user-super-admin') {
+    return record.supervisorWorkspaceId;
+  }
+  if (record.supervisorId && !isKusnandarOwnerId(record.supervisorId) && record.supervisorId !== 'user-super-admin') {
+    return record.supervisorId;
+  }
+  if (record.createdBy && !isKusnandarOwnerId(record.createdBy) && record.createdBy !== 'user-super-admin') {
+    return record.createdBy;
+  }
+  if (record.supervisorId && isKusnandarOwnerId(record.supervisorId)) {
+    return KUSNANDAR_UID;
+  }
+  if (record.supervisorName && String(record.supervisorName).toLowerCase().includes('kusnandar')) {
+    return KUSNANDAR_UID;
+  }
+  if (record.id && String(record.id).startsWith('sup-demo-')) {
+    return KUSNANDAR_UID;
+  }
+  if (record.schoolId) {
+    const schools = loadLocalSchools() || [];
+    const sch = schools.find(s => s.id === record.schoolId);
+    if (sch) {
+      const schOwner = sch.supervisorWorkspaceId || sch.supervisorId || sch.createdBy;
+      if (schOwner && !isKusnandarOwnerId(schOwner) && schOwner !== 'user-super-admin') {
+        return schOwner;
+      }
+      if (schOwner && isKusnandarOwnerId(schOwner)) {
+        return KUSNANDAR_UID;
+      }
+    }
+  }
+  const actorOwner = resolveWorkspaceOwnerForUser(fallbackActor);
+  if (actorOwner) return actorOwner;
+  return KUSNANDAR_UID;
+}
+
+export function resolveOwnerDisplayName(ownerUid: string, explicitName?: string, fallbackActor?: UserProfile | null): string {
+  if (explicitName && explicitName.trim()) return explicitName.trim();
+  if (ownerUid === KUSNANDAR_UID) return KUSNANDAR_SUPERVISOR_NAME;
+  if (fallbackActor && fallbackActor.uid === ownerUid && fallbackActor.displayName) {
+    return fallbackActor.displayName;
+  }
+  try {
+    const stored = getStoredUsers();
+    const matched = stored.find(u => u.uid === ownerUid);
+    if (matched?.displayName) return matched.displayName;
+  } catch {}
+  return 'Pengawas Pembina';
+}
+
+export function belongsToSupervisorWorkspace(record: any, targetOwnerUid: string): boolean {
+  if (!record || !targetOwnerUid) return false;
+  if (isSuperAdminAccount(record)) return false;
+  const normalizedTarget = isKusnandarOwnerId(targetOwnerUid) ? KUSNANDAR_UID : targetOwnerUid;
+  const owner = resolveRecordOwnerUid(record);
+  return owner === normalizedTarget;
+}
+
+function getWorkspaceColRef(ownerUid: string, subcol: 'schools' | 'supervisions' | 'users') {
+  const safeOwner = isKusnandarOwnerId(ownerUid) ? KUSNANDAR_UID : ownerUid;
+  return collection(db, 'pengawas_workspaces', safeOwner, subcol);
+}
+
+function getWorkspaceDocRef(ownerUid: string, subcol: 'schools' | 'supervisions' | 'users', docId: string) {
+  const safeOwner = isKusnandarOwnerId(ownerUid) ? KUSNANDAR_UID : ownerUid;
+  return doc(db, 'pengawas_workspaces', safeOwner, subcol, docId);
+}
+
+function getWorkspaceSyncDocRef(ownerUid: string) {
+  const safeOwner = isKusnandarOwnerId(ownerUid) ? KUSNANDAR_UID : ownerUid;
+  return doc(db, 'pengawas_workspaces', safeOwner, 'meta', 'sync_state');
+}
+
+function getWorkspaceProfileDocRef(ownerUid: string) {
+  const safeOwner = isKusnandarOwnerId(ownerUid) ? KUSNANDAR_UID : ownerUid;
+  return doc(db, 'pengawas_workspaces', safeOwner, 'meta', 'profile');
+}
+
+export function isNameDeletedForWorkspace(name: string | undefined, ownerUid: string, deletedNames?: string[]): boolean {
+  if (!name) return false;
+  const clean = name.toLowerCase().trim();
+  const normalizedOwner = isKusnandarOwnerId(ownerUid) ? KUSNANDAR_UID : ownerUid;
+  const scopedKey = `${normalizedOwner}::${clean}`;
+  const list = deletedNames || getDeletedUserNames();
+  for (const entry of list) {
+    const low = entry.toLowerCase().trim();
+    if (low === scopedKey) return true;
+    // Legacy unscoped tombstones only apply to Pak Kusnandar's workspace
+    if (!low.includes('::') && normalizedOwner === KUSNANDAR_UID && low === clean) return true;
+  }
+  return false;
+}
+
+async function writeWorkspaceSyncMetadata(ownerUid: string, actorUser?: UserProfile | null): Promise<void> {
+  if (!getOnlineMode() || isFirestoreQuotaExceeded) return;
+  const safeOwner = isKusnandarOwnerId(ownerUid) ? KUSNANDAR_UID : ownerUid;
+  const now = new Date().toISOString();
+  const localUser = actorUser || loadLocalUser();
+  const allLocalSups = (loadLocalSupervisions() || []).filter(s => belongsToSupervisorWorkspace(s, safeOwner));
+  const allLocalSchools = (loadLocalSchools() || []).filter(s => belongsToSupervisorWorkspace(s, safeOwner));
+  const allLocalUsers = getStoredUsers().filter(u => belongsToSupervisorWorkspace(u, safeOwner));
+
+  const payload = {
+    supervisorId: safeOwner,
+    supervisorName: resolveOwnerDisplayName(safeOwner, localUser?.displayName, localUser),
+    lastSyncedAt: now,
+    lastSyncedBy: localUser?.email || auth.currentUser?.email || 'admin',
+    lastSyncedByName: localUser?.displayName || auth.currentUser?.displayName || resolveOwnerDisplayName(safeOwner),
+    supervisionsCount: allLocalSups.length,
+    supervisionIds: allLocalSups.map(s => s.id),
+    schoolsCount: allLocalSchools.length,
+    usersCount: allLocalUsers.length,
+    timestamp: Date.now(),
+  };
+
+  await withFirestoreTimeout(setDoc(getWorkspaceSyncDocRef(safeOwner), payload, { merge: true }), 3500).catch(() => {});
+
+  // Also refresh global summary metadata for Super Admin view
+  const allGlobalSups = loadLocalSupervisions() || [];
+  const allGlobalSchools = loadLocalSchools() || [];
+  const allGlobalUsers = getStoredUsers();
+  withFirestoreTimeout(
+    setDoc(doc(db, 'system', 'sync_state'), {
+      lastSyncedAt: now,
+      lastSyncedBy: payload.lastSyncedBy,
+      lastSyncedByName: payload.lastSyncedByName,
+      supervisionsCount: allGlobalSups.length,
+      supervisionIds: allGlobalSups.map(s => s.id),
+      schoolsCount: allGlobalSchools.length,
+      usersCount: allGlobalUsers.length,
+      timestamp: Date.now(),
+    }, { merge: true }),
+    3000
+  ).catch(() => {});
 }
 
 function matchesUserCredentials(
@@ -814,13 +1007,23 @@ function saveStoredUsers(users: UserProfile[]) {
 }
 
 // User CRUD
-export async function fetchAllUsers(): Promise<UserProfile[]> {
+export async function fetchAllUsers(userProfile?: UserProfile | null): Promise<UserProfile[]> {
   let currentUsers = getStoredUsers();
-
   const deletedUids = new Set(getDeletedUserIds());
-  const deletedNames = new Set(getDeletedUserNames().map(n => n.toLowerCase().trim()));
+  const deletedNames = getDeletedUserNames();
+  const ownerScope = resolveWorkspaceOwnerForUser(userProfile);
+
   const filterUsers = (list: UserProfile[]) =>
-    list.filter(u => !deletedUids.has(u.uid) && (!u.displayName || !deletedNames.has(u.displayName.toLowerCase().trim())));
+    list.filter(u => {
+      if (deletedUids.has(u.uid)) return false;
+      const recOwner = resolveRecordOwnerUid(u);
+      if (u.role === 'guru' && isNameDeletedForWorkspace(u.displayName, recOwner, deletedNames)) return false;
+      if (ownerScope) {
+        if (isSuperAdminAccount(u)) return false;
+        return belongsToSupervisorWorkspace(u, ownerScope);
+      }
+      return true;
+    });
 
   // If in Offline mode, serve directly from Local Storage
   if (!getOnlineMode()) {
@@ -829,7 +1032,7 @@ export async function fetchAllUsers(): Promise<UserProfile[]> {
 
   // 1. Fetch from persistent backend API
   try {
-    const backendUsers = await apiFetchUsers();
+    const backendUsers = await apiFetchUsers(ownerScope || undefined);
     if (backendUsers && backendUsers.length > 0) {
       const map = new Map<string, UserProfile>();
       DEFAULT_USERS.forEach(u => map.set(u.uid, u));
@@ -842,17 +1045,31 @@ export async function fetchAllUsers(): Promise<UserProfile[]> {
     console.warn('Backend API users notice:', err);
   }
 
-  // 2. Live Firestore sync
+  // 2. Live Firestore sync (workspace subcollection + top-level users)
   try {
-    const snap = await withFirestoreTimeout(getDocs(collection(db, 'users')), 4000, null);
-    if (snap && !snap.empty) {
-      const firestoreUsers = snap.docs.map(d => ({ ...d.data(), uid: d.id } as UserProfile));
-      const map = new Map<string, UserProfile>();
-      currentUsers.forEach(u => map.set(u.uid, u));
-      firestoreUsers.forEach(u => map.set(u.uid, u));
-      currentUsers = Array.from(map.values());
-      saveStoredUsers(currentUsers);
+    const reads: Promise<any>[] = [
+      withFirestoreTimeout(getDocs(collection(db, 'users')), 4000, null),
+    ];
+    if (ownerScope) {
+      reads.push(withFirestoreTimeout(getDocs(getWorkspaceColRef(ownerScope, 'users')), 4000, null));
     }
+    const [topSnap, wsSnap] = await Promise.all(reads);
+    const map = new Map<string, UserProfile>();
+    currentUsers.forEach(u => map.set(u.uid, u));
+    if (topSnap && !topSnap.empty) {
+      topSnap.docs.forEach((d: any) => {
+        const u = { ...d.data(), uid: d.id } as UserProfile;
+        map.set(u.uid, u);
+      });
+    }
+    if (wsSnap && !wsSnap.empty) {
+      wsSnap.docs.forEach((d: any) => {
+        const u = { ...d.data(), uid: d.id } as UserProfile;
+        map.set(u.uid, u);
+      });
+    }
+    currentUsers = Array.from(map.values());
+    saveStoredUsers(currentUsers);
   } catch (err) {
     console.warn('Notice fetching users from Firestore (using backend/local):', err);
   }
@@ -862,17 +1079,39 @@ export async function fetchAllUsers(): Promise<UserProfile[]> {
 
 export async function addUserAccount(user: UserProfile): Promise<UserProfile> {
   const uid = user.uid || `user-${Date.now()}`;
+  const now = new Date().toISOString();
+  const activeActor = loadLocalUser();
+  const isSuper = isSuperAdminAccount(user);
+  const ownerUid = isSuper
+    ? 'user-super-admin'
+    : resolveRecordOwnerUid({ ...user, uid }, activeActor);
+  const ownerName = isSuper
+    ? undefined
+    : resolveOwnerDisplayName(
+        ownerUid,
+        user.role === 'pengawas' || user.role === 'admin' ? user.displayName : user.supervisorName,
+        activeActor
+      );
+
   const completeUser: UserProfile = {
     ...user,
     uid,
-    createdAt: user.createdAt || new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    ...(isSuper
+      ? {}
+      : {
+          supervisorId: user.supervisorId || ownerUid,
+          supervisorWorkspaceId: user.supervisorWorkspaceId || ownerUid,
+          supervisorName: user.supervisorName || ownerName,
+          createdBy: user.createdBy || activeActor?.uid || ownerUid,
+        }),
+    createdAt: user.createdAt || now,
+    updatedAt: now,
     approvalStatus: user.approvalStatus || 'approved',
   };
 
   // Remove from deleted tombstones if re-added
   removeDeletedUserId(uid);
-  if (user.displayName) removeDeletedUserName(user.displayName);
+  if (user.displayName) removeDeletedUserName(user.displayName, ownerUid);
 
   // 1. Always save locally first (instant 0ms response)
   const current = getStoredUsers();
@@ -901,11 +1140,63 @@ export async function addUserAccount(user: UserProfile): Promise<UserProfile> {
     console.warn('Backend API save user notice:', apiErr);
   }
 
-  // 3. Save to Firestore in real-time (awaited so account is immediately synced across devices)
+  // 3. Save to Firestore in real-time (BOTH top-level users & dedicated per-Pengawas workspace)
   if (!isFirestoreQuotaExceeded) {
     try {
       const cleaned = cleanForFirestore(completeUser);
-      await withFirestoreTimeout(setDoc(doc(db, 'users', uid), cleaned, { merge: true }), 4500);
+      const writes: Promise<any>[] = [
+        withFirestoreTimeout(setDoc(doc(db, 'users', uid), cleaned, { merge: true }), 4500),
+      ];
+      if (!isSuper && ownerUid !== 'user-super-admin') {
+        writes.push(
+          withFirestoreTimeout(setDoc(getWorkspaceDocRef(ownerUid, 'users', uid), cleaned, { merge: true }), 4500)
+        );
+        // When a new Pengawas account is created, initialize their clean isolated workspace metadata doc in Firebase
+        if (completeUser.role === 'pengawas' || completeUser.role === 'admin') {
+          writes.push(
+            withFirestoreTimeout(
+              setDoc(
+                getWorkspaceProfileDocRef(ownerUid),
+                cleanForFirestore({
+                  supervisorId: ownerUid,
+                  supervisorName: completeUser.displayName,
+                  username: completeUser.username,
+                  email: completeUser.email,
+                  wilayahTugas: completeUser.wilayahTugas || '',
+                  createdAt: completeUser.createdAt,
+                  updatedAt: now,
+                }),
+                { merge: true }
+              ),
+              4000
+            )
+          );
+          if (ownerUid !== KUSNANDAR_UID) {
+            writes.push(
+              withFirestoreTimeout(
+                setDoc(
+                  getWorkspaceSyncDocRef(ownerUid),
+                  {
+                    supervisorId: ownerUid,
+                    supervisorName: completeUser.displayName,
+                    lastSyncedAt: now,
+                    lastSyncedBy: activeActor?.email || completeUser.email,
+                    lastSyncedByName: activeActor?.displayName || completeUser.displayName,
+                    supervisionsCount: 0,
+                    supervisionIds: [],
+                    schoolsCount: 0,
+                    usersCount: 1,
+                    timestamp: Date.now(),
+                  },
+                  { merge: true }
+                ),
+                4000
+              )
+            );
+          }
+        }
+      }
+      await Promise.all(writes);
     } catch (err) {
       if (isQuotaError(err)) markQuotaExceeded(err);
       console.warn('Notice saving user to Firestore (saved in backend/local):', err);
@@ -916,14 +1207,38 @@ export async function addUserAccount(user: UserProfile): Promise<UserProfile> {
 }
 
 export async function updateUserAccount(user: UserProfile): Promise<UserProfile> {
+  const now = new Date().toISOString();
+  const current = getStoredUsers();
+  const existingIdx = current.findIndex(u => u.uid === user.uid || (user.username && u.username === user.username));
+  const existing = existingIdx >= 0 ? current[existingIdx] : null;
+  const activeActor = loadLocalUser();
+  const isSuper = isSuperAdminAccount(user);
+  const ownerUid = isSuper
+    ? 'user-super-admin'
+    : resolveRecordOwnerUid({ ...existing, ...user }, activeActor);
+  const ownerName = isSuper
+    ? undefined
+    : resolveOwnerDisplayName(
+        ownerUid,
+        user.role === 'pengawas' || user.role === 'admin' ? user.displayName : (user.supervisorName || existing?.supervisorName),
+        activeActor
+      );
+
   const completeUser: UserProfile = {
+    ...existing,
     ...user,
-    updatedAt: new Date().toISOString(),
+    ...(isSuper
+      ? {}
+      : {
+          supervisorId: user.supervisorId || existing?.supervisorId || ownerUid,
+          supervisorWorkspaceId: user.supervisorWorkspaceId || existing?.supervisorWorkspaceId || ownerUid,
+          supervisorName: user.supervisorName || existing?.supervisorName || ownerName,
+          createdBy: user.createdBy || existing?.createdBy || ownerUid,
+        }),
+    updatedAt: now,
   };
 
   // 1. Always save locally first
-  const current = getStoredUsers();
-  const existingIdx = current.findIndex(u => u.uid === user.uid || (user.username && u.username === user.username));
   if (existingIdx >= 0) {
     current[existingIdx] = completeUser;
   } else {
@@ -948,7 +1263,34 @@ export async function updateUserAccount(user: UserProfile): Promise<UserProfile>
     if (!isFirestoreQuotaExceeded) {
       try {
         const cleaned = cleanForFirestore(completeUser);
-        await withFirestoreTimeout(setDoc(doc(db, 'users', user.uid), cleaned, { merge: true }), 4500);
+        const writes: Promise<any>[] = [
+          withFirestoreTimeout(setDoc(doc(db, 'users', completeUser.uid), cleaned, { merge: true }), 4500),
+        ];
+        if (!isSuper && ownerUid !== 'user-super-admin') {
+          writes.push(
+            withFirestoreTimeout(setDoc(getWorkspaceDocRef(ownerUid, 'users', completeUser.uid), cleaned, { merge: true }), 4500)
+          );
+          if (completeUser.role === 'pengawas' || completeUser.role === 'admin') {
+            writes.push(
+              withFirestoreTimeout(
+                setDoc(
+                  getWorkspaceProfileDocRef(ownerUid),
+                  cleanForFirestore({
+                    supervisorId: ownerUid,
+                    supervisorName: completeUser.displayName,
+                    username: completeUser.username,
+                    email: completeUser.email,
+                    wilayahTugas: completeUser.wilayahTugas || '',
+                    updatedAt: now,
+                  }),
+                  { merge: true }
+                ),
+                4000
+              )
+            );
+          }
+        }
+        await Promise.all(writes);
       } catch (err) {
         if (isQuotaError(err)) markQuotaExceeded(err);
         console.warn('Notice updating user in Firestore (saved in backend/local):', err);
@@ -958,21 +1300,24 @@ export async function updateUserAccount(user: UserProfile): Promise<UserProfile>
     markDataModifiedLocally();
   }
 
-  // 4. Update related supervisions if teacher information changed
+  // 4. Update related supervisions if teacher information changed (strictly within the same workspace)
   try {
     const supervisions = loadLocalSupervisions() || [];
     let supModified = false;
     const updatedSupervisions = supervisions.map(s => {
-      if (s.teacherId === user.uid || (user.username && s.teacherId === user.username)) {
+      if (
+        (s.teacherId === completeUser.uid || (completeUser.username && s.teacherId === completeUser.username)) &&
+        (isSuper || belongsToSupervisorWorkspace(s, ownerUid))
+      ) {
         supModified = true;
         return {
           ...s,
-          teacherName: user.displayName || s.teacherName,
-          teacherNip: user.nip !== undefined ? user.nip : s.teacherNip,
-          subject: user.subject || s.subject,
-          schoolId: user.schoolId || s.schoolId,
-          schoolName: user.schoolName || s.schoolName,
-          updatedAt: new Date().toISOString(),
+          teacherName: completeUser.displayName || s.teacherName,
+          teacherNip: completeUser.nip !== undefined ? completeUser.nip : s.teacherNip,
+          subject: completeUser.subject || s.subject,
+          schoolId: completeUser.schoolId || s.schoolId,
+          schoolName: completeUser.schoolName || s.schoolName,
+          updatedAt: now,
         };
       }
       return s;
@@ -981,10 +1326,18 @@ export async function updateUserAccount(user: UserProfile): Promise<UserProfile>
       saveLocalSupervisions(updatedSupervisions);
       if (isOnline) {
         for (const s of updatedSupervisions) {
-          if (s.teacherId === user.uid || (user.username && s.teacherId === user.username)) {
+          if (
+            (s.teacherId === completeUser.uid || (completeUser.username && s.teacherId === completeUser.username)) &&
+            (isSuper || belongsToSupervisorWorkspace(s, ownerUid))
+          ) {
+            const supOwner = resolveRecordOwnerUid(s);
             apiSaveSupervision(s).catch(() => {});
             if (!isFirestoreQuotaExceeded) {
-              await withFirestoreTimeout(setDoc(doc(db, 'supervisions', s.id), cleanForFirestore(s), { merge: true }), 3500).catch((err) => {
+              const cleanedSup = cleanForFirestore(s);
+              await Promise.all([
+                withFirestoreTimeout(setDoc(doc(db, 'supervisions', s.id), cleanedSup, { merge: true }), 3500),
+                withFirestoreTimeout(setDoc(getWorkspaceDocRef(supOwner, 'supervisions', s.id), cleanedSup, { merge: true }), 3500),
+              ]).catch((err) => {
                 if (isQuotaError(err)) markQuotaExceeded(err);
               });
             }
@@ -1050,13 +1403,14 @@ export function getDeletedUserNames(): string[] {
   }
 }
 
-export function addDeletedUserName(name: string) {
+export function addDeletedUserName(name: string, ownerUid?: string) {
   if (!name) return;
   try {
     const names = getDeletedUserNames();
     const clean = name.toLowerCase().trim();
-    if (!names.includes(clean)) {
-      names.push(clean);
+    const entry = ownerUid ? `${isKusnandarOwnerId(ownerUid) ? KUSNANDAR_UID : ownerUid}::${clean}` : clean;
+    if (!names.includes(entry)) {
+      names.push(entry);
       localStorage.setItem(DELETED_USER_NAMES_KEY, JSON.stringify(names));
     }
   } catch {}
@@ -1076,11 +1430,19 @@ export function removeDeletedUserId(uid: string) {
   } catch {}
 }
 
-export function removeDeletedUserName(name: string) {
+export function removeDeletedUserName(name: string, ownerUid?: string) {
   if (!name) return;
   try {
     const clean = name.toLowerCase().trim();
-    const names = getDeletedUserNames().filter(n => n.toLowerCase().trim() !== clean);
+    const normalizedOwner = ownerUid ? (isKusnandarOwnerId(ownerUid) ? KUSNANDAR_UID : ownerUid) : null;
+    const scopedKey = normalizedOwner ? `${normalizedOwner}::${clean}` : null;
+    const names = getDeletedUserNames().filter(n => {
+      const low = n.toLowerCase().trim();
+      if (scopedKey && low === scopedKey) return false;
+      if (!scopedKey && low === clean) return false;
+      if (normalizedOwner === KUSNANDAR_UID && low === clean) return false;
+      return true;
+    });
     localStorage.setItem(DELETED_USER_NAMES_KEY, JSON.stringify(names));
   } catch {}
 }
@@ -1089,49 +1451,54 @@ export async function purgeTeacherDataCompletely(target: {
   id?: string;
   teacherId?: string;
   teacherName?: string;
+  supervisorId?: string;
 }): Promise<void> {
   const cleanName = (target.teacherName || '').toLowerCase().trim();
   const targetId = target.id;
   let teacherId = target.teacherId;
+  let resolvedOwnerUid = target.supervisorId
+    ? (isKusnandarOwnerId(target.supervisorId) ? KUSNANDAR_UID : target.supervisorId)
+    : undefined;
 
-  // If teacherId or teacherName not directly provided, find from local supervisions or users
-  if (!teacherId || !cleanName) {
-    if (targetId) {
-      const localSups = loadLocalSupervisions() || [];
-      const found = localSups.find(s => s.id === targetId);
-      if (found) {
-        if (!cleanName && found.teacherName) {
-          target.teacherName = found.teacherName;
-        }
-        if (!teacherId && found.teacherId) {
-          teacherId = found.teacherId;
-        }
+  // Find missing teacherId, teacherName, or ownerUid from local supervisions or users
+  if (targetId) {
+    const localSups = loadLocalSupervisions() || [];
+    const found = localSups.find(s => s.id === targetId);
+    if (found) {
+      if (!cleanName && found.teacherName) target.teacherName = found.teacherName;
+      if (!teacherId && found.teacherId) teacherId = found.teacherId;
+      if (!resolvedOwnerUid) resolvedOwnerUid = resolveRecordOwnerUid(found);
+    }
+  }
+  if (teacherId) {
+    const foundUser = getStoredUsers().find(u => u.uid === teacherId);
+    if (foundUser) {
+      if (!target.teacherName && foundUser.displayName) target.teacherName = foundUser.displayName;
+      if (!resolvedOwnerUid && !isSuperAdminAccount(foundUser)) {
+        resolvedOwnerUid = resolveRecordOwnerUid(foundUser);
       }
     }
-    if (!cleanName && teacherId) {
-      const foundUser = getStoredUsers().find(u => u.uid === teacherId);
-      if (foundUser?.displayName) {
-        target.teacherName = foundUser.displayName;
-      }
-    }
+  }
+  if (!resolvedOwnerUid) {
+    resolvedOwnerUid = resolveWorkspaceOwnerForUser(loadLocalUser()) || KUSNANDAR_UID;
   }
 
   const effectiveCleanName = (target.teacherName || '').toLowerCase().trim();
 
-  // 1. Record in local deleted tracking sets so they are permanently excluded
+  // 1. Record in local deleted tracking sets (name tombstone strictly scoped to this supervisor workspace!)
   if (targetId) {
     addDeletedSupervisionId(targetId);
     clearFormDraft(targetId);
   }
   if (effectiveCleanName) {
-    addDeletedUserName(effectiveCleanName);
+    addDeletedUserName(effectiveCleanName, resolvedOwnerUid);
   }
   if (teacherId) {
     addDeletedUserId(teacherId);
     clearFormDraft(teacherId);
   }
 
-  // 2. Clear any cached form drafts matching this teacher or supervision
+  // 2. Clear any cached form drafts matching this exact target/teacher ID
   try {
     if (typeof window !== 'undefined' && window.localStorage) {
       const keysToRemove: string[] = [];
@@ -1140,12 +1507,6 @@ export async function purgeTeacherDataCompletely(target: {
         if (k && k.startsWith('siklus_sambung_draft_')) {
           if (targetId && k.includes(targetId)) keysToRemove.push(k);
           if (teacherId && k.includes(teacherId)) keysToRemove.push(k);
-          try {
-            const val = localStorage.getItem(k);
-            if (val && effectiveCleanName && val.toLowerCase().includes(effectiveCleanName)) {
-              keysToRemove.push(k);
-            }
-          } catch {}
         }
       }
       keysToRemove.forEach(k => localStorage.removeItem(k));
@@ -1154,16 +1515,21 @@ export async function purgeTeacherDataCompletely(target: {
     console.warn('Notice clearing local drafts:', err);
   }
 
-  // 3. Remove all matching supervisions from local storage
+  // 3. Remove matching supervisions ONLY within resolvedOwnerUid's workspace (never touch other Pengawas!)
+  const matchedSupIds = new Set<string>();
+  if (targetId) matchedSupIds.add(targetId);
   try {
     const localSups = loadLocalSupervisions() || [];
-    const matchedSupIds = new Set<string>();
-    if (targetId) matchedSupIds.add(targetId);
-
     localSups.forEach(s => {
+      const sameWorkspace = belongsToSupervisorWorkspace(s, resolvedOwnerUid!);
       if (targetId && s.id === targetId) matchedSupIds.add(s.id);
-      if (teacherId && s.teacherId === teacherId) matchedSupIds.add(s.id);
-      if (effectiveCleanName && s.teacherName && s.teacherName.toLowerCase().trim() === effectiveCleanName) {
+      if (sameWorkspace && teacherId && s.teacherId === teacherId) matchedSupIds.add(s.id);
+      if (
+        sameWorkspace &&
+        effectiveCleanName &&
+        s.teacherName &&
+        s.teacherName.toLowerCase().trim() === effectiveCleanName
+      ) {
         matchedSupIds.add(s.id);
       }
     });
@@ -1175,15 +1541,22 @@ export async function purgeTeacherDataCompletely(target: {
     console.warn('Notice cleaning local supervisions:', err);
   }
 
-  // 4. Remove all matching users from local storage
+  // 4. Remove matching users ONLY within resolvedOwnerUid's workspace (never touch other Pengawas!)
+  const matchedUserUids = new Set<string>();
+  if (teacherId) matchedUserUids.add(teacherId);
   try {
     const allUsers = getStoredUsers();
-    const matchedUserUids = new Set<string>();
-    if (teacherId) matchedUserUids.add(teacherId);
-
     allUsers.forEach(u => {
+      if (isSuperAdminAccount(u)) return;
+      const sameWorkspace = belongsToSupervisorWorkspace(u, resolvedOwnerUid!);
       if (teacherId && u.uid === teacherId) matchedUserUids.add(u.uid);
-      if (effectiveCleanName && u.displayName && u.displayName.toLowerCase().trim() === effectiveCleanName) {
+      if (
+        sameWorkspace &&
+        u.role === 'guru' &&
+        effectiveCleanName &&
+        u.displayName &&
+        u.displayName.toLowerCase().trim() === effectiveCleanName
+      ) {
         matchedUserUids.add(u.uid);
       }
     });
@@ -1198,38 +1571,63 @@ export async function purgeTeacherDataCompletely(target: {
   const isOnline = getOnlineMode();
 
   if (isOnline) {
-    // 5. Backend Server API Purge
+    // 5. Backend Server API Purge (strictly scoped by supervisorId)
     try {
       await apiPurgeTeacher({
         teacherName: target.teacherName || '',
         teacherId: teacherId,
         supervisionId: target.id,
+        supervisorId: resolvedOwnerUid,
       });
     } catch (err) {
       console.warn('Notice calling backend purge:', err);
     }
 
-    // 6. Delete clean from Firebase Firestore in real-time
+    // 6. Delete clean from Firebase Firestore in real-time (BOTH top-level & per-Pengawas workspace)
     if (!isFirestoreQuotaExceeded) {
       try {
         const deletePromises: Promise<any>[] = [];
-        if (targetId) {
+
+        for (const supId of matchedSupIds) {
           deletePromises.push(
-            withFirestoreTimeout(deleteDoc(doc(db, 'supervisions', targetId)), 4000).catch((err) => {
+            withFirestoreTimeout(deleteDoc(doc(db, 'supervisions', supId)), 4000).catch((err) => {
+              if (isQuotaError(err)) markQuotaExceeded(err);
+            }),
+            withFirestoreTimeout(deleteDoc(getWorkspaceDocRef(resolvedOwnerUid, 'supervisions', supId)), 4000).catch((err) => {
               if (isQuotaError(err)) markQuotaExceeded(err);
             })
           );
         }
 
-        if (teacherId) {
+        for (const uId of matchedUserUids) {
           deletePromises.push(
-            withFirestoreTimeout(deleteDoc(doc(db, 'users', teacherId)), 4000).catch((err) => {
+            withFirestoreTimeout(deleteDoc(doc(db, 'users', uId)), 4000).catch((err) => {
+              if (isQuotaError(err)) markQuotaExceeded(err);
+            }),
+            withFirestoreTimeout(deleteDoc(getWorkspaceDocRef(resolvedOwnerUid, 'users', uId)), 4000).catch((err) => {
               if (isQuotaError(err)) markQuotaExceeded(err);
             })
           );
         }
 
+        // Only clean up duplicate docs matching teacherName INSIDE this supervisor's own workspace
         if (effectiveCleanName && target.teacherName) {
+          deletePromises.push(
+            withFirestoreTimeout(
+              getDocs(query(getWorkspaceColRef(resolvedOwnerUid, 'supervisions'), where('teacherName', '==', target.teacherName))),
+              3500,
+              null
+            ).then(async (snap) => {
+              if (!snap) return;
+              await Promise.all(
+                snap.docs.flatMap(d => [
+                  deleteDoc(getWorkspaceDocRef(resolvedOwnerUid!, 'supervisions', d.id)).catch(() => {}),
+                  deleteDoc(doc(db, 'supervisions', d.id)).catch(() => {}),
+                ])
+              );
+            }).catch(() => {})
+          );
+
           deletePromises.push(
             withFirestoreTimeout(
               getDocs(query(collection(db, 'supervisions'), where('teacherName', '==', target.teacherName))),
@@ -1237,42 +1635,25 @@ export async function purgeTeacherDataCompletely(target: {
               null
             ).then(async (snap) => {
               if (!snap) return;
-              await Promise.all(snap.docs.map(d => deleteDoc(doc(db, 'supervisions', d.id)).catch(() => {})));
-            }).catch(() => {})
-          );
-
-          deletePromises.push(
-            withFirestoreTimeout(
-              getDocs(query(collection(db, 'users'), where('displayName', '==', target.teacherName))),
-              3500,
-              null
-            ).then(async (snap) => {
-              if (!snap) return;
-              await Promise.all(snap.docs.map(d => deleteDoc(doc(db, 'users', d.id)).catch(() => {})));
+              const ownDocs = snap.docs.filter(d => belongsToSupervisorWorkspace({ id: d.id, ...d.data() }, resolvedOwnerUid!));
+              await Promise.all(
+                ownDocs.flatMap(d => [
+                  deleteDoc(doc(db, 'supervisions', d.id)).catch(() => {}),
+                  deleteDoc(getWorkspaceDocRef(resolvedOwnerUid!, 'supervisions', d.id)).catch(() => {}),
+                ])
+              );
             }).catch(() => {})
           );
         }
 
         await Promise.all(deletePromises);
+        await writeWorkspaceSyncMetadata(resolvedOwnerUid);
 
         const now = new Date().toISOString();
-        const updatedLocalList = loadLocalSupervisions() || [];
-        const localUser = loadLocalUser();
-        withFirestoreTimeout(
-          setDoc(doc(db, 'system', 'sync_state'), {
-            lastSyncedAt: now,
-            lastSyncedBy: localUser?.email || auth.currentUser?.email || 'admin',
-            lastSyncedByName: localUser?.displayName || auth.currentUser?.displayName || 'Pengawas Pembina',
-            supervisionsCount: updatedLocalList.length,
-            supervisionIds: updatedLocalList.map(s => s.id),
-            timestamp: Date.now(),
-          }, { merge: true }),
-          3500
-        ).catch(() => {});
-
+        const ownCount = (loadLocalSupervisions() || []).filter(s => belongsToSupervisorWorkspace(s, resolvedOwnerUid!)).length;
         if (typeof window !== 'undefined') {
           localStorage.setItem(LAST_SYNC_TIME_KEY, now);
-          window.dispatchEvent(new CustomEvent('pakkus-sync-completed', { detail: { syncTime: now, count: updatedLocalList.length } }));
+          window.dispatchEvent(new CustomEvent('pakkus-sync-completed', { detail: { syncTime: now, count: ownCount } }));
         }
       } catch (err) {
         if (isQuotaError(err)) markQuotaExceeded(err);
@@ -1295,6 +1676,7 @@ export async function deleteUserAccount(uid: string): Promise<void> {
   await purgeTeacherDataCompletely({
     teacherId: uid,
     teacherName: targetUser?.displayName,
+    supervisorId: targetUser ? resolveRecordOwnerUid(targetUser) : undefined,
   });
 }
 
@@ -1340,10 +1722,22 @@ export async function updateUserApprovalStatus(uid: string, status: 'approved' |
 
   if (!isFirestoreQuotaExceeded) {
     try {
-      await withFirestoreTimeout(
-        setDoc(doc(db, 'users', uid), { approvalStatus: status, updatedAt: now }, { merge: true }),
-        4000
-      );
+      const ownerUid = updatedUser ? resolveRecordOwnerUid(updatedUser) : null;
+      const writes: Promise<any>[] = [
+        withFirestoreTimeout(
+          setDoc(doc(db, 'users', uid), { approvalStatus: status, updatedAt: now }, { merge: true }),
+          4000
+        ),
+      ];
+      if (ownerUid && ownerUid !== 'user-super-admin') {
+        writes.push(
+          withFirestoreTimeout(
+            setDoc(getWorkspaceDocRef(ownerUid, 'users', uid), { approvalStatus: status, updatedAt: now }, { merge: true }),
+            4000
+          )
+        );
+      }
+      await Promise.all(writes);
     } catch (err) {
       if (isQuotaError(err)) markQuotaExceeded(err);
       console.warn('Could not update user approval in Firestore, updated state locally', err);
@@ -1357,47 +1751,76 @@ export async function fetchUsersBySchool(schoolId?: string): Promise<UserProfile
   return all.filter(u => u.schoolId === schoolId);
 }
 
-// Subscribe to real-time users updates (Firestore onSnapshot + Local fallback)
-export function subscribeToUsers(callback: (users: UserProfile[]) => void): Unsubscribe {
+// Subscribe to real-time users updates (Firestore onSnapshot + per-Pengawas workspace + Local fallback)
+export function subscribeToUsers(
+  callback: (users: UserProfile[]) => void,
+  userProfile?: UserProfile | null
+): Unsubscribe {
+  const ownerScope = resolveWorkspaceOwnerForUser(userProfile);
+
   const getFilteredLocalUsers = () => {
     const deletedUids = new Set(getDeletedUserIds());
-    const deletedNames = new Set(getDeletedUserNames().map(n => n.toLowerCase().trim()));
+    const deletedNames = getDeletedUserNames();
     return getStoredUsers().filter(u => {
       if (deletedUids.has(u.uid)) return false;
-      if (u.displayName && deletedNames.has(u.displayName.toLowerCase().trim())) return false;
+      const recOwner = resolveRecordOwnerUid(u);
+      if (u.role === 'guru' && isNameDeletedForWorkspace(u.displayName, recOwner, deletedNames)) return false;
+      if (ownerScope) {
+        if (isSuperAdminAccount(u)) return false;
+        return belongsToSupervisorWorkspace(u, ownerScope);
+      }
       return true;
     });
   };
 
   callback(getFilteredLocalUsers());
 
-  let unsubscribeFirestore: Unsubscribe = () => {};
-  try {
-    unsubscribeFirestore = onSnapshot(collection(db, 'users'), (snap) => {
-      if (!getOnlineMode() || isSyncingOfflineQueue) return;
-      const deletedUids = new Set(getDeletedUserIds());
-      const deletedNames = new Set(getDeletedUserNames().map(n => n.toLowerCase().trim()));
-      const firestoreUsers = snap.docs
-        .map(d => ({ ...d.data(), uid: d.id } as UserProfile))
-        .filter(u => {
-          if (deletedUids.has(u.uid)) return false;
-          if (u.displayName && deletedNames.has(u.displayName.toLowerCase().trim())) return false;
-          return true;
-        });
+  const unsubs: Unsubscribe[] = [];
 
-      const map = new Map<string, UserProfile>();
-      DEFAULT_USERS.forEach(u => {
-        if (!deletedUids.has(u.uid)) map.set(u.uid, u);
-      });
-      getFilteredLocalUsers().forEach(u => map.set(u.uid, u));
-      firestoreUsers.forEach(u => map.set(u.uid, u));
-      const combined = Array.from(map.values());
-      saveStoredUsers(combined);
-      callback(combined);
-    }, (err) => {
-      console.warn('Real-time users subscription warning:', err);
-      callback(getFilteredLocalUsers());
+  const mergeAndEmit = (incoming: UserProfile[]) => {
+    const deletedUids = new Set(getDeletedUserIds());
+    const deletedNames = getDeletedUserNames();
+    const map = new Map<string, UserProfile>();
+    DEFAULT_USERS.forEach(u => {
+      if (!deletedUids.has(u.uid)) map.set(u.uid, u);
     });
+    getStoredUsers().forEach(u => {
+      if (!deletedUids.has(u.uid)) map.set(u.uid, u);
+    });
+    incoming.forEach(u => {
+      if (deletedUids.has(u.uid)) return;
+      const recOwner = resolveRecordOwnerUid(u);
+      if (u.role === 'guru' && isNameDeletedForWorkspace(u.displayName, recOwner, deletedNames)) return;
+      map.set(u.uid, u);
+    });
+    const combined = Array.from(map.values());
+    saveStoredUsers(combined);
+    callback(getFilteredLocalUsers());
+  };
+
+  try {
+    unsubs.push(
+      onSnapshot(collection(db, 'users'), (snap) => {
+        if (!getOnlineMode() || isSyncingOfflineQueue) return;
+        const firestoreUsers = snap.docs.map(d => ({ ...d.data(), uid: d.id } as UserProfile));
+        mergeAndEmit(firestoreUsers);
+      }, (err) => {
+        console.warn('Real-time users subscription warning:', err);
+        callback(getFilteredLocalUsers());
+      })
+    );
+
+    if (ownerScope) {
+      unsubs.push(
+        onSnapshot(getWorkspaceColRef(ownerScope, 'users'), (snap) => {
+          if (!getOnlineMode() || isSyncingOfflineQueue) return;
+          const wsUsers = snap.docs.map(d => ({ ...d.data(), uid: d.id } as UserProfile));
+          mergeAndEmit(wsUsers);
+        }, (err) => {
+          console.warn('Real-time workspace users subscription warning:', err);
+        })
+      );
+    }
   } catch (err) {
     console.warn('Failed to attach real-time users listener:', err);
     callback(getFilteredLocalUsers());
@@ -1412,7 +1835,7 @@ export function subscribeToUsers(callback: (users: UserProfile[]) => void): Unsu
     window.addEventListener('pakkus-sync-completed', handleLocalChange);
     window.addEventListener('pakkus-online-mode-changed', handleLocalChange);
     return () => {
-      unsubscribeFirestore();
+      unsubs.forEach(u => u());
       window.removeEventListener('pakkus-local-users-updated', handleLocalChange);
       window.removeEventListener('pakkus-sync-completed', handleLocalChange);
       window.removeEventListener('pakkus-online-mode-changed', handleLocalChange);
@@ -1420,35 +1843,94 @@ export function subscribeToUsers(callback: (users: UserProfile[]) => void): Unsu
   }
 
   return () => {
-    unsubscribeFirestore();
+    unsubs.forEach(u => u());
   };
 }
 
-// Real-time synchronization listener for Schools (Firestore onSnapshot + Local fallback)
-export function subscribeToSchools(callback: (schools: School[]) => void): Unsubscribe {
-  const initial = loadLocalSchools() || DEFAULT_SCHOOLS;
-  callback(initial);
+function filterSchoolsForUser(list: School[], userProfile?: UserProfile | null): School[] {
+  if (!userProfile || isSuperAdminAccount(userProfile)) return list;
+  if (userProfile.role === 'kepsek') {
+    const userSch = (userProfile.schoolName || '').toLowerCase().trim();
+    return list.filter(s => s.id === userProfile.schoolId || (userSch && s.name.toLowerCase().includes(userSch)));
+  }
+  if (userProfile.role === 'guru') {
+    return list.filter(s => s.id === userProfile.schoolId);
+  }
+  const ownerScope = resolveWorkspaceOwnerForUser(userProfile);
+  if (!ownerScope) return list;
+  return list.filter(s => belongsToSupervisorWorkspace(s, ownerScope));
+}
 
-  let unsubscribeFirestore: Unsubscribe = () => {};
+// Real-time synchronization listener for Schools (per-Pengawas isolated Firestore workspace + top-level fallback)
+export function subscribeToSchools(
+  callback: (schools: School[]) => void,
+  userProfile?: UserProfile | null
+): Unsubscribe {
+  const ownerScope = resolveWorkspaceOwnerForUser(userProfile);
+  const isNewNonKusnandarPengawas = Boolean(
+    userProfile &&
+    (userProfile.role === 'pengawas' || userProfile.role === 'admin') &&
+    !isKusnandarAccount(userProfile)
+  );
+
+  const getLocalScopedSchools = () => {
+    const cached = loadLocalSchools();
+    const base = cached && cached.length > 0 ? cached : (isNewNonKusnandarPengawas ? [] : DEFAULT_SCHOOLS);
+    return filterSchoolsForUser(base, userProfile);
+  };
+
+  callback(getLocalScopedSchools());
+
+  const unsubs: Unsubscribe[] = [];
+
+  const handleIncomingSchools = (incoming: School[]) => {
+    if (incoming.length > 0) {
+      mergeLocalSchools(incoming);
+    }
+    callback(getLocalScopedSchools());
+  };
+
   try {
-    unsubscribeFirestore = onSnapshot(collection(db, 'schools'), (snap) => {
-      if (!getOnlineMode() || isSyncingOfflineQueue) return;
-      if (!snap.empty) {
-        const firestoreSchools = snap.docs.map(d => normalizeSchoolData({ id: d.id, ...d.data() } as School));
-        const merged = mergeSchoolsByTimestamp(firestoreSchools, loadLocalSchools() || DEFAULT_SCHOOLS);
-        saveLocalSchools(merged);
-        callback(merged);
-      }
-    }, (err) => {
-      console.warn('Real-time schools onSnapshot notice:', err);
-      callback(loadLocalSchools() || DEFAULT_SCHOOLS);
-    });
+    if (ownerScope && (userProfile?.role === 'pengawas' || userProfile?.role === 'admin')) {
+      // Dedicated per-Pengawas Firestore workspace listener
+      unsubs.push(
+        onSnapshot(getWorkspaceColRef(ownerScope, 'schools'), (snap) => {
+          if (!getOnlineMode() || isSyncingOfflineQueue) return;
+          const wsSchools = snap.docs.map(d => normalizeSchoolData({
+            id: d.id,
+            supervisorId: ownerScope,
+            supervisorWorkspaceId: ownerScope,
+            ...d.data(),
+          } as School));
+          handleIncomingSchools(wsSchools);
+        }, (err) => {
+          console.warn('Real-time workspace schools onSnapshot notice:', err);
+        })
+      );
+    }
+
+    // Top-level schools listener (strictly filtered to ownerScope when Pengawas)
+    unsubs.push(
+      onSnapshot(collection(db, 'schools'), (snap) => {
+        if (!getOnlineMode() || isSyncingOfflineQueue) return;
+        if (!snap.empty) {
+          const firestoreSchools = snap.docs.map(d => normalizeSchoolData({ id: d.id, ...d.data() } as School));
+          const relevant = ownerScope
+            ? firestoreSchools.filter(s => belongsToSupervisorWorkspace(s, ownerScope))
+            : firestoreSchools;
+          handleIncomingSchools(relevant);
+        }
+      }, (err) => {
+        console.warn('Real-time schools onSnapshot notice:', err);
+        callback(getLocalScopedSchools());
+      })
+    );
   } catch (err) {
     console.warn('Could not attach Firestore onSnapshot for schools:', err);
   }
 
   const handleLocalChange = () => {
-    callback(loadLocalSchools() || DEFAULT_SCHOOLS);
+    callback(getLocalScopedSchools());
   };
 
   if (typeof window !== 'undefined') {
@@ -1456,7 +1938,7 @@ export function subscribeToSchools(callback: (schools: School[]) => void): Unsub
     window.addEventListener('pakkus-sync-completed', handleLocalChange);
     window.addEventListener('pakkus-online-mode-changed', handleLocalChange);
     return () => {
-      unsubscribeFirestore();
+      unsubs.forEach(u => u());
       window.removeEventListener('pakkus-local-schools-updated', handleLocalChange);
       window.removeEventListener('pakkus-sync-completed', handleLocalChange);
       window.removeEventListener('pakkus-online-mode-changed', handleLocalChange);
@@ -1464,11 +1946,11 @@ export function subscribeToSchools(callback: (schools: School[]) => void): Unsub
   }
 
   return () => {
-    unsubscribeFirestore();
+    unsubs.forEach(u => u());
   };
 }
 
-// Seed initial schools and synchronise with Firestore
+// Seed initial Kusnandar schools and synchronise with Firestore (without touching other pengawas's schools)
 export async function ensureInitialSchools(): Promise<School[]> {
   const local = loadLocalSchools();
   if (local && local.length > 0) {
@@ -1478,82 +1960,117 @@ export async function ensureInitialSchools(): Promise<School[]> {
     const schoolsSnap = await withFirestoreTimeout(getDocs(collection(db, 'schools')), 1800, null);
     if (schoolsSnap && !schoolsSnap.empty) {
       const data = schoolsSnap.docs.map(d => normalizeSchoolData({ id: d.id, ...d.data() } as School));
-      saveLocalSchools(data);
+      mergeLocalSchools(data);
       return data;
     }
 
-    // Bootstrap defaults
+    // Bootstrap Pak Kusnandar defaults into both top-level & his dedicated workspace
     for (const sch of DEFAULT_SCHOOLS) {
-      const { id, ...data } = sch;
-      withFirestoreTimeout(setDoc(doc(db, 'schools', id), data, { merge: true }), 1500).catch(() => {});
+      const cleaned = cleanForFirestore(sch);
+      withFirestoreTimeout(setDoc(doc(db, 'schools', sch.id), cleaned, { merge: true }), 1500).catch(() => {});
+      withFirestoreTimeout(setDoc(getWorkspaceDocRef(KUSNANDAR_UID, 'schools', sch.id), cleaned, { merge: true }), 1500).catch(() => {});
     }
-    saveLocalSchools(DEFAULT_SCHOOLS);
+    mergeLocalSchools(DEFAULT_SCHOOLS);
     return DEFAULT_SCHOOLS;
   } catch (err) {
     console.warn('Using default schools due to offline or uninitialized state', err);
-    saveLocalSchools(DEFAULT_SCHOOLS);
+    mergeLocalSchools(DEFAULT_SCHOOLS);
     return DEFAULT_SCHOOLS;
   }
 }
 
 export async function resetToDefaultSchools(): Promise<School[]> {
-  saveLocalSchools(DEFAULT_SCHOOLS);
+  // Merge Pak Kusnandar's 11 default schools WITHOUT wiping any other Pengawas's schools
+  const merged = mergeLocalSchools(DEFAULT_SCHOOLS);
   try {
     await apiResetSchools();
   } catch {}
   for (const sch of DEFAULT_SCHOOLS) {
-    const { id, ...data } = sch;
-    withFirestoreTimeout(setDoc(doc(db, 'schools', id), data, { merge: true }), 500).catch(() => {});
+    const cleaned = cleanForFirestore(sch);
+    withFirestoreTimeout(setDoc(doc(db, 'schools', sch.id), cleaned, { merge: true }), 1500).catch(() => {});
+    withFirestoreTimeout(setDoc(getWorkspaceDocRef(KUSNANDAR_UID, 'schools', sch.id), cleaned, { merge: true }), 1500).catch(() => {});
   }
-  return DEFAULT_SCHOOLS;
+  return merged;
 }
 
-export async function fetchAllSchools(): Promise<School[]> {
+export async function fetchAllSchools(userProfile?: UserProfile | null): Promise<School[]> {
+  const ownerScope = resolveWorkspaceOwnerForUser(userProfile);
+  const isNewNonKusnandarPengawas = Boolean(
+    userProfile &&
+    (userProfile.role === 'pengawas' || userProfile.role === 'admin') &&
+    !isKusnandarAccount(userProfile)
+  );
   const local = loadLocalSchools();
-  let currentList = local && local.length > 0 ? local : DEFAULT_SCHOOLS;
+  let currentList = local && local.length > 0 ? local : (isNewNonKusnandarPengawas ? [] : DEFAULT_SCHOOLS);
 
   if (!getOnlineMode()) {
-    return currentList;
+    return filterSchoolsForUser(currentList, userProfile);
   }
 
-  // 1. Fetch from persistent backend API first
+  // 1. Fetch from persistent backend API (scoped if pengawas)
   try {
-    const backendSchools = await apiFetchSchools();
+    const backendSchools = await apiFetchSchools(ownerScope || undefined);
     if (backendSchools && backendSchools.length > 0) {
-      currentList = mergeSchoolsByTimestamp(backendSchools, currentList);
-      saveLocalSchools(currentList);
+      currentList = mergeLocalSchools(backendSchools);
     }
   } catch (backendErr) {
     console.warn('Backend API schools notice:', backendErr);
   }
 
-  // 2. Fetch latest schools from Firebase Firestore
+  // 2. Fetch latest schools from Firebase Firestore (dedicated workspace + top-level)
   try {
-    const snap = await withFirestoreTimeout(getDocs(collection(db, 'schools')), 3500, null);
-    if (snap && !snap.empty) {
-      const firestoreSchools = snap.docs.map(doc => normalizeSchoolData({ id: doc.id, ...doc.data() } as School));
-      currentList = mergeSchoolsByTimestamp(firestoreSchools, currentList);
-      saveLocalSchools(currentList);
+    const reads: Promise<any>[] = [
+      withFirestoreTimeout(getDocs(collection(db, 'schools')), 3500, null),
+    ];
+    if (ownerScope) {
+      reads.push(withFirestoreTimeout(getDocs(getWorkspaceColRef(ownerScope, 'schools')), 3500, null));
+    }
+    const [topSnap, wsSnap] = await Promise.all(reads);
+    const incoming: School[] = [];
+    if (topSnap && !topSnap.empty) {
+      topSnap.docs.forEach((d: any) => {
+        incoming.push(normalizeSchoolData({ id: d.id, ...d.data() } as School));
+      });
+    }
+    if (wsSnap && !wsSnap.empty) {
+      wsSnap.docs.forEach((d: any) => {
+        incoming.push(normalizeSchoolData({
+          id: d.id,
+          supervisorId: ownerScope || undefined,
+          supervisorWorkspaceId: ownerScope || undefined,
+          ...d.data(),
+        } as School));
+      });
+    }
+    if (incoming.length > 0) {
+      currentList = mergeLocalSchools(incoming);
     }
   } catch (err) {
     console.warn('Notice fetching schools from Firestore (using backend/local storage):', err);
   }
 
-  return currentList;
+  return filterSchoolsForUser(currentList, userProfile);
 }
 
 export async function addSchool(data: Omit<School, 'id'>): Promise<School> {
   const targetId = `sch-${Date.now()}`;
   const now = new Date().toISOString();
+  const activeActor = loadLocalUser();
+  const ownerUid = resolveRecordOwnerUid(data, activeActor);
+  const ownerName = resolveOwnerDisplayName(ownerUid, data.supervisorName, activeActor);
+
   const school: School = {
     id: targetId,
     ...data,
+    supervisorId: data.supervisorId || ownerUid,
+    supervisorWorkspaceId: data.supervisorWorkspaceId || ownerUid,
+    supervisorName: data.supervisorName || ownerName,
     createdAt: data.createdAt || now,
     updatedAt: now,
-    createdBy: data.createdBy || 'system',
+    createdBy: data.createdBy || activeActor?.uid || ownerUid,
   };
-  const current = loadLocalSchools() || DEFAULT_SCHOOLS;
-  saveLocalSchools([...current.filter(s => s.id !== school.id), school]);
+
+  saveSingleLocalSchool(school);
 
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('pakkus-local-schools-updated'));
@@ -1564,18 +2081,22 @@ export async function addSchool(data: Omit<School, 'id'>): Promise<School> {
     return school;
   }
 
-  // Persist to backend API (disk)
+  // Persist to backend API (disk + per-pengawas workspace file)
   try {
     await apiSaveSchool(school);
   } catch (err) {
     console.warn('Backend API save school notice:', err);
   }
 
-  // Persist real-time to Firebase Firestore
+  // Persist real-time to Firebase Firestore (BOTH dedicated per-Pengawas workspace & top-level)
   if (!isFirestoreQuotaExceeded) {
     try {
       const cleaned = cleanForFirestore(school);
-      await withFirestoreTimeout(setDoc(doc(db, 'schools', targetId), cleaned, { merge: true }), 4000);
+      await Promise.all([
+        withFirestoreTimeout(setDoc(doc(db, 'schools', targetId), cleaned, { merge: true }), 4000),
+        withFirestoreTimeout(setDoc(getWorkspaceDocRef(ownerUid, 'schools', targetId), cleaned, { merge: true }), 4000),
+      ]);
+      await writeWorkspaceSyncMetadata(ownerUid, activeActor);
       if (typeof window !== 'undefined') {
         localStorage.setItem(LAST_SYNC_TIME_KEY, now);
         window.dispatchEvent(new CustomEvent('pakkus-sync-completed', { detail: { syncTime: now } }));
@@ -1589,32 +2110,43 @@ export async function addSchool(data: Omit<School, 'id'>): Promise<School> {
 }
 
 export async function updateSchool(id: string, data: Partial<School>): Promise<void> {
-  const current = loadLocalSchools() || DEFAULT_SCHOOLS;
-  const idx = current.findIndex(s => s.id === id);
+  const current = loadLocalSchools() || [];
+  const existing = current.find(s => s.id === id);
   const now = new Date().toISOString();
-  let updatedSchool: School;
+  const activeActor = loadLocalUser();
+  const ownerUid = resolveRecordOwnerUid({ ...existing, ...data }, activeActor);
+  const ownerName = resolveOwnerDisplayName(ownerUid, data.supervisorName || existing?.supervisorName, activeActor);
 
-  if (idx >= 0) {
-    updatedSchool = { ...current[idx], ...data, id, updatedAt: now };
-    current[idx] = updatedSchool;
-  } else {
-    updatedSchool = {
-      id,
-      name: data.name || 'SMA Binaan',
-      npsn: data.npsn || '',
-      principalName: data.principalName || '',
-      accreditation: data.accreditation || 'A',
-      address: data.address || '',
-      createdAt: now,
-      updatedAt: now,
-      createdBy: data.createdBy || 'system',
-      ...data,
-    };
-    current.push(updatedSchool);
-  }
-  saveLocalSchools(current);
+  const updatedSchool: School = existing
+    ? {
+        ...existing,
+        ...data,
+        id,
+        supervisorId: data.supervisorId || existing.supervisorId || ownerUid,
+        supervisorWorkspaceId: data.supervisorWorkspaceId || existing.supervisorWorkspaceId || ownerUid,
+        supervisorName: data.supervisorName || existing.supervisorName || ownerName,
+        createdBy: data.createdBy || existing.createdBy || ownerUid,
+        updatedAt: now,
+      }
+    : {
+        id,
+        name: data.name || 'SMA Binaan',
+        npsn: data.npsn || '',
+        principalName: data.principalName || '',
+        accreditation: data.accreditation || 'A',
+        address: data.address || '',
+        createdAt: now,
+        updatedAt: now,
+        supervisorId: ownerUid,
+        supervisorWorkspaceId: ownerUid,
+        supervisorName: ownerName,
+        createdBy: data.createdBy || ownerUid,
+        ...data,
+      };
 
-  // If school name changed, update schoolName on related supervisions and users so UI is 100% in sync
+  saveSingleLocalSchool(updatedSchool);
+
+  // If school name changed, update schoolName on related supervisions and users
   if (data.name) {
     try {
       const sups = loadLocalSupervisions() || [];
@@ -1656,18 +2188,22 @@ export async function updateSchool(id: string, data: Partial<School>): Promise<v
     return;
   }
 
-  // Persist to backend API (takes ~5ms, guaranteed persistence on disk)
+  // Persist to backend API (disk + per-pengawas workspace file)
   try {
     await apiUpdateSchool(id, updatedSchool);
   } catch (apiErr) {
     console.warn('Backend API update school notice:', apiErr);
   }
 
-  // Persist real-time to Firebase Firestore
+  // Persist real-time to Firebase Firestore (BOTH dedicated per-Pengawas workspace & top-level)
   if (!isFirestoreQuotaExceeded) {
     try {
       const cleaned = cleanForFirestore(updatedSchool);
-      await withFirestoreTimeout(setDoc(doc(db, 'schools', id), cleaned, { merge: true }), 4000);
+      await Promise.all([
+        withFirestoreTimeout(setDoc(doc(db, 'schools', id), cleaned, { merge: true }), 4000),
+        withFirestoreTimeout(setDoc(getWorkspaceDocRef(ownerUid, 'schools', id), cleaned, { merge: true }), 4000),
+      ]);
+      await writeWorkspaceSyncMetadata(ownerUid, activeActor);
       if (typeof window !== 'undefined') {
         localStorage.setItem(LAST_SYNC_TIME_KEY, now);
         window.dispatchEvent(new CustomEvent('pakkus-sync-completed', { detail: { syncTime: now } }));
@@ -1680,8 +2216,12 @@ export async function updateSchool(id: string, data: Partial<School>): Promise<v
 }
 
 export async function deleteSchool(id: string): Promise<void> {
-  const current = (loadLocalSchools() || DEFAULT_SCHOOLS).filter(s => s.id !== id);
-  saveLocalSchools(current);
+  const existingSchools = loadLocalSchools() || [];
+  const targetSchool = existingSchools.find(s => s.id === id);
+  const ownerUid = targetSchool ? resolveRecordOwnerUid(targetSchool, loadLocalUser()) : (resolveWorkspaceOwnerForUser(loadLocalUser()) || KUSNANDAR_UID);
+
+  const remaining = existingSchools.filter(s => s.id !== id);
+  saveLocalSchools(remaining);
 
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('pakkus-local-schools-updated'));
@@ -1698,7 +2238,11 @@ export async function deleteSchool(id: string): Promise<void> {
 
   if (!isFirestoreQuotaExceeded) {
     try {
-      await withFirestoreTimeout(deleteDoc(doc(db, 'schools', id)), 4000);
+      await Promise.all([
+        withFirestoreTimeout(deleteDoc(doc(db, 'schools', id)), 4000),
+        withFirestoreTimeout(deleteDoc(getWorkspaceDocRef(ownerUid, 'schools', id)), 4000),
+      ]);
+      await writeWorkspaceSyncMetadata(ownerUid);
       if (typeof window !== 'undefined') {
         const now = new Date().toISOString();
         localStorage.setItem(LAST_SYNC_TIME_KEY, now);
@@ -1724,7 +2268,7 @@ export async function ensureInitialSupervisions(): Promise<Supervision[]> {
     const snap = await withFirestoreTimeout(getDocs(collection(db, 'supervisions')), 3500, null);
     if (snap && !snap.empty) {
       const data = snap.docs.map(d => normalizeSupervisionData({ id: d.id, ...d.data() } as Supervision));
-      saveLocalSupervisions(data);
+      mergeLocalSupervisions(data);
       return data;
     }
 
@@ -1732,15 +2276,22 @@ export async function ensureInitialSupervisions(): Promise<Supervision[]> {
       return SAMPLE_SUPERVISIONS;
     }
 
-    // First time bootstrap: seed SAMPLE_SUPERVISIONS to Firestore only if quota available
+    // First time bootstrap: seed SAMPLE_SUPERVISIONS for Pak Kusnandar workspace only
     for (const sup of SAMPLE_SUPERVISIONS) {
       if (isFirestoreQuotaExceeded) break;
-      await withFirestoreTimeout(
-        setDoc(doc(db, 'supervisions', sup.id), cleanForFirestore(sup), { merge: true }),
-        1500
-      ).catch(() => {});
+      const stamped = {
+        ...sup,
+        supervisorId: KUSNANDAR_UID,
+        supervisorWorkspaceId: KUSNANDAR_UID,
+        createdBy: KUSNANDAR_UID,
+      };
+      const cleaned = cleanForFirestore(stamped);
+      await Promise.all([
+        withFirestoreTimeout(setDoc(doc(db, 'supervisions', sup.id), cleaned, { merge: true }), 1500),
+        withFirestoreTimeout(setDoc(getWorkspaceDocRef(KUSNANDAR_UID, 'supervisions', sup.id), cleaned, { merge: true }), 1500),
+      ]).catch(() => {});
     }
-    saveLocalSupervisions(SAMPLE_SUPERVISIONS);
+    mergeLocalSupervisions(SAMPLE_SUPERVISIONS);
     return SAMPLE_SUPERVISIONS;
   } catch (err) {
     if (isQuotaError(err)) {
@@ -1751,104 +2302,134 @@ export async function ensureInitialSupervisions(): Promise<Supervision[]> {
   }
 }
 
+function filterSupervisionsForUser(list: Supervision[], userProfile?: UserProfile | null): Supervision[] {
+  if (!userProfile || isSuperAdminAccount(userProfile)) return list;
+  if (userProfile.role === 'guru') {
+    return list.filter(
+      s => s.teacherId === userProfile.uid ||
+           s.teacherName.toLowerCase().trim() === userProfile.displayName.toLowerCase().trim()
+    );
+  }
+  if (userProfile.role === 'kepsek' && (userProfile.schoolId || userProfile.schoolName)) {
+    return list.filter(
+      s => (userProfile.schoolId && s.schoolId === userProfile.schoolId) ||
+           (userProfile.schoolName && s.schoolName.toLowerCase().trim() === userProfile.schoolName.toLowerCase().trim())
+    );
+  }
+  const ownerScope = resolveWorkspaceOwnerForUser(userProfile);
+  if (!ownerScope) return list;
+  return list.filter(s => belongsToSupervisorWorkspace(s, ownerScope));
+}
+
 export async function fetchSupervisions(userProfile?: UserProfile | null): Promise<Supervision[]> {
   const deletedSupIds = new Set(getDeletedSupervisionIds());
   const deletedUids = new Set(getDeletedUserIds());
-  const deletedNames = new Set(getDeletedUserNames().map(n => n.toLowerCase().trim()));
+  const deletedNames = getDeletedUserNames();
+  const ownerScope = resolveWorkspaceOwnerForUser(userProfile);
+  const isNewNonKusnandarPengawas = Boolean(
+    userProfile &&
+    (userProfile.role === 'pengawas' || userProfile.role === 'admin') &&
+    !isKusnandarAccount(userProfile)
+  );
 
-  const isSupDeleted = (s: Supervision) =>
-    deletedSupIds.has(s.id) ||
-    (s.teacherId && deletedUids.has(s.teacherId)) ||
-    (s.teacherName && deletedNames.has(s.teacherName.toLowerCase().trim()));
-
-  const filterForUser = (list: Supervision[]) => {
-    if (!userProfile) return list;
-    if (userProfile.role === 'super_admin') {
-      return list;
-    }
-    if (userProfile.role === 'guru') {
-      return list.filter(
-        s => s.teacherId === userProfile.uid ||
-             s.teacherName.toLowerCase().trim() === userProfile.displayName.toLowerCase().trim()
-      );
-    } else if (userProfile.role === 'kepsek' && (userProfile.schoolId || userProfile.schoolName)) {
-      return list.filter(
-        s => (userProfile.schoolId && s.schoolId === userProfile.schoolId) ||
-             (userProfile.schoolName && s.schoolName.toLowerCase().trim() === userProfile.schoolName.toLowerCase().trim())
-      );
-    } else if (userProfile.role === 'admin' || userProfile.role === 'pengawas') {
-      if (isKusnandarAccount(userProfile)) {
-        return list.filter(s =>
-          !s.supervisorId ||
-          s.supervisorId === 'user-pengawas-kusnandar' ||
-          s.supervisorId === 'admin-kusnandar' ||
-          (s.supervisorName && s.supervisorName.toLowerCase().includes('kusnandar')) ||
-          s.createdBy === 'user-pengawas-kusnandar' ||
-          s.createdBy === 'system' ||
-          s.id.startsWith('sup-demo-')
-        );
-      } else {
-        return list.filter(s =>
-          s.supervisorId === userProfile.uid ||
-          s.createdBy === userProfile.uid ||
-          (Boolean(s.supervisorName) && s.supervisorName.toLowerCase().trim() === userProfile.displayName.toLowerCase().trim())
-        );
-      }
-    }
-    return list;
+  const isSupDeleted = (s: Supervision) => {
+    if (deletedSupIds.has(s.id)) return true;
+    if (s.teacherId && deletedUids.has(s.teacherId)) return true;
+    const ownerUid = resolveRecordOwnerUid(s);
+    if (isNameDeletedForWorkspace(s.teacherName, ownerUid, deletedNames)) return true;
+    return false;
   };
 
   // If OFFLINE mode is active, serve strictly from localStorage without hitting cloud/network
   if (!getOnlineMode()) {
     const localCached = loadLocalSupervisions();
-    let results: Supervision[] = localCached && localCached.length > 0 ? localCached : SAMPLE_SUPERVISIONS;
-    results = results.map(s => normalizeSupervisionData(s)).filter(s => !isSupDeleted(s));
-    return filterForUser(results);
+    const base: Supervision[] = localCached && localCached.length > 0
+      ? localCached
+      : (isNewNonKusnandarPengawas ? [] : SAMPLE_SUPERVISIONS);
+    const clean = base.map(s => normalizeSupervisionData(s)).filter(s => !isSupDeleted(s));
+    return filterSupervisionsForUser(clean, userProfile);
   }
 
-  // 1. AUTHORITATIVE CLOUD FIRST: Fetch from Firestore (latest synced state across devices)
+  // 1. AUTHORITATIVE CLOUD FIRST: Fetch from Firestore (dedicated per-Pengawas workspace + top-level)
   try {
-    const q = collection(db, 'supervisions');
-    const snap = await withFirestoreTimeout(getDocs(q), 5000, null);
-    if (snap && !snap.empty) {
-      const firestoreSups = snap.docs
-        .map(d => normalizeSupervisionData({ id: d.id, ...d.data() } as Supervision))
-        .filter(s => !isSupDeleted(s));
-
-      if (firestoreSups.length > 0) {
-        saveLocalSupervisions(firestoreSups);
-        return filterForUser(firestoreSups);
+    const reads: Promise<any>[] = [];
+    if (ownerScope && (userProfile?.role === 'pengawas' || userProfile?.role === 'admin')) {
+      reads.push(withFirestoreTimeout(getDocs(getWorkspaceColRef(ownerScope, 'supervisions')), 5000, null));
+      if (ownerScope === KUSNANDAR_UID) {
+        // Also fetch top-level for legacy Pak Kusnandar documents
+        reads.push(withFirestoreTimeout(getDocs(collection(db, 'supervisions')), 5000, null));
+      } else {
+        reads.push(withFirestoreTimeout(getDocs(query(collection(db, 'supervisions'), where('supervisorId', '==', ownerScope))), 5000, null));
+      }
+    } else {
+      reads.push(withFirestoreTimeout(getDocs(collection(db, 'supervisions')), 5000, null));
+      if (ownerScope) {
+        reads.push(withFirestoreTimeout(getDocs(getWorkspaceColRef(ownerScope, 'supervisions')), 5000, null));
       }
     }
+
+    const snaps = await Promise.all(reads);
+    const combinedMap = new Map<string, Supervision>();
+    snaps.forEach((snap) => {
+      if (snap && !snap.empty) {
+        snap.docs.forEach((d: any) => {
+          const normalized = normalizeSupervisionData({ id: d.id, ...d.data() } as Supervision);
+          if (!isSupDeleted(normalized)) {
+            const existing = combinedMap.get(normalized.id);
+            if (!existing || (normalized.updatedAt || '') >= (existing.updatedAt || '')) {
+              combinedMap.set(normalized.id, normalized);
+            }
+          }
+        });
+      }
+    });
+
+    const firestoreSups = Array.from(combinedMap.values());
+    if (firestoreSups.length > 0) {
+      mergeLocalSupervisions(firestoreSups);
+      return filterSupervisionsForUser(firestoreSups, userProfile);
+    }
+    // If a non-Kusnandar Pengawas has 0 supervisions in Firestore, check backend before returning empty []
   } catch (err) {
     console.warn('Firestore supervisions fetch notice (falling back to backend/local):', err);
   }
 
-  // 2. Fetch from backend API disk persistence
+  // 2. Fetch from backend API disk persistence (scoped by supervisorId)
   try {
-    const backendSups = await apiFetchSupervisions();
+    const backendSups = await apiFetchSupervisions(ownerScope || undefined);
     if (backendSups && backendSups.length > 0) {
       const validBackend = backendSups
         .map(s => normalizeSupervisionData(s))
         .filter(s => !isSupDeleted(s));
       if (validBackend.length > 0) {
-        saveLocalSupervisions(validBackend);
-        return filterForUser(validBackend);
+        mergeLocalSupervisions(validBackend);
+        return filterSupervisionsForUser(validBackend, userProfile);
       }
     }
   } catch (backendErr) {
     console.warn('Backend API supervisions notice:', backendErr);
   }
 
-  // 3. Fallback to local cache / sample
+  // 3. Fallback to local cache (NEVER fall back to SAMPLE_SUPERVISIONS for a brand-new Pengawas!)
   const localCached = loadLocalSupervisions();
-  let results: Supervision[] = localCached && localCached.length > 0 ? localCached : SAMPLE_SUPERVISIONS;
-  results = results.map(s => normalizeSupervisionData(s)).filter(s => !isSupDeleted(s));
-  return filterForUser(results);
+  const fallbackBase: Supervision[] = localCached && localCached.length > 0
+    ? localCached
+    : (isNewNonKusnandarPengawas ? [] : SAMPLE_SUPERVISIONS);
+  const results = fallbackBase.map(s => normalizeSupervisionData(s)).filter(s => !isSupDeleted(s));
+  return filterSupervisionsForUser(results, userProfile);
 }
 
 export async function getSupervisionById(id: string): Promise<Supervision | null> {
   try {
+    const activeOwner = resolveWorkspaceOwnerForUser(loadLocalUser());
+    if (activeOwner) {
+      const wsSnap = await withFirestoreTimeout(getDoc(getWorkspaceDocRef(activeOwner, 'supervisions', id)), 600, null);
+      if (wsSnap && wsSnap.exists()) {
+        const sup = normalizeSupervisionData({ id: wsSnap.id, ...wsSnap.data() } as Supervision);
+        saveSingleLocalSupervision(sup);
+        return sup;
+      }
+    }
     const snap = await withFirestoreTimeout(getDoc(doc(db, 'supervisions', id)), 600, null);
     if (snap && snap.exists()) {
       const sup = normalizeSupervisionData({ id: snap.id, ...snap.data() } as Supervision);
@@ -1863,99 +2444,123 @@ export async function getSupervisionById(id: string): Promise<Supervision | null
   return localList.find(s => s.id === id) || null;
 }
 
-// Real-time synchronization listener for Supervisions (Firestore onSnapshot + Local fallback)
+// Real-time synchronization listener for Supervisions (per-Pengawas isolated Firestore workspace + top-level)
 export function subscribeToSupervisions(
   callback: (supervisions: Supervision[]) => void,
   userProfile?: UserProfile | null
 ): Unsubscribe {
-  const filterForUser = (list: Supervision[]) => {
-    let results = list;
-    if (!userProfile) return results;
-    if (userProfile.role === 'super_admin') {
-      return results;
-    }
-    if (userProfile.role === 'guru') {
-      results = results.filter(
-        s => s.teacherId === userProfile.uid ||
-             s.teacherName.toLowerCase().trim() === userProfile.displayName.toLowerCase().trim()
-      );
-    } else if (userProfile.role === 'kepsek' && (userProfile.schoolId || userProfile.schoolName)) {
-      results = results.filter(
-        s => (userProfile.schoolId && s.schoolId === userProfile.schoolId) ||
-             (userProfile.schoolName && s.schoolName.toLowerCase().trim() === userProfile.schoolName.toLowerCase().trim())
-      );
-    } else if (userProfile.role === 'admin' || userProfile.role === 'pengawas') {
-      if (isKusnandarAccount(userProfile)) {
-        results = results.filter(s =>
-          !s.supervisorId ||
-          s.supervisorId === 'user-pengawas-kusnandar' ||
-          s.supervisorId === 'admin-kusnandar' ||
-          (s.supervisorName && s.supervisorName.toLowerCase().includes('kusnandar')) ||
-          s.createdBy === 'user-pengawas-kusnandar' ||
-          s.createdBy === 'system' ||
-          s.id.startsWith('sup-demo-')
-        );
-      } else {
-        results = results.filter(s =>
-          s.supervisorId === userProfile.uid ||
-          s.createdBy === userProfile.uid ||
-          (Boolean(s.supervisorName) && s.supervisorName.toLowerCase().trim() === userProfile.displayName.toLowerCase().trim())
-        );
-      }
-    }
-    return results;
+  const ownerScope = resolveWorkspaceOwnerForUser(userProfile);
+  const isNewNonKusnandarPengawas = Boolean(
+    userProfile &&
+    (userProfile.role === 'pengawas' || userProfile.role === 'admin') &&
+    !isKusnandarAccount(userProfile)
+  );
+
+  const isSupDeleted = (s: Supervision) => {
+    const deletedIds = new Set(getDeletedSupervisionIds());
+    const deletedUids = new Set(getDeletedUserIds());
+    const deletedNames = getDeletedUserNames();
+    if (deletedIds.has(s.id)) return true;
+    if (s.teacherId && deletedUids.has(s.teacherId)) return true;
+    const recOwner = resolveRecordOwnerUid(s);
+    if (isNameDeletedForWorkspace(s.teacherName, recOwner, deletedNames)) return true;
+    return false;
   };
 
   const getFilteredLocal = () => {
-    const deletedIds = new Set(getDeletedSupervisionIds());
-    const deletedNames = new Set(getDeletedUserNames().map(n => n.toLowerCase().trim()));
-    const deletedUids = new Set(getDeletedUserIds());
-    const base = loadLocalSupervisions() || SAMPLE_SUPERVISIONS;
-    const clean = base.filter(s => {
-      if (deletedIds.has(s.id)) return false;
-      if (s.teacherId && deletedUids.has(s.teacherId)) return false;
-      if (s.teacherName && deletedNames.has(s.teacherName.toLowerCase().trim())) return false;
-      return true;
-    }).map(s => normalizeSupervisionData(s));
-    return filterForUser(clean);
+    const localCached = loadLocalSupervisions();
+    const base = localCached && localCached.length > 0
+      ? localCached
+      : (isNewNonKusnandarPengawas ? [] : SAMPLE_SUPERVISIONS);
+    const clean = base.filter(s => !isSupDeleted(s)).map(s => normalizeSupervisionData(s));
+    return filterSupervisionsForUser(clean, userProfile);
   };
 
   // 1. Immediately provide initial local data for instant 0ms render
   callback(getFilteredLocal());
 
-  // 2. Setup real-time listener to Firestore supervisions collection
-  let unsubscribeFirestore: Unsubscribe = () => {};
-  try {
-    const supervisionsCol = collection(db, 'supervisions');
-    unsubscribeFirestore = onSnapshot(supervisionsCol, (snapshot) => {
-      if (!getOnlineMode() || isSyncingOfflineQueue) return;
-      if (!snapshot.empty) {
-        const deletedIds = new Set(getDeletedSupervisionIds());
-        const deletedNames = new Set(getDeletedUserNames().map(n => n.toLowerCase().trim()));
-        const deletedUids = new Set(getDeletedUserIds());
+  // 2. Setup real-time Firestore listeners (dedicated per-Pengawas workspace + top-level)
+  const unsubs: Unsubscribe[] = [];
 
-        const firestoreSupervisions: Supervision[] = [];
-        snapshot.docs.forEach(docSnap => {
-          const raw = { id: docSnap.id, ...docSnap.data() } as Supervision;
-          if (deletedIds.has(raw.id)) return;
-          if (raw.teacherId && deletedUids.has(raw.teacherId)) return;
-          if (raw.teacherName && deletedNames.has(raw.teacherName.toLowerCase().trim())) return;
-          firestoreSupervisions.push(normalizeSupervisionData(raw));
-        });
-
-        if (firestoreSupervisions.length > 0) {
-          // Cloud snapshot is authoritative from the latest sync across devices
-          saveLocalSupervisions(firestoreSupervisions);
-          callback(filterForUser(firestoreSupervisions));
-        }
-      }
-    }, (error) => {
-      console.warn('Real-time supervisions onSnapshot notice:', error);
-      if (isQuotaError(error)) {
-        markQuotaExceeded(error);
-      }
-      callback(getFilteredLocal());
+  const applyCloudDocs = (docs: Array<{ id: string; data: any }>) => {
+    const incoming: Supervision[] = [];
+    docs.forEach(item => {
+      const raw = { id: item.id, ...item.data } as Supervision;
+      if (isSupDeleted(raw)) return;
+      incoming.push(normalizeSupervisionData(raw));
     });
+    if (incoming.length > 0) {
+      mergeLocalSupervisions(incoming);
+    }
+    callback(getFilteredLocal());
+  };
+
+  try {
+    if (ownerScope && (userProfile?.role === 'pengawas' || userProfile?.role === 'admin')) {
+      // Dedicated isolated Firestore workspace for this Pengawas
+      unsubs.push(
+        onSnapshot(getWorkspaceColRef(ownerScope, 'supervisions'), (snapshot) => {
+          if (!getOnlineMode() || isSyncingOfflineQueue) return;
+          applyCloudDocs(snapshot.docs.map(d => ({ id: d.id, data: d.data() })));
+        }, (error) => {
+          console.warn('Real-time workspace supervisions onSnapshot notice:', error);
+          if (isQuotaError(error)) markQuotaExceeded(error);
+        })
+      );
+
+      if (ownerScope === KUSNANDAR_UID) {
+        unsubs.push(
+          onSnapshot(collection(db, 'supervisions'), (snapshot) => {
+            if (!getOnlineMode() || isSyncingOfflineQueue) return;
+            const ownDocs = snapshot.docs
+              .filter(d => belongsToSupervisorWorkspace({ id: d.id, ...d.data() }, KUSNANDAR_UID))
+              .map(d => ({ id: d.id, data: d.data() }));
+            applyCloudDocs(ownDocs);
+          }, (error) => {
+            console.warn('Real-time supervisions onSnapshot notice:', error);
+            if (isQuotaError(error)) markQuotaExceeded(error);
+            callback(getFilteredLocal());
+          })
+        );
+      } else {
+        unsubs.push(
+          onSnapshot(query(collection(db, 'supervisions'), where('supervisorId', '==', ownerScope)), (snapshot) => {
+            if (!getOnlineMode() || isSyncingOfflineQueue) return;
+            applyCloudDocs(snapshot.docs.map(d => ({ id: d.id, data: d.data() })));
+          }, (error) => {
+            console.warn('Real-time scoped supervisions onSnapshot notice:', error);
+            if (isQuotaError(error)) markQuotaExceeded(error);
+            callback(getFilteredLocal());
+          })
+        );
+      }
+    } else {
+      // Super Admin, Kepsek, Guru, or unauthenticated view
+      unsubs.push(
+        onSnapshot(collection(db, 'supervisions'), (snapshot) => {
+          if (!getOnlineMode() || isSyncingOfflineQueue) return;
+          if (!snapshot.empty) {
+            applyCloudDocs(snapshot.docs.map(d => ({ id: d.id, data: d.data() })));
+          }
+        }, (error) => {
+          console.warn('Real-time supervisions onSnapshot notice:', error);
+          if (isQuotaError(error)) markQuotaExceeded(error);
+          callback(getFilteredLocal());
+        })
+      );
+      if (ownerScope) {
+        unsubs.push(
+          onSnapshot(getWorkspaceColRef(ownerScope, 'supervisions'), (snapshot) => {
+            if (!getOnlineMode() || isSyncingOfflineQueue) return;
+            if (!snapshot.empty) {
+              applyCloudDocs(snapshot.docs.map(d => ({ id: d.id, data: d.data() })));
+            }
+          }, (error) => {
+            console.warn('Real-time workspace supervisions onSnapshot notice:', error);
+          })
+        );
+      }
+    }
   } catch (err) {
     console.warn('Could not attach Firestore onSnapshot for supervisions:', err);
   }
@@ -1970,7 +2575,7 @@ export function subscribeToSupervisions(
     window.addEventListener('pakkus-sync-completed', handleLocalChange);
     window.addEventListener('pakkus-online-mode-changed', handleLocalChange);
     return () => {
-      unsubscribeFirestore();
+      unsubs.forEach(u => u());
       window.removeEventListener('pakkus-local-supervisions-updated', handleLocalChange);
       window.removeEventListener('pakkus-sync-completed', handleLocalChange);
       window.removeEventListener('pakkus-online-mode-changed', handleLocalChange);
@@ -1978,34 +2583,48 @@ export function subscribeToSupervisions(
   }
 
   return () => {
-    unsubscribeFirestore();
+    unsubs.forEach(u => u());
   };
 }
 
 // Save Supervision:
-// - Ketika mode ONLINE aktif: otomatis tersimpan realtime ke Firebase Firestore & backend database.
-// - Ketika mode OFFLINE aktif: tersimpan di localStorage dan otomatis disinkronkan saat beralih ke ONLINE.
+// - Menetapkan kepemilikan supervisorId/supervisorWorkspaceId secara eksplisit agar data tiap pengawas tersimpan terpisah.
+// - Mode ONLINE: otomatis tersimpan realtime ke Firestore workspace masing-masing pengawas + koleksi utama + backend database.
+// - Mode OFFLINE: tersimpan di localStorage dan otomatis disinkronkan saat beralih ke ONLINE.
 export async function saveSupervision(
   supervision: Partial<Supervision> & { id?: string },
   forceSyncToFirestore = false
 ): Promise<string> {
   const targetId = supervision.id || `sup-${Date.now()}`;
   const now = new Date().toISOString();
+  const activeActor = loadLocalUser();
+  const existingLocal = (loadLocalSupervisions() || []).find(s => s.id === targetId);
+  const ownerUid = resolveRecordOwnerUid({ ...existingLocal, ...supervision }, activeActor);
+  const ownerName = resolveOwnerDisplayName(
+    ownerUid,
+    supervision.supervisorName || existingLocal?.supervisorName,
+    activeActor
+  );
 
   // Bersihkan penanda tombstone jika guru atau supervisi ini ditambahkan kembali
   removeDeletedSupervisionId(targetId);
   if (supervision.teacherId) removeDeletedUserId(supervision.teacherId);
-  if (supervision.teacherName) removeDeletedUserName(supervision.teacherName);
+  if (supervision.teacherName) removeDeletedUserName(supervision.teacherName, ownerUid);
 
   const fullData: Supervision = {
+    ...existingLocal,
     ...supervision,
     id: targetId,
+    supervisorId: supervision.supervisorId || existingLocal?.supervisorId || ownerUid,
+    supervisorWorkspaceId: supervision.supervisorWorkspaceId || existingLocal?.supervisorWorkspaceId || ownerUid,
+    supervisorName: supervision.supervisorName || existingLocal?.supervisorName || ownerName,
+    createdBy: supervision.createdBy || existingLocal?.createdBy || activeActor?.uid || ownerUid,
     isValidData: true,
-    createdAt: (supervision as any).createdAt || now,
+    createdAt: (supervision as any).createdAt || existingLocal?.createdAt || now,
     updatedAt: now,
   } as Supervision;
 
-  // 1. SELALU simpan langsung ke local storage perangkat (0ms render instan)
+  // 1. SELALU simpan langsung ke local storage perangkat (non-destruktif, tidak menghapus data pengawas lain)
   saveSingleLocalSupervision(fullData);
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('pakkus-local-supervisions-updated'));
@@ -2020,41 +2639,29 @@ export async function saveSupervision(
     return targetId;
   }
 
-  // 2. Simpan ke persistent disk backend API (< 10ms)
+  // 2. Simpan ke persistent disk backend API + workspace pengawas (< 10ms)
   try {
     await apiSaveSupervision(fullData);
   } catch (apiErr) {
     console.warn('Backend API save supervision notice:', apiErr);
   }
 
-  // 3. Mode ONLINE aktif: LANGSUNG simpan realtime ke Firebase Firestore
+  // 3. Mode ONLINE aktif: LANGSUNG simpan realtime ke Firebase Firestore (workspace khusus pengawas + koleksi utama)
   if (!isFirestoreQuotaExceeded) {
     try {
-      const docRef = doc(db, 'supervisions', targetId);
       const cleaned = cleanForFirestore(fullData);
-      await withFirestoreTimeout(setDoc(docRef, cleaned, { merge: true }), 4500);
+      await Promise.all([
+        withFirestoreTimeout(setDoc(doc(db, 'supervisions', targetId), cleaned, { merge: true }), 4500),
+        withFirestoreTimeout(setDoc(getWorkspaceDocRef(ownerUid, 'supervisions', targetId), cleaned, { merge: true }), 4500),
+      ]);
 
-      // Perbarui metadata sync di Firestore agar perangkat lain (Device B, dll) menerima update realtime
-      const updatedLocalList = loadLocalSupervisions() || [];
-      const localUser = loadLocalUser();
-      const userEmail = localUser?.email || auth.currentUser?.email || 'admin';
-      const userName = localUser?.displayName || auth.currentUser?.displayName || 'Pengawas Pembina';
-      withFirestoreTimeout(
-        setDoc(doc(db, 'system', 'sync_state'), {
-          lastSyncedAt: now,
-          lastSyncedBy: userEmail,
-          lastSyncedByName: userName,
-          supervisionsCount: updatedLocalList.length,
-          supervisionIds: updatedLocalList.map(s => s.id),
-          timestamp: Date.now(),
-        }, { merge: true }),
-        3500
-      ).catch(() => {});
+      await writeWorkspaceSyncMetadata(ownerUid, activeActor);
 
+      const ownCount = (loadLocalSupervisions() || []).filter(s => belongsToSupervisorWorkspace(s, ownerUid)).length;
       if (typeof window !== 'undefined') {
         localStorage.setItem(LAST_SYNC_TIME_KEY, now);
         localStorage.removeItem(HAS_UNSYNCED_KEY);
-        window.dispatchEvent(new CustomEvent('pakkus-sync-completed', { detail: { syncTime: now, count: updatedLocalList.length } }));
+        window.dispatchEvent(new CustomEvent('pakkus-sync-completed', { detail: { syncTime: now, count: ownCount } }));
       }
       return targetId;
     } catch (err: any) {
@@ -2076,25 +2683,24 @@ export async function saveSupervision(
 export async function deleteSupervision(id: string, teacherName?: string, teacherId?: string): Promise<void> {
   let name = teacherName;
   let tId = teacherId;
-  if (!name || !tId) {
-    const local = loadLocalSupervisions() || [];
-    const found = local.find(s => s.id === id);
-    if (found) {
-      if (!name) name = found.teacherName;
-      if (!tId) tId = found.teacherId;
-    }
+  let supOwner: string | undefined;
+  const local = loadLocalSupervisions() || [];
+  const found = local.find(s => s.id === id);
+  if (found) {
+    if (!name) name = found.teacherName;
+    if (!tId) tId = found.teacherId;
+    supOwner = resolveRecordOwnerUid(found);
   }
-  await purgeTeacherDataCompletely({ id, teacherName: name, teacherId: tId });
+  await purgeTeacherDataCompletely({ id, teacherName: name, teacherId: tId, supervisorId: supOwner });
 }
 
-// Synchronize all pending local data (users, schools, supervisions) to Firebase Firestore
-export async function syncAllPendingLocalChangesToFirestore(): Promise<{ 
+// Synchronize pending local data strictly scoped to the active Pengawas's workspace (or all workspaces if Super Admin)
+export async function syncAllPendingLocalChangesToFirestore(activeUser?: UserProfile | null): Promise<{ 
   usersCount: number; 
   schoolsCount: number; 
   supervisionsCount: number;
   lastSyncTime: string;
 }> {
-  // When user clicks Cloud Sinkron or switches Online, ensure Online mode & Firestore network are active
   if (!getOnlineMode()) {
     setOnlineModeState(true, false);
     try {
@@ -2107,47 +2713,99 @@ export async function syncAllPendingLocalChangesToFirestore(): Promise<{
     sessionStorage.removeItem('firestore_quota_exceeded');
   }
 
+  const actor = activeUser || loadLocalUser();
+  const isSuper = isSuperAdminAccount(actor);
+  const scopedOwnerUid = !isSuper ? resolveWorkspaceOwnerForUser(actor) : null;
+  const isNewNonKusnandarPengawas = Boolean(scopedOwnerUid && scopedOwnerUid !== KUSNANDAR_UID);
+
   let uCount = 0;
   let sCount = 0;
   let supCount = 0;
 
-  // 1. Prepare clean entities
+  // 1. Prepare clean entities strictly scoped to the active Pengawas (never touch other Pengawas's data!)
   const deletedIds = new Set(getDeletedSupervisionIds());
-  const deletedNames = new Set(getDeletedUserNames().map(n => n.toLowerCase().trim()));
+  const deletedNames = getDeletedUserNames();
   const deletedUids = new Set(getDeletedUserIds());
 
   // Users
-  const users = getStoredUsers();
-  const validUsers = users.filter(u => {
-    if (deletedUids.has(u.uid)) return false;
-    if (u.displayName && deletedNames.has(u.displayName.toLowerCase().trim())) return false;
-    return true;
-  });
+  const allUsers = getStoredUsers();
+  const validUsers = allUsers
+    .filter(u => {
+      if (deletedUids.has(u.uid)) return false;
+      const recOwner = resolveRecordOwnerUid(u);
+      if (u.role === 'guru' && isNameDeletedForWorkspace(u.displayName, recOwner, deletedNames)) return false;
+      if (scopedOwnerUid) {
+        if (isSuperAdminAccount(u)) return false;
+        return belongsToSupervisorWorkspace(u, scopedOwnerUid);
+      }
+      return true;
+    })
+    .map(u => {
+      if (isSuperAdminAccount(u)) return u;
+      const owner = scopedOwnerUid || resolveRecordOwnerUid(u);
+      return {
+        ...u,
+        supervisorId: u.supervisorId || owner,
+        supervisorWorkspaceId: u.supervisorWorkspaceId || owner,
+        createdBy: u.createdBy || owner,
+      };
+    });
 
   // Schools
-  const validSchools = loadLocalSchools() || DEFAULT_SCHOOLS;
+  const localSchools = loadLocalSchools();
+  const rawSchools = localSchools && localSchools.length > 0
+    ? localSchools
+    : (isNewNonKusnandarPengawas ? [] : DEFAULT_SCHOOLS);
+  const validSchools = rawSchools
+    .filter(s => (scopedOwnerUid ? belongsToSupervisorWorkspace(s, scopedOwnerUid) : true))
+    .map(s => {
+      const owner = scopedOwnerUid || resolveRecordOwnerUid(s);
+      return {
+        ...s,
+        supervisorId: s.supervisorId || owner,
+        supervisorWorkspaceId: s.supervisorWorkspaceId || owner,
+        createdBy: s.createdBy || owner,
+      };
+    });
 
-  // Supervisions: ensure full set of 10 official supervisions is preserved
+  // Supervisions (NEVER fall back to SAMPLE_SUPERVISIONS for a brand-new Pengawas with 0 supervisions!)
   let allSups = loadLocalSupervisions() || [];
-  if (allSups.length === 0) {
+  if (allSups.length === 0 && !isNewNonKusnandarPengawas) {
     try {
-      const backendSups = await apiFetchSupervisions();
-      allSups = backendSups && backendSups.length > 0 ? backendSups : SAMPLE_SUPERVISIONS;
+      const backendSups = await apiFetchSupervisions(scopedOwnerUid || undefined);
+      allSups = backendSups && backendSups.length > 0
+        ? backendSups
+        : (scopedOwnerUid && scopedOwnerUid !== KUSNANDAR_UID ? [] : SAMPLE_SUPERVISIONS);
     } catch {
-      allSups = SAMPLE_SUPERVISIONS;
+      allSups = scopedOwnerUid && scopedOwnerUid !== KUSNANDAR_UID ? [] : SAMPLE_SUPERVISIONS;
     }
   }
 
-  const validSupervisions = allSups.filter(s => {
-    if (deletedIds.has(s.id)) return false;
-    if (s.teacherId && deletedUids.has(s.teacherId)) return false;
-    if (s.teacherName && deletedNames.has(s.teacherName.toLowerCase().trim())) return false;
-    return true;
-  }).map(s => normalizeSupervisionData(s));
+  const validSupervisions = allSups
+    .filter(s => {
+      if (deletedIds.has(s.id)) return false;
+      if (s.teacherId && deletedUids.has(s.teacherId)) return false;
+      const recOwner = resolveRecordOwnerUid(s);
+      if (isNameDeletedForWorkspace(s.teacherName, recOwner, deletedNames)) return false;
+      if (scopedOwnerUid) {
+        return belongsToSupervisorWorkspace(s, scopedOwnerUid);
+      }
+      return true;
+    })
+    .map(s => {
+      const owner = scopedOwnerUid || resolveRecordOwnerUid(s);
+      return normalizeSupervisionData({
+        ...s,
+        supervisorId: s.supervisorId || owner,
+        supervisorWorkspaceId: s.supervisorWorkspaceId || owner,
+        createdBy: s.createdBy || owner,
+      });
+    });
 
-  // 2. Persist to Backend API first (persists to server_data/database.json)
+  // 2. Persist to Backend API first (strictly scoped to supervisorId so other Pengawas's records are untouched)
   try {
     await apiSyncAll({
+      supervisorId: scopedOwnerUid || undefined,
       supervisions: validSupervisions,
       schools: validSchools,
       users: validUsers,
@@ -2156,56 +2814,84 @@ export async function syncAllPendingLocalChangesToFirestore(): Promise<{
     console.warn('Backend API sync notice:', apiErr);
   }
 
-  // 3. Write directly to Firebase Firestore using writeBatch for atomic real-time update
+  // 3. Write to Firebase Firestore: BOTH dedicated per-Pengawas workspace & top-level collections
+  const nowIso = new Date().toISOString();
+  const syncedByEmail = actor?.email || auth.currentUser?.email || 'admin';
+  const syncedByName = actor?.displayName || auth.currentUser?.displayName || 'Pengawas Pembina';
+
   try {
     const batch = writeBatch(db);
 
-    // Add users to batch
     for (const u of validUsers) {
-      const docRef = doc(db, 'users', u.uid);
-      batch.set(docRef, cleanForFirestore(u), { merge: true });
+      const cleaned = cleanForFirestore(u);
+      batch.set(doc(db, 'users', u.uid), cleaned, { merge: true });
+      if (!isSuperAdminAccount(u)) {
+        const owner = scopedOwnerUid || resolveRecordOwnerUid(u);
+        if (owner !== 'user-super-admin') {
+          batch.set(getWorkspaceDocRef(owner, 'users', u.uid), cleaned, { merge: true });
+        }
+      }
       uCount++;
     }
 
-    // Add schools to batch
     for (const s of validSchools) {
-      const docRef = doc(db, 'schools', s.id);
-      batch.set(docRef, cleanForFirestore(s), { merge: true });
+      const cleaned = cleanForFirestore(s);
+      const owner = scopedOwnerUid || resolveRecordOwnerUid(s);
+      batch.set(doc(db, 'schools', s.id), cleaned, { merge: true });
+      batch.set(getWorkspaceDocRef(owner, 'schools', s.id), cleaned, { merge: true });
       sCount++;
     }
 
-    // Add supervisions to batch
     for (const sup of validSupervisions) {
-      const docRef = doc(db, 'supervisions', sup.id);
-      batch.set(docRef, cleanForFirestore(sup), { merge: true });
+      const cleaned = cleanForFirestore(sup);
+      const owner = scopedOwnerUid || resolveRecordOwnerUid(sup);
+      batch.set(doc(db, 'supervisions', sup.id), cleaned, { merge: true });
+      batch.set(getWorkspaceDocRef(owner, 'supervisions', sup.id), cleaned, { merge: true });
       supCount++;
     }
 
-    // Record cloud sync state so all devices know the exact author, count, and timestamp of the latest sync
-    const localUser = loadLocalUser();
-    const syncedByEmail = localUser?.email || auth.currentUser?.email || 'admin';
-    const syncedByName = localUser?.displayName || auth.currentUser?.displayName || 'Pengawas Pembina';
-    const syncMetaDoc = doc(db, 'system', 'sync_state');
-    batch.set(syncMetaDoc, {
-      lastSyncedAt: new Date().toISOString(),
-      lastSyncedBy: syncedByEmail,
-      lastSyncedByName: syncedByName,
-      supervisionsCount: validSupervisions.length,
-      supervisionIds: validSupervisions.map(s => s.id),
-      schoolsCount: validSchools.length,
-      usersCount: validUsers.length,
-      timestamp: Date.now(),
-    }, { merge: true });
+    if (scopedOwnerUid) {
+      batch.set(getWorkspaceSyncDocRef(scopedOwnerUid), {
+        supervisorId: scopedOwnerUid,
+        supervisorName: resolveOwnerDisplayName(scopedOwnerUid, syncedByName, actor),
+        lastSyncedAt: nowIso,
+        lastSyncedBy: syncedByEmail,
+        lastSyncedByName: syncedByName,
+        supervisionsCount: validSupervisions.length,
+        supervisionIds: validSupervisions.map(s => s.id),
+        schoolsCount: validSchools.length,
+        usersCount: validUsers.length,
+        timestamp: Date.now(),
+      }, { merge: true });
+    } else {
+      batch.set(doc(db, 'system', 'sync_state'), {
+        lastSyncedAt: nowIso,
+        lastSyncedBy: syncedByEmail,
+        lastSyncedByName: syncedByName,
+        supervisionsCount: validSupervisions.length,
+        supervisionIds: validSupervisions.map(s => s.id),
+        schoolsCount: validSchools.length,
+        usersCount: validUsers.length,
+        timestamp: Date.now(),
+      }, { merge: true });
+    }
 
-    // Clean up any deleted records in Firestore (supervisions & users)
+    // Delete tombstones only within current workspace (or global for Super Admin)
     for (const delId of deletedIds) {
-      batch.delete(doc(db, 'supervisions', delId));
+      if (scopedOwnerUid) {
+        batch.delete(getWorkspaceDocRef(scopedOwnerUid, 'supervisions', delId));
+      } else {
+        batch.delete(doc(db, 'supervisions', delId));
+      }
     }
     for (const delUid of deletedUids) {
-      batch.delete(doc(db, 'users', delUid));
+      if (scopedOwnerUid) {
+        batch.delete(getWorkspaceDocRef(scopedOwnerUid, 'users', delUid));
+      } else {
+        batch.delete(doc(db, 'users', delUid));
+      }
     }
 
-    // Commit all documents in one real-time batch
     await withFirestoreTimeout(batch.commit(), 8000);
   } catch (batchErr: any) {
     console.warn('Batch commit notice, running individual concurrent writes:', batchErr);
@@ -2214,14 +2900,20 @@ export async function syncAllPendingLocalChangesToFirestore(): Promise<{
       throw batchErr;
     }
 
-    // Fallback: individual writes with timeout
     uCount = 0;
     sCount = 0;
     supCount = 0;
 
     for (const u of validUsers) {
       try {
-        await withFirestoreTimeout(setDoc(doc(db, 'users', u.uid), cleanForFirestore(u), { merge: true }), 3500);
+        const cleaned = cleanForFirestore(u);
+        await withFirestoreTimeout(setDoc(doc(db, 'users', u.uid), cleaned, { merge: true }), 3500);
+        if (!isSuperAdminAccount(u)) {
+          const owner = scopedOwnerUid || resolveRecordOwnerUid(u);
+          if (owner !== 'user-super-admin') {
+            await withFirestoreTimeout(setDoc(getWorkspaceDocRef(owner, 'users', u.uid), cleaned, { merge: true }), 3500);
+          }
+        }
         uCount++;
       } catch (e) {
         console.warn('Sync user fallback notice:', e);
@@ -2229,7 +2921,10 @@ export async function syncAllPendingLocalChangesToFirestore(): Promise<{
     }
     for (const s of validSchools) {
       try {
-        await withFirestoreTimeout(setDoc(doc(db, 'schools', s.id), cleanForFirestore(s), { merge: true }), 3500);
+        const cleaned = cleanForFirestore(s);
+        const owner = scopedOwnerUid || resolveRecordOwnerUid(s);
+        await withFirestoreTimeout(setDoc(doc(db, 'schools', s.id), cleaned, { merge: true }), 3500);
+        await withFirestoreTimeout(setDoc(getWorkspaceDocRef(owner, 'schools', s.id), cleaned, { merge: true }), 3500);
         sCount++;
       } catch (e) {
         console.warn('Sync school fallback notice:', e);
@@ -2237,35 +2932,31 @@ export async function syncAllPendingLocalChangesToFirestore(): Promise<{
     }
     for (const sup of validSupervisions) {
       try {
-        await withFirestoreTimeout(setDoc(doc(db, 'supervisions', sup.id), cleanForFirestore(sup), { merge: true }), 3500);
+        const cleaned = cleanForFirestore(sup);
+        const owner = scopedOwnerUid || resolveRecordOwnerUid(sup);
+        await withFirestoreTimeout(setDoc(doc(db, 'supervisions', sup.id), cleaned, { merge: true }), 3500);
+        await withFirestoreTimeout(setDoc(getWorkspaceDocRef(owner, 'supervisions', sup.id), cleaned, { merge: true }), 3500);
         supCount++;
       } catch (e) {
         console.warn('Sync supervision fallback notice:', e);
       }
     }
-    for (const delId of deletedIds) {
+    if (scopedOwnerUid) {
+      await writeWorkspaceSyncMetadata(scopedOwnerUid, actor);
+    } else {
       try {
-        await withFirestoreTimeout(deleteDoc(doc(db, 'supervisions', delId)), 2500);
+        await withFirestoreTimeout(setDoc(doc(db, 'system', 'sync_state'), {
+          lastSyncedAt: nowIso,
+          lastSyncedBy: syncedByEmail,
+          lastSyncedByName: syncedByName,
+          supervisionsCount: validSupervisions.length,
+          supervisionIds: validSupervisions.map(s => s.id),
+          schoolsCount: validSchools.length,
+          usersCount: validUsers.length,
+          timestamp: Date.now(),
+        }, { merge: true }), 3500);
       } catch {}
     }
-    for (const delUid of deletedUids) {
-      try {
-        await withFirestoreTimeout(deleteDoc(doc(db, 'users', delUid)), 2500);
-      } catch {}
-    }
-    try {
-      const localUser = loadLocalUser();
-      await withFirestoreTimeout(setDoc(doc(db, 'system', 'sync_state'), {
-        lastSyncedAt: new Date().toISOString(),
-        lastSyncedBy: localUser?.email || auth.currentUser?.email || 'admin',
-        lastSyncedByName: localUser?.displayName || auth.currentUser?.displayName || 'Pengawas Pembina',
-        supervisionsCount: validSupervisions.length,
-        supervisionIds: validSupervisions.map(s => s.id),
-        schoolsCount: validSchools.length,
-        usersCount: validUsers.length,
-        timestamp: Date.now(),
-      }, { merge: true }), 3500);
-    } catch {}
   }
 
   const syncTime = new Date().toISOString();
@@ -2282,6 +2973,8 @@ export async function syncAllPendingLocalChangesToFirestore(): Promise<{
 }
 
 export interface CloudSyncState {
+  supervisorId?: string;
+  supervisorName?: string;
   lastSyncedAt: string;
   lastSyncedBy?: string;
   lastSyncedByName?: string;
@@ -2292,9 +2985,13 @@ export interface CloudSyncState {
   timestamp?: number;
 }
 
-export function subscribeToSyncState(callback: (state: CloudSyncState | null) => void): Unsubscribe {
+export function subscribeToSyncState(
+  callback: (state: CloudSyncState | null) => void,
+  userProfile?: UserProfile | null
+): Unsubscribe {
   try {
-    const docRef = doc(db, 'system', 'sync_state');
+    const ownerScope = resolveWorkspaceOwnerForUser(userProfile);
+    const docRef = ownerScope ? getWorkspaceSyncDocRef(ownerScope) : doc(db, 'system', 'sync_state');
     return onSnapshot(docRef, (snap) => {
       if (snap.exists()) {
         callback(snap.data() as CloudSyncState);
@@ -2309,25 +3006,44 @@ export function subscribeToSyncState(callback: (state: CloudSyncState | null) =>
   }
 }
 
-// Master boot initialization to ensure Firestore collections exist with full data
+// Master boot initialization: ensures Pak Kusnandar defaults & per-Pengawas workspaces are initialized safely
 export async function syncAllInitialDataToFirestore() {
   if (!getOnlineMode() || isFirestoreQuotaExceeded) {
     return;
   }
 
   // Throttle initial sync to avoid unnecessary repeated writes on every single page mount
-  const lastSyncStr = typeof window !== 'undefined' ? localStorage.getItem('last_firestore_initial_sync') : null;
+  const lastSyncStr = typeof window !== 'undefined' ? localStorage.getItem('last_firestore_initial_sync_v2') : null;
   const now = Date.now();
   if (lastSyncStr && (now - Number(lastSyncStr) < 4 * 60 * 60 * 1000)) {
     return;
   }
 
   try {
-    // 1. Ensure schools exist in Firestore (seeds only if collection is empty)
-    await ensureInitialSchools();
+    // 1. Ensure schools exist in Firestore and backfill into each Pengawas's dedicated workspace
+    const schoolsSnap = await withFirestoreTimeout(getDocs(collection(db, 'schools')), 3500, null);
+    if (!schoolsSnap || schoolsSnap.empty) {
+      await ensureInitialSchools();
+    } else {
+      for (const d of schoolsSnap.docs) {
+        if (isFirestoreQuotaExceeded) return;
+        const sch = normalizeSchoolData({ id: d.id, ...d.data() } as School);
+        const owner = resolveRecordOwnerUid(sch);
+        const stamped = {
+          ...sch,
+          supervisorId: sch.supervisorId || owner,
+          supervisorWorkspaceId: sch.supervisorWorkspaceId || owner,
+          createdBy: sch.createdBy || owner,
+        };
+        await withFirestoreTimeout(
+          setDoc(getWorkspaceDocRef(owner, 'schools', sch.id), cleanForFirestore(stamped), { merge: true }),
+          2500
+        ).catch(() => {});
+      }
+    }
     if (isFirestoreQuotaExceeded) return;
 
-    // 2. Ensure default users exist in Firestore only if not present yet
+    // 2. Ensure default users exist & backfill each user into their Pengawas's workspace
     try {
       const usersSnap = await withFirestoreTimeout(getDocs(collection(db, 'users')), 3500, null);
       if (usersSnap) {
@@ -2335,7 +3051,31 @@ export async function syncAllInitialDataToFirestore() {
         for (const u of DEFAULT_USERS) {
           if (isFirestoreQuotaExceeded) return;
           if (!existingUserIds.has(u.uid)) {
-            await setDoc(doc(db, 'users', u.uid), cleanForFirestore(u), { merge: true });
+            const cleaned = cleanForFirestore(u);
+            await setDoc(doc(db, 'users', u.uid), cleaned, { merge: true });
+            if (!isSuperAdminAccount(u)) {
+              const owner = resolveRecordOwnerUid(u);
+              await setDoc(getWorkspaceDocRef(owner, 'users', u.uid), cleaned, { merge: true });
+            }
+          }
+        }
+        // Backfill all existing non-super-admin users to their own pengawas_workspaces/{owner}/users/{uid}
+        for (const d of usersSnap.docs) {
+          if (isFirestoreQuotaExceeded) return;
+          const u = { ...d.data(), uid: d.id } as UserProfile;
+          if (isSuperAdminAccount(u)) continue;
+          const owner = resolveRecordOwnerUid(u);
+          if (owner !== 'user-super-admin') {
+            const stamped = {
+              ...u,
+              supervisorId: u.supervisorId || owner,
+              supervisorWorkspaceId: u.supervisorWorkspaceId || owner,
+              createdBy: u.createdBy || owner,
+            };
+            await withFirestoreTimeout(
+              setDoc(getWorkspaceDocRef(owner, 'users', u.uid), cleanForFirestore(stamped), { merge: true }),
+              2500
+            ).catch(() => {});
           }
         }
       }
@@ -2349,7 +3089,7 @@ export async function syncAllInitialDataToFirestore() {
 
     if (isFirestoreQuotaExceeded) return;
 
-    // 3. Ensure Supervisions exist in Firestore and sync bidirectionally with Backend API
+    // 3. Ensure Supervisions exist in Firestore & backfill each supervision into its owner's dedicated workspace
     try {
       const backendSups = await apiFetchSupervisions();
       const localSups = loadLocalSupervisions() || [];
@@ -2361,22 +3101,44 @@ export async function syncAllInitialDataToFirestore() {
         snap.docs.forEach(d => existingFirestoreMap.set(d.id, d.data()));
       }
 
-      // Sync any missing or newer from backend/local to Firestore
       for (const sup of primarySups) {
         if (isFirestoreQuotaExceeded) return;
+        const owner = resolveRecordOwnerUid(sup);
+        const stamped = {
+          ...sup,
+          supervisorId: sup.supervisorId || owner,
+          supervisorWorkspaceId: sup.supervisorWorkspaceId || owner,
+          createdBy: sup.createdBy || owner,
+        };
         const exist = existingFirestoreMap.get(sup.id);
         const supTime = sup.updatedAt ? new Date(sup.updatedAt).getTime() : 0;
         const existTime = exist?.updatedAt ? new Date(exist.updatedAt).getTime() : 0;
+        const cleaned = cleanForFirestore(stamped);
         if (!exist || supTime > existTime) {
-          await setDoc(doc(db, 'supervisions', sup.id), cleanForFirestore(sup), { merge: true });
+          await setDoc(doc(db, 'supervisions', sup.id), cleaned, { merge: true });
         }
+        await withFirestoreTimeout(
+          setDoc(getWorkspaceDocRef(owner, 'supervisions', sup.id), cleaned, { merge: true }),
+          2500
+        ).catch(() => {});
       }
 
-      // Sync any from Firestore to backend API
+      // Also sync any newer docs from Firestore into backend API & workspace path
       if (snap && !snap.empty) {
         for (const docSnap of snap.docs) {
           const fsData = normalizeSupervisionData({ id: docSnap.id, ...docSnap.data() } as Supervision);
-          apiSaveSupervision(fsData).catch(() => {});
+          const owner = resolveRecordOwnerUid(fsData);
+          const stamped = {
+            ...fsData,
+            supervisorId: fsData.supervisorId || owner,
+            supervisorWorkspaceId: fsData.supervisorWorkspaceId || owner,
+            createdBy: fsData.createdBy || owner,
+          };
+          apiSaveSupervision(stamped).catch(() => {});
+          withFirestoreTimeout(
+            setDoc(getWorkspaceDocRef(owner, 'supervisions', stamped.id), cleanForFirestore(stamped), { merge: true }),
+            2000
+          ).catch(() => {});
         }
       }
     } catch (supErr) {
@@ -2389,10 +3151,10 @@ export async function syncAllInitialDataToFirestore() {
     }
 
     if (typeof window !== 'undefined') {
-      localStorage.setItem('last_firestore_initial_sync', String(now));
+      localStorage.setItem('last_firestore_initial_sync_v2', String(now));
     }
 
-    console.log(`Firebase Firestore status verified for project: ${firebaseConfig.projectId}`);
+    console.log(`Firebase Firestore per-Pengawas workspaces verified for project: ${firebaseConfig.projectId}`);
   } catch (err) {
     if (isQuotaError(err)) {
       markQuotaExceeded(err);

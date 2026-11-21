@@ -46,13 +46,17 @@ import {
   isQuotaError,
   isKusnandarAccount,
   getOnlineMode,
-  testConnection
+  testConnection,
+  resolveRecordOwnerUid,
+  isNameDeletedForWorkspace,
+  belongsToSupervisorWorkspace,
+  KUSNANDAR_UID
 } from './services/firebase';
 import { 
   loadLocalSupervisions, 
-  saveLocalSupervisions, 
+  mergeLocalSupervisions,
   loadLocalSchools, 
-  saveLocalSchools, 
+  mergeLocalSchools,
   loadLocalUser, 
   saveLocalUser 
 } from './services/localStorageService';
@@ -64,14 +68,15 @@ const EXCLUDED_SUPERVISION_IDS = new Set(['sup-demo-dewi-awal', 'sup-demo-03', '
 const filterValidSupervisions = (list: Supervision[]): Supervision[] => {
   const deletedSupIds = new Set(getDeletedSupervisionIds());
   const deletedUids = new Set(getDeletedUserIds());
-  const deletedNames = new Set(getDeletedUserNames());
+  const deletedNames = getDeletedUserNames();
   return list
     .filter(s => {
       if (EXCLUDED_SUPERVISION_IDS.has(s.id)) return false;
       if (deletedSupIds.has(s.id)) return false;
       if (s.teacherId && deletedUids.has(s.teacherId)) return false;
-      if (s.teacherName && deletedNames.has(s.teacherName.toLowerCase().trim())) return false;
-      if (s.teacherName && (s.teacherName.toLowerCase().includes('risna') || s.teacherName.toLowerCase().includes('fatma rita'))) return false;
+      const ownerUid = resolveRecordOwnerUid(s);
+      if (s.teacherName && isNameDeletedForWorkspace(s.teacherName, ownerUid, deletedNames)) return false;
+      if (ownerUid === KUSNANDAR_UID && s.teacherName && (s.teacherName.toLowerCase().includes('risna') || s.teacherName.toLowerCase().includes('fatma rita'))) return false;
       return true;
     })
     .map(s => {
@@ -102,12 +107,14 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => loadLocalUser());
   const [schools, setSchools] = useState<School[]>(() => loadLocalSchools() || []);
   const [supervisions, setSupervisions] = useState<Supervision[]>(() => {
-    const loaded = loadLocalSupervisions();
+    const initialUser = loadLocalUser();
+    const loaded = loadLocalSupervisions() || [];
     const map = new Map<string, Supervision>();
-    SAMPLE_SUPERVISIONS.forEach(s => map.set(s.id, s));
-    if (loaded && loaded.length > 0) {
-      loaded.forEach(s => map.set(s.id, s));
+    // Hanya sertakan data bawaan Pak Kusnandar jika bukan pengawas baru yang terisolasi
+    if (!initialUser || initialUser.role === 'super_admin' || isKusnandarAccount(initialUser)) {
+      SAMPLE_SUPERVISIONS.forEach(s => map.set(s.id, s));
     }
+    loaded.forEach(s => map.set(s.id, s));
     return filterValidSupervisions(Array.from(map.values()));
   });
   // Pastikan ketika memasukan alamat aplikasi langsung ke halaman beranda (landing) walaupun sudah pernah membuka sebelumnya
@@ -139,18 +146,12 @@ export default function App() {
       if (detail?.online) {
         try {
           const [refreshedSchools, refreshedSups] = await Promise.all([
-            fetchAllSchools(),
+            fetchAllSchools(currentUser),
             fetchSupervisions(currentUser),
           ]);
-          if (refreshedSchools && refreshedSchools.length > 0) {
-            setSchools(refreshedSchools);
-            saveLocalSchools(refreshedSchools);
-          }
-          if (refreshedSups && refreshedSups.length > 0) {
-            const valid = filterValidSupervisions(refreshedSups);
-            setSupervisions(valid);
-            saveLocalSupervisions(valid);
-          }
+          setSchools(refreshedSchools || []);
+          const valid = filterValidSupervisions(refreshedSups || []);
+          setSupervisions(valid);
         } catch (err) {
           console.warn('Notice refreshing data after switching online:', err);
         }
@@ -172,6 +173,7 @@ export default function App() {
   }, [currentUser?.uid]);
 
   // Initialize app data from Firebase Firestore (realtime when Online) or local storage (when Offline)
+  // Setiap pengawas otomatis terhubung ke workspace Firebase & database miliknya sendiri
   useEffect(() => {
     const initApp = async () => {
       if (getOnlineMode()) {
@@ -179,25 +181,19 @@ export default function App() {
         syncAllInitialDataToFirestore().catch(() => {});
       }
 
-      // 1. Fetch schools from persistent backend API / Firestore / local
+      // 1. Fetch schools scoped to current pengawas workspace (or all for Super Admin)
       try {
-        const loadedSchools = await fetchAllSchools();
-        if (loadedSchools && loadedSchools.length > 0) {
-          setSchools(loadedSchools);
-          saveLocalSchools(loadedSchools);
-        }
+        const loadedSchools = await fetchAllSchools(currentUser);
+        setSchools(loadedSchools || []);
       } catch (schErr) {
         console.warn('Notice loading schools on boot:', schErr);
       }
 
-      // 2. Fetch persistent supervisions from Firestore / backend API / local
+      // 2. Fetch persistent supervisions scoped to current pengawas workspace
       try {
         const loadedSupervisions = await fetchSupervisions(currentUser);
-        if (loadedSupervisions && loadedSupervisions.length > 0) {
-          const valid = filterValidSupervisions(loadedSupervisions);
-          setSupervisions(valid);
-          saveLocalSupervisions(valid);
-        }
+        const valid = filterValidSupervisions(loadedSupervisions || []);
+        setSupervisions(valid);
       } catch (e) {
         console.warn('Notice fetching supervisions on boot:', e);
       }
@@ -216,27 +212,21 @@ export default function App() {
       }
     });
 
-    // Real-time Firestore synchronization listener for supervisions
+    // Real-time Firestore synchronization listener for supervisions (per-pengawas workspace)
     const unsubscribeSupervisions = subscribeToSupervisions((liveList) => {
-      if (liveList && liveList.length > 0) {
-        const filtered = filterValidSupervisions(liveList);
-        setSupervisions(filtered);
-      }
+      const filtered = filterValidSupervisions(liveList || []);
+      setSupervisions(filtered);
     }, currentUser);
 
-    // Real-time Firestore synchronization listener for schools
+    // Real-time Firestore synchronization listener for schools (per-pengawas workspace)
     const unsubscribeSchools = subscribeToSchools((liveSchools) => {
-      if (liveSchools && liveSchools.length > 0) {
-        setSchools(liveSchools);
-      }
-    });
+      setSchools(liveSchools || []);
+    }, currentUser);
 
-    // Real-time listener for cloud sync metadata
+    // Real-time listener for cloud sync metadata (per-pengawas workspace)
     const unsubscribeSyncState = subscribeToSyncState((state) => {
-      if (state) {
-        setCloudSyncState(state);
-      }
-    });
+      setCloudSyncState(state || null);
+    }, currentUser);
 
     return () => {
       unsubscribeAuth();
@@ -248,9 +238,8 @@ export default function App() {
 
   const handleRefreshSchools = async () => {
     try {
-      const refreshed = await fetchAllSchools();
-      setSchools(refreshed);
-      saveLocalSchools(refreshed);
+      const refreshed = await fetchAllSchools(currentUser);
+      setSchools(refreshed || []);
     } catch (err) {
       console.error(err);
     }
@@ -260,7 +249,10 @@ export default function App() {
     await fbSignOut(auth);
     setCurrentUser(null);
     saveLocalUser(null);
+    setSelectedSupervision(null);
+    setSelectedSambungId(undefined);
     setActiveSupervisorOverride(null);
+    setCloudSyncState(null);
     setActiveTab('landing');
   };
 
@@ -294,11 +286,11 @@ export default function App() {
   const handleSyncToFirebase = async () => {
     try {
       setIsSyncing(true);
-      const res = await syncAllPendingLocalChangesToFirestore();
+      const res = await syncAllPendingLocalChangesToFirestore(currentUser);
       setHasPendingSync(false);
       setSyncToast({
         type: 'success',
-        message: `Sinkronisasi Berhasil! ${res.supervisionsCount} berkas supervisi, ${res.schoolsCount} sekolah, dan ${res.usersCount} pengguna berhasil tersimpan realtime di Firebase Database.`
+        message: `Sinkronisasi Berhasil! ${res.supervisionsCount} berkas supervisi, ${res.schoolsCount} sekolah, dan ${res.usersCount} pengguna berhasil tersimpan realtime di ruang kerja Firebase Anda.`
       });
       setTimeout(() => setSyncToast(null), 6000);
     } catch (err: any) {
@@ -317,29 +309,21 @@ export default function App() {
   };
 
   const handleUpdateSupervision = async (updated: Supervision) => {
-    setSupervisions(prev => {
-      const next = prev.map(s => (s.id === updated.id ? updated : s));
-      saveLocalSupervisions(next);
-      return next;
-    });
+    setSupervisions(prev => prev.map(s => (s.id === updated.id ? updated : s)));
     setSelectedSupervision(updated);
     const isOnline = getOnlineMode();
-    // Jika mode Online aktif, langsung tersimpan realtime ke Firebase Firestore & backend database.
-    // Jika mode Offline aktif, tersimpan di localStorage dan otomatis disinkronkan saat pindah ke Online.
+    // Jika mode Online aktif, langsung tersimpan realtime ke Firebase Firestore workspace pengawas & backend database.
+    // Jika mode Offline aktif, tersimpan non-destruktif di localStorage dan otomatis disinkronkan saat pindah ke Online.
     await saveSupervision(updated, isOnline);
     setHasPendingSync(!isOnline);
   };
 
   const handleCreateSupervision = async (newSup: Supervision) => {
-    setSupervisions(prev => {
-      const next = [newSup, ...prev.filter(s => s.id !== newSup.id)];
-      saveLocalSupervisions(next);
-      return next;
-    });
+    setSupervisions(prev => [newSup, ...prev.filter(s => s.id !== newSup.id)]);
     setSelectedSambungId(newSup.id);
     setActiveTab('sambung');
     const isOnline = getOnlineMode();
-    // Jika mode Online aktif, data penambahan langsung tersimpan realtime ke Firebase Firestore
+    // Jika mode Online aktif, data penambahan langsung tersimpan realtime ke Firebase Firestore workspace pengawas
     await saveSupervision(newSup, isOnline);
     setHasPendingSync(!isOnline);
   };
@@ -347,14 +331,14 @@ export default function App() {
   const handleRestoreData = async (restoredSupervisions: Supervision[], restoredSchools: School[]) => {
     if (restoredSupervisions.length > 0) {
       setSupervisions(restoredSupervisions);
-      saveLocalSupervisions(restoredSupervisions);
+      mergeLocalSupervisions(restoredSupervisions);
       for (const sup of restoredSupervisions) {
         await saveSupervision(sup);
       }
     }
     if (restoredSchools.length > 0) {
       setSchools(restoredSchools);
-      saveLocalSchools(restoredSchools);
+      mergeLocalSchools(restoredSchools);
       for (const sch of restoredSchools) {
         await updateSchool(sch.id, sch);
       }
@@ -364,37 +348,30 @@ export default function App() {
   // Multi-tenant & Role-based visibility enforcement:
   // 1. Super Admin: memiliki hak akses ke seluruh pengawas, dapat memilih workspace pengawas mana pun
   // 2. Akun Lama (Pak Kusnandar): tetap terhubung dengan 10 guru supervisi dan seluruh sekolah binaan bawaan
-  // 3. Akun Pengawas Baru: ruang kerja bersih/kosong (0 guru, 0 sekolah awal), tetap terhubung realtime ke Firebase
+  // 3. Akun Pengawas Baru: ruang kerja bersih/kosong (0 guru, 0 sekolah awal), tersimpan di ruang kerja Firebase tersendiri
   // 4. Kepala Sekolah: hanya melihat instrumen & kesimpulan sekolahnya
   // 5. Guru Mapel: hanya melihat instrumen & kesimpulan akun miliknya
   const visibleSupervisions = React.useMemo(() => {
     const deletedSupIds = new Set(getDeletedSupervisionIds());
     const deletedUids = new Set(getDeletedUserIds());
-    const deletedNames = new Set(getDeletedUserNames());
-    const cleanSupervisions = supervisions.filter(
-      s => !deletedSupIds.has(s.id) && 
-           (!s.teacherId || !deletedUids.has(s.teacherId)) &&
-           (!s.teacherName || !deletedNames.has(s.teacherName.toLowerCase().trim()))
-    );
+    const deletedNames = getDeletedUserNames();
+    const cleanSupervisions = supervisions.filter(s => {
+      if (deletedSupIds.has(s.id)) return false;
+      if (s.teacherId && deletedUids.has(s.teacherId)) return false;
+      const ownerUid = resolveRecordOwnerUid(s);
+      if (s.teacherName && isNameDeletedForWorkspace(s.teacherName, ownerUid, deletedNames)) return false;
+      return true;
+    });
 
     if (!currentUser) return cleanSupervisions;
 
     // Super Admin view
     if (currentUser.role === 'super_admin') {
       if (activeSupervisorOverride) {
-        if (isKusnandarAccount(activeSupervisorOverride)) {
-          return cleanSupervisions.filter(s => 
-            !s.supervisorId || 
-            s.supervisorId === 'admin-kusnandar' || 
-            s.supervisorId === 'user-pengawas-kusnandar' || 
-            s.createdBy === 'user-pengawas-kusnandar' ||
-            isKusnandarAccount({ displayName: s.supervisorName } as any)
-          );
-        }
-        return cleanSupervisions.filter(s => 
-          s.supervisorId === activeSupervisorOverride.uid || 
-          s.createdBy === activeSupervisorOverride.uid
-        );
+        const targetUid = isKusnandarAccount(activeSupervisorOverride)
+          ? KUSNANDAR_UID
+          : activeSupervisorOverride.uid;
+        return cleanSupervisions.filter(s => belongsToSupervisorWorkspace(s, targetUid));
       }
       return cleanSupervisions;
     }
@@ -404,7 +381,7 @@ export default function App() {
         s => s.teacherId === currentUser.uid ||
              s.teacherName.toLowerCase().trim() === currentUser.displayName?.toLowerCase().trim()
       );
-      return matched.length > 0 ? matched : cleanSupervisions.slice(0, 1);
+      return matched;
     }
 
     if (currentUser.role === 'kepsek') {
@@ -416,22 +393,9 @@ export default function App() {
       return matched;
     }
 
-    // Existing Pengawas (Pak Kusnandar): tetap melihat 10 guru binaan yang ada
-    if (isKusnandarAccount(currentUser)) {
-      return cleanSupervisions.filter(s => 
-        !s.supervisorId || 
-        s.supervisorId === 'admin-kusnandar' || 
-        s.supervisorId === 'user-pengawas-kusnandar' || 
-        s.createdBy === 'user-pengawas-kusnandar' ||
-        isKusnandarAccount({ displayName: s.supervisorName } as any)
-      );
-    }
-
-    // Newly added Pengawas: ruang kerja baru yang bersih (aplikasi baru yg kosong)
-    // Hanya menampilkan data yang ditambahkan oleh pengawas ini
-    return cleanSupervisions.filter(
-      s => s.supervisorId === currentUser.uid || s.createdBy === currentUser.uid
-    );
+    // Pengawas (Pak Kusnandar maupun Pengawas lainnya): terisolasi penuh ke ruang kerjanya masing-masing
+    const ownerUid = isKusnandarAccount(currentUser) ? KUSNANDAR_UID : currentUser.uid;
+    return cleanSupervisions.filter(s => belongsToSupervisorWorkspace(s, ownerUid));
   }, [supervisions, currentUser, activeSupervisorOverride]);
 
   const visibleSchools = React.useMemo(() => {
@@ -439,14 +403,10 @@ export default function App() {
 
     if (currentUser.role === 'super_admin') {
       if (activeSupervisorOverride) {
-        if (isKusnandarAccount(activeSupervisorOverride)) {
-          return schools.filter(s => {
-            const otherSup = s.supervisorId && s.supervisorId !== 'user-pengawas-kusnandar' && s.supervisorId !== 'admin-kusnandar' && s.supervisorId !== activeSupervisorOverride.uid;
-            if (otherSup) return false;
-            return !s.createdBy || s.createdBy === 'system' || s.createdBy === 'user-pengawas-kusnandar' || s.createdBy === activeSupervisorOverride.uid;
-          });
-        }
-        return schools.filter(s => s.createdBy === activeSupervisorOverride.uid || s.supervisorId === activeSupervisorOverride.uid);
+        const targetUid = isKusnandarAccount(activeSupervisorOverride)
+          ? KUSNANDAR_UID
+          : activeSupervisorOverride.uid;
+        return schools.filter(s => belongsToSupervisorWorkspace(s, targetUid));
       }
       return schools;
     }
@@ -460,17 +420,9 @@ export default function App() {
       return schools.filter(s => s.id === currentUser.schoolId);
     }
 
-    // Existing Pengawas (Pak Kusnandar): hanya melihat sekolah binaan miliknya (tidak melihat sekolah pengawas lain)
-    if (isKusnandarAccount(currentUser)) {
-      return schools.filter(s => {
-        const otherSup = s.supervisorId && s.supervisorId !== 'user-pengawas-kusnandar' && s.supervisorId !== 'admin-kusnandar' && s.supervisorId !== currentUser.uid;
-        if (otherSup) return false;
-        return !s.createdBy || s.createdBy === 'system' || s.createdBy === 'user-pengawas-kusnandar' || s.createdBy === currentUser.uid;
-      });
-    }
-
-    // Pengawas lainnya: terisolasi penuh, hanya melihat sekolah binaan miliknya sendiri
-    return schools.filter(s => s.createdBy === currentUser.uid || s.supervisorId === currentUser.uid);
+    // Setiap Pengawas terisolasi penuh pada sekolah binaan ruang kerjanya masing-masing
+    const ownerUid = isKusnandarAccount(currentUser) ? KUSNANDAR_UID : currentUser.uid;
+    return schools.filter(s => belongsToSupervisorWorkspace(s, ownerUid));
   }, [schools, currentUser, activeSupervisorOverride]);
 
   const isAdminOrPengawas = currentUser?.role === 'admin' || (currentUser?.role as string) === 'pengawas' || currentUser?.role === 'super_admin';
@@ -604,8 +556,9 @@ export default function App() {
                     id: deletedId,
                     teacherId: target?.teacherId,
                     teacherName: target?.teacherName,
+                    supervisorId: target?.supervisorWorkspaceId || target?.supervisorId,
                   });
-                  const updated = await fetchSupervisions();
+                  const updated = await fetchSupervisions(currentUser);
                   setSupervisions(filterValidSupervisions(updated));
                 }}
                 onSyncToFirebase={handleSyncToFirebase}
@@ -627,8 +580,9 @@ export default function App() {
                     id: deletedId,
                     teacherId: target?.teacherId,
                     teacherName: target?.teacherName,
+                    supervisorId: target?.supervisorWorkspaceId || target?.supervisorId,
                   });
-                  const updated = await fetchSupervisions();
+                  const updated = await fetchSupervisions(currentUser);
                   setSupervisions(filterValidSupervisions(updated));
                 }}
                 onSyncToFirebase={handleSyncToFirebase}
@@ -668,7 +622,7 @@ export default function App() {
                 allSupervisions={supervisions}
                 activeSupervisorOverride={activeSupervisorOverride}
                 onUserAdded={async () => {
-                  const updated = await fetchSupervisions();
+                  const updated = await fetchSupervisions(currentUser);
                   setSupervisions(filterValidSupervisions(updated));
                 }}
                 onUserUpdated={async (updatedUser) => {
@@ -676,11 +630,11 @@ export default function App() {
                     setCurrentUser(updatedUser);
                     saveLocalUser(updatedUser);
                   }
-                  const updated = await fetchSupervisions();
+                  const updated = await fetchSupervisions(currentUser);
                   setSupervisions(filterValidSupervisions(updated));
                 }}
                 onUserDeleted={async () => {
-                  const updated = await fetchSupervisions();
+                  const updated = await fetchSupervisions(currentUser);
                   setSupervisions(filterValidSupervisions(updated));
                 }}
               />
@@ -698,6 +652,10 @@ export default function App() {
         onClose={() => setIsAuthModalOpen(false)}
         schools={schools}
         onAuthSuccess={(profile) => {
+          setSelectedSupervision(null);
+          setSelectedSambungId(undefined);
+          setActiveSupervisorOverride(null);
+          setCloudSyncState(null);
           setCurrentUser(profile);
           saveLocalUser(profile);
           if (profile.role === 'super_admin') {
@@ -782,8 +740,8 @@ export default function App() {
       <LocalStorageBackupModal
         isOpen={isLocalStorageModalOpen}
         onClose={() => setIsLocalStorageModalOpen(false)}
-        supervisions={supervisions}
-        schools={schools}
+        supervisions={visibleSupervisions}
+        schools={visibleSchools}
         currentUser={currentUser}
         onRestoreData={handleRestoreData}
       />

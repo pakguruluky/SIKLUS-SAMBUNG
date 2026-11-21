@@ -1,6 +1,9 @@
 import { School, UserProfile } from '../types';
 
-// 11 Official Schools
+export const KUSNANDAR_SUPERVISOR_ID = 'user-pengawas-kusnandar';
+export const KUSNANDAR_SUPERVISOR_NAME = 'Kusnandar, M.Si';
+
+// 11 Official Schools (Milik Ruang Kerja Pengawas Pembina Kusnandar, M.Si)
 export const DEFAULT_SCHOOLS: School[] = [
   {
     id: 'sch-sman2',
@@ -10,7 +13,10 @@ export const DEFAULT_SCHOOLS: School[] = [
     principalName: 'Nevy Vilanti Kusdinan, M.Pd.',
     accreditation: 'A',
     createdAt: '2025-01-01T00:00:00.000Z',
-    createdBy: 'system'
+    createdBy: KUSNANDAR_SUPERVISOR_ID,
+    supervisorId: KUSNANDAR_SUPERVISOR_ID,
+    supervisorWorkspaceId: KUSNANDAR_SUPERVISOR_ID,
+    supervisorName: KUSNANDAR_SUPERVISOR_NAME
   },
   {
     id: 'sch-sman4',
@@ -20,7 +26,10 @@ export const DEFAULT_SCHOOLS: School[] = [
     principalName: 'Yulianti Rosdian, M.Pd.',
     accreditation: 'A',
     createdAt: '2025-01-01T00:00:00.000Z',
-    createdBy: 'system'
+    createdBy: KUSNANDAR_SUPERVISOR_ID,
+    supervisorId: KUSNANDAR_SUPERVISOR_ID,
+    supervisorWorkspaceId: KUSNANDAR_SUPERVISOR_ID,
+    supervisorName: KUSNANDAR_SUPERVISOR_NAME
   },
   {
     id: 'sch-ummul-quro',
@@ -30,7 +39,10 @@ export const DEFAULT_SCHOOLS: School[] = [
     principalName: 'Hildawati, S.T.',
     accreditation: 'A',
     createdAt: '2025-01-01T00:00:00.000Z',
-    createdBy: 'system'
+    createdBy: KUSNANDAR_SUPERVISOR_ID,
+    supervisorId: KUSNANDAR_SUPERVISOR_ID,
+    supervisorWorkspaceId: KUSNANDAR_SUPERVISOR_ID,
+    supervisorName: KUSNANDAR_SUPERVISOR_NAME
   },
   {
     id: 'sch-yphb',
@@ -40,7 +52,10 @@ export const DEFAULT_SCHOOLS: School[] = [
     principalName: 'Joko Pitoyo, S.Pd., M.M.',
     accreditation: 'A',
     createdAt: '2025-01-01T00:00:00.000Z',
-    createdBy: 'system'
+    createdBy: KUSNANDAR_SUPERVISOR_ID,
+    supervisorId: KUSNANDAR_SUPERVISOR_ID,
+    supervisorWorkspaceId: KUSNANDAR_SUPERVISOR_ID,
+    supervisorName: KUSNANDAR_SUPERVISOR_NAME
   },
   {
     id: 'sch-rimba-madya',
@@ -50,7 +65,10 @@ export const DEFAULT_SCHOOLS: School[] = [
     principalName: 'Pajar Hariyanto, S.Pd.',
     accreditation: 'A',
     createdAt: '2025-01-01T00:00:00.000Z',
-    createdBy: 'system'
+    createdBy: KUSNANDAR_SUPERVISOR_ID,
+    supervisorId: KUSNANDAR_SUPERVISOR_ID,
+    supervisorWorkspaceId: KUSNANDAR_SUPERVISOR_ID,
+    supervisorName: KUSNANDAR_SUPERVISOR_NAME
   },
   {
     id: 'sch-yza-1',
@@ -60,7 +78,10 @@ export const DEFAULT_SCHOOLS: School[] = [
     principalName: 'TB. Agung Hartawan, SE',
     accreditation: 'B',
     createdAt: '2025-01-01T00:00:00.000Z',
-    createdBy: 'system'
+    createdBy: KUSNANDAR_SUPERVISOR_ID,
+    supervisorId: KUSNANDAR_SUPERVISOR_ID,
+    supervisorWorkspaceId: KUSNANDAR_SUPERVISOR_ID,
+    supervisorName: KUSNANDAR_SUPERVISOR_NAME
   },
   {
     id: 'sch-pgri-1',
@@ -70,7 +91,10 @@ export const DEFAULT_SCHOOLS: School[] = [
     principalName: 'Evi Jalinar, S.Pd., M.Si',
     accreditation: 'A',
     createdAt: '2025-01-01T00:00:00.000Z',
-    createdBy: 'system'
+    createdBy: KUSNANDAR_SUPERVISOR_ID,
+    supervisorId: KUSNANDAR_SUPERVISOR_ID,
+    supervisorWorkspaceId: KUSNANDAR_SUPERVISOR_ID,
+    supervisorName: KUSNANDAR_SUPERVISOR_NAME
   },
   {
     id: 'sch-bhakti-insani',
@@ -80,7 +104,10 @@ export const DEFAULT_SCHOOLS: School[] = [
     principalName: 'Kusmiati, Ph.D.',
     accreditation: 'B',
     createdAt: '2025-01-01T00:00:00.000Z',
-    createdBy: 'system'
+    createdBy: KUSNANDAR_SUPERVISOR_ID,
+    supervisorId: KUSNANDAR_SUPERVISOR_ID,
+    supervisorWorkspaceId: KUSNANDAR_SUPERVISOR_ID,
+    supervisorName: KUSNANDAR_SUPERVISOR_NAME
   },
   {
     id: 'sch-yasih',
@@ -90,7 +117,10 @@ export const DEFAULT_SCHOOLS: School[] = [
     principalName: 'M. Fahmi Fauzan Ihsan, S.Pd',
     accreditation: 'B',
     createdAt: '2025-01-01T00:00:00.000Z',
-    createdBy: 'system'
+    createdBy: KUSNANDAR_SUPERVISOR_ID,
+    supervisorId: KUSNANDAR_SUPERVISOR_ID,
+    supervisorWorkspaceId: KUSNANDAR_SUPERVISOR_ID,
+    supervisorName: KUSNANDAR_SUPERVISOR_NAME
   },
   {
     id: 'sch-muhammadiyah',
@@ -100,7 +130,10 @@ export const DEFAULT_SCHOOLS: School[] = [
     principalName: 'Nurmawaji, S.Pd.',
     accreditation: 'B',
     createdAt: '2025-01-01T00:00:00.000Z',
-    createdBy: 'system'
+    createdBy: KUSNANDAR_SUPERVISOR_ID,
+    supervisorId: KUSNANDAR_SUPERVISOR_ID,
+    supervisorWorkspaceId: KUSNANDAR_SUPERVISOR_ID,
+    supervisorName: KUSNANDAR_SUPERVISOR_NAME
   },
   {
     id: 'sch-ananda',
@@ -110,9 +143,19 @@ export const DEFAULT_SCHOOLS: School[] = [
     principalName: 'Maria, M.Psi.',
     accreditation: 'B',
     createdAt: '2025-01-01T00:00:00.000Z',
-    createdBy: 'system'
+    createdBy: KUSNANDAR_SUPERVISOR_ID,
+    supervisorId: KUSNANDAR_SUPERVISOR_ID,
+    supervisorWorkspaceId: KUSNANDAR_SUPERVISOR_ID,
+    supervisorName: KUSNANDAR_SUPERVISOR_NAME
   }
 ];
+
+const KUSNANDAR_OWNER_META = {
+  supervisorId: KUSNANDAR_SUPERVISOR_ID,
+  supervisorWorkspaceId: KUSNANDAR_SUPERVISOR_ID,
+  supervisorName: KUSNANDAR_SUPERVISOR_NAME,
+  createdBy: KUSNANDAR_SUPERVISOR_ID,
+} as const;
 
 // Default Real Accounts per User Request
 export const DEFAULT_USERS: UserProfile[] = [
@@ -130,15 +173,16 @@ export const DEFAULT_USERS: UserProfile[] = [
     createdAt: '2025-01-01T00:00:00.000Z'
   },
   {
-    uid: 'user-pengawas-kusnandar',
+    uid: KUSNANDAR_SUPERVISOR_ID,
     username: 'pengawas',
     password: 'pakkus',
     email: 'pengawas@siklus-sambung.sch.id',
-    displayName: 'Kusnandar, M.Si',
+    displayName: KUSNANDAR_SUPERVISOR_NAME,
     role: 'admin',
     nip: '19680512 199403 1 004',
     phone: '081288990011',
     wilayahTugas: 'Cabang Dinas Pendidikan Wilayah II',
+    ...KUSNANDAR_OWNER_META,
     approvalStatus: 'approved',
     createdAt: '2025-01-01T00:00:00.000Z'
   },
@@ -153,6 +197,7 @@ export const DEFAULT_USERS: UserProfile[] = [
     schoolName: 'SMAN 4 Bogor',
     nip: '19720415 199802 2 001',
     phone: '081299887766',
+    ...KUSNANDAR_OWNER_META,
     approvalStatus: 'approved',
     createdAt: '2025-01-01T00:00:00.000Z'
   },
@@ -168,6 +213,7 @@ export const DEFAULT_USERS: UserProfile[] = [
     subject: 'Fisika',
     nip: '19840512 200801 2 007',
     phone: '081377665544',
+    ...KUSNANDAR_OWNER_META,
     approvalStatus: 'approved',
     createdAt: '2025-01-01T00:00:00.000Z'
   },
@@ -183,6 +229,7 @@ export const DEFAULT_USERS: UserProfile[] = [
     subject: 'Ekonomi',
     nip: '19851120 200902 2 008',
     phone: '081388776655',
+    ...KUSNANDAR_OWNER_META,
     approvalStatus: 'approved',
     createdAt: '2025-01-01T00:00:00.000Z'
   },
@@ -198,6 +245,7 @@ export const DEFAULT_USERS: UserProfile[] = [
     subject: 'Bahasa Indonesia',
     nip: '19890412 201402 2 003',
     phone: '081234567890',
+    ...KUSNANDAR_OWNER_META,
     approvalStatus: 'approved',
     createdAt: '2025-01-01T00:00:00.000Z'
   },
@@ -213,6 +261,7 @@ export const DEFAULT_USERS: UserProfile[] = [
     subject: 'Kimia',
     nip: '19860715 201001 2 011',
     phone: '081298765432',
+    ...KUSNANDAR_OWNER_META,
     approvalStatus: 'approved',
     createdAt: '2025-01-01T00:00:00.000Z'
   },
@@ -228,6 +277,7 @@ export const DEFAULT_USERS: UserProfile[] = [
     subject: 'Sejarah',
     nip: '19910318 201503 2 006',
     phone: '081356789012',
+    ...KUSNANDAR_OWNER_META,
     approvalStatus: 'approved',
     createdAt: '2025-01-01T00:00:00.000Z'
   },
@@ -243,6 +293,7 @@ export const DEFAULT_USERS: UserProfile[] = [
     subject: 'Sejarah',
     nip: '19920824 201901 1 005',
     phone: '081323456789',
+    ...KUSNANDAR_OWNER_META,
     approvalStatus: 'approved',
     createdAt: '2025-01-01T00:00:00.000Z'
   },
@@ -258,6 +309,7 @@ export const DEFAULT_USERS: UserProfile[] = [
     subject: 'Ekonomi',
     nip: '19880914 201201 2 004',
     phone: '081278901234',
+    ...KUSNANDAR_OWNER_META,
     approvalStatus: 'approved',
     createdAt: '2025-01-01T00:00:00.000Z'
   },
@@ -273,6 +325,7 @@ export const DEFAULT_USERS: UserProfile[] = [
     subject: 'Fisika',
     nip: '19930217 201801 2 009',
     phone: '081289012345',
+    ...KUSNANDAR_OWNER_META,
     approvalStatus: 'approved',
     createdAt: '2025-01-01T00:00:00.000Z'
   },
@@ -288,6 +341,7 @@ export const DEFAULT_USERS: UserProfile[] = [
     subject: 'Ekonomi',
     nip: '19870622 201101 2 012',
     phone: '081390123456',
+    ...KUSNANDAR_OWNER_META,
     approvalStatus: 'approved',
     createdAt: '2025-01-01T00:00:00.000Z'
   },
@@ -303,6 +357,7 @@ export const DEFAULT_USERS: UserProfile[] = [
     subject: 'Penjasorkes',
     nip: '19830509 200604 1 008',
     phone: '081212345678',
+    ...KUSNANDAR_OWNER_META,
     approvalStatus: 'approved',
     createdAt: '2025-01-01T00:00:00.000Z'
   },
@@ -318,6 +373,7 @@ export const DEFAULT_USERS: UserProfile[] = [
     subject: 'Fisika',
     nip: '19901205 201403 2 007',
     phone: '081223456789',
+    ...KUSNANDAR_OWNER_META,
     approvalStatus: 'approved',
     createdAt: '2025-01-01T00:00:00.000Z'
   },
@@ -333,6 +389,7 @@ export const DEFAULT_USERS: UserProfile[] = [
     subject: 'Ekonomi',
     nip: '19940830 202012 2 010',
     phone: '081334567890',
+    ...KUSNANDAR_OWNER_META,
     approvalStatus: 'approved',
     createdAt: '2025-01-01T00:00:00.000Z'
   },
@@ -348,6 +405,7 @@ export const DEFAULT_USERS: UserProfile[] = [
     subject: 'PKn',
     nip: '19891111 201502 1 003',
     phone: '081345678901',
+    ...KUSNANDAR_OWNER_META,
     approvalStatus: 'approved',
     createdAt: '2025-01-01T00:00:00.000Z'
   },
@@ -363,6 +421,7 @@ export const DEFAULT_USERS: UserProfile[] = [
     subject: 'Kimia',
     nip: '19950125 202104 2 006',
     phone: '081256789012',
+    ...KUSNANDAR_OWNER_META,
     approvalStatus: 'approved',
     createdAt: '2025-01-01T00:00:00.000Z'
   },
@@ -378,6 +437,7 @@ export const DEFAULT_USERS: UserProfile[] = [
     subject: 'Ekonomi',
     nip: '19860314 201003 2 005',
     phone: '081267890123',
+    ...KUSNANDAR_OWNER_META,
     approvalStatus: 'approved',
     createdAt: '2025-01-01T00:00:00.000Z'
   },
@@ -393,6 +453,7 @@ export const DEFAULT_USERS: UserProfile[] = [
     subject: 'Bahasa Sunda',
     nip: '19860111 201101 1 002',
     phone: '081234567899',
+    ...KUSNANDAR_OWNER_META,
     approvalStatus: 'approved',
     createdAt: '2026-11-02T06:05:38.367Z'
   }

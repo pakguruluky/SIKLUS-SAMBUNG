@@ -58,13 +58,43 @@ export function saveSingleLocalSupervision(supervision: Supervision): void {
     let updated: Supervision[];
     if (index >= 0) {
       updated = [...existing];
-      updated[index] = { ...updated[index], ...supervision, updatedAt: new Date().toISOString() };
+      updated[index] = { ...updated[index], ...supervision, updatedAt: supervision.updatedAt || new Date().toISOString() };
     } else {
-      updated = [{ ...supervision, updatedAt: new Date().toISOString() }, ...existing];
+      updated = [{ ...supervision, updatedAt: supervision.updatedAt || new Date().toISOString() }, ...existing];
     }
     saveLocalSupervisions(updated);
   } catch (err) {
     console.warn('[LocalStorage] Error saving single supervision:', err);
+  }
+}
+
+/**
+ * Merge supervisions into local storage without wiping other pengawas's cached records
+ */
+export function mergeLocalSupervisions(incoming: Supervision[]): Supervision[] {
+  if (!isBrowser) return incoming;
+  try {
+    const existing = loadLocalSupervisions() || [];
+    const map = new Map<string, Supervision>();
+    existing.forEach(s => map.set(s.id, s));
+    incoming.forEach(s => {
+      const prev = map.get(s.id);
+      if (!prev) {
+        map.set(s.id, s);
+      } else {
+        const incTime = s.updatedAt ? new Date(s.updatedAt).getTime() : 0;
+        const prevTime = prev.updatedAt ? new Date(prev.updatedAt).getTime() : 0;
+        if (incTime >= prevTime || !prev.updatedAt) {
+          map.set(s.id, s);
+        }
+      }
+    });
+    const merged = Array.from(map.values());
+    saveLocalSupervisions(merged);
+    return merged;
+  } catch (err) {
+    console.warn('[LocalStorage] Error merging supervisions:', err);
+    return incoming;
   }
 }
 
@@ -90,6 +120,52 @@ export function saveLocalSchools(schools: School[]): void {
     localStorage.setItem(STORAGE_KEYS.SCHOOLS, JSON.stringify(schools));
   } catch (err) {
     console.warn('[LocalStorage] Error saving schools:', err);
+  }
+}
+
+export function saveSingleLocalSchool(school: School): void {
+  if (!isBrowser) return;
+  try {
+    const existing = loadLocalSchools() || [];
+    const idx = existing.findIndex(s => s.id === school.id);
+    if (idx >= 0) {
+      existing[idx] = { ...existing[idx], ...school };
+    } else {
+      existing.push(school);
+    }
+    saveLocalSchools(existing);
+  } catch (err) {
+    console.warn('[LocalStorage] Error saving single school:', err);
+  }
+}
+
+/**
+ * Merge schools into local storage without wiping other pengawas's cached schools
+ */
+export function mergeLocalSchools(incoming: School[]): School[] {
+  if (!isBrowser) return incoming;
+  try {
+    const existing = loadLocalSchools() || [];
+    const map = new Map<string, School>();
+    existing.forEach(s => map.set(s.id, s));
+    incoming.forEach(s => {
+      const prev = map.get(s.id);
+      if (!prev) {
+        map.set(s.id, s);
+      } else {
+        const incTime = s.updatedAt ? new Date(s.updatedAt).getTime() : 0;
+        const prevTime = prev.updatedAt ? new Date(prev.updatedAt).getTime() : 0;
+        if (incTime >= prevTime || !prev.updatedAt) {
+          map.set(s.id, s);
+        }
+      }
+    });
+    const merged = Array.from(map.values());
+    saveLocalSchools(merged);
+    return merged;
+  } catch (err) {
+    console.warn('[LocalStorage] Error merging schools:', err);
+    return incoming;
   }
 }
 

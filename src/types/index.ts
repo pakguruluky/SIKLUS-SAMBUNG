@@ -12,6 +12,7 @@ export interface School {
   updatedAt?: string;
   supervisorName?: string;
   supervisorId?: string;
+  supervisorWorkspaceId?: string;
 }
 
 export interface UserProfile {
@@ -67,6 +68,7 @@ export interface Supervision {
   status: 'draft' | 'submitted' | 'in_progress' | 'completed';
   supervisorId: string;
   supervisorName: string;
+  supervisorWorkspaceId?: string;
   supervisorRole: Role;
   createdAt: string;
   updatedAt: string;

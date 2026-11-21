@@ -138,7 +138,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
   const loadUsers = async () => {
     setLoading(true);
     try {
-      const all = await fetchAllUsers();
+      const all = await fetchAllUsers(currentUser);
       setUsers(all);
     } catch (err) {
       console.warn('Notice loading users:', err);
@@ -148,17 +148,17 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
   };
 
   useEffect(() => {
-    // Real-time subscription to Firebase Firestore users + local storage fallback
+    // Real-time subscription to Firebase Firestore users (scoped per pengawas workspace, global for super admin)
     const unsubscribe = subscribeToUsers((liveUsers) => {
       setUsers(liveUsers);
       setLoading(false);
-    });
+    }, currentUser);
 
     // Also run an initial authoritative fetch when online
     if (getOnlineMode()) {
-      fetchAllUsers()
+      fetchAllUsers(currentUser)
         .then((all) => {
-          if (all && all.length > 0) setUsers(all);
+          setUsers(all || []);
         })
         .catch(() => {})
         .finally(() => setLoading(false));
@@ -189,7 +189,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
       window.removeEventListener('pakkus-local-data-modified', handleModified);
       window.removeEventListener('pakkus-sync-completed', handleSynced);
     };
-  }, []);
+  }, [currentUser?.uid]);
 
   const handleToggleOnlineMode = async () => {
     if (isTogglingMode) return;

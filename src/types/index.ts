@@ -28,6 +28,9 @@ export interface UserProfile {
   subject?: string;
   wilayahTugas?: string;
   supervisorWorkspaceId?: string;
+  supervisorId?: string;
+  supervisorName?: string;
+  createdBy?: string;
   approvalStatus?: 'approved' | 'pending' | 'rejected';
   createdAt: string;
   updatedAt?: string;

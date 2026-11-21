@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { School, UserProfile } from '../types';
 import { Building2, Plus, Edit2, Check, X, Search, ShieldCheck, MapPin, School as SchoolIcon, RefreshCw, CheckCircle2 } from 'lucide-react';
-import { addSchool, updateSchool, resetToDefaultSchools } from '../services/firebase';
+import { addSchool, updateSchool, resetToDefaultSchools, isKusnandarAccount } from '../services/firebase';
 
 interface SchoolManagementProps {
   schools: School[];
@@ -141,15 +141,17 @@ export const SchoolManagement: React.FC<SchoolManagementProps> = ({
         </div>
 
         <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
-          <button
-            onClick={handleSyncDefaults}
-            disabled={syncingDefaults}
-            className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-indigo-200 bg-indigo-50/80 hover:bg-indigo-100 text-indigo-700 font-semibold text-xs sm:text-sm transition-all disabled:opacity-50"
-            title="Sinkronkan seluruh 7 SMA Binaan Resmi sesuai daftar tabel"
-          >
-            <RefreshCw className={`w-4 h-4 ${syncingDefaults ? 'animate-spin' : ''}`} />
-            <span>{syncingDefaults ? 'Menyinkronkan...' : 'Sinkronkan 7 SMA Resmi'}</span>
-          </button>
+          {(currentUser.role === 'super_admin' || isKusnandarAccount(currentUser)) && (
+            <button
+              onClick={handleSyncDefaults}
+              disabled={syncingDefaults}
+              className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-indigo-200 bg-indigo-50/80 hover:bg-indigo-100 text-indigo-700 font-semibold text-xs sm:text-sm transition-all disabled:opacity-50"
+              title="Sinkronkan seluruh 7 SMA Binaan Resmi sesuai daftar tabel"
+            >
+              <RefreshCw className={`w-4 h-4 ${syncingDefaults ? 'animate-spin' : ''}`} />
+              <span>{syncingDefaults ? 'Menyinkronkan...' : 'Sinkronkan 7 SMA Resmi'}</span>
+            </button>
+          )}
 
           <button
             onClick={handleOpenAdd}
@@ -236,8 +238,8 @@ export const SchoolManagement: React.FC<SchoolManagementProps> = ({
               ))}
               {filteredSchools.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-slate-400">
-                    Belum ada sekolah target yang sesuai dengan pencarian.
+                  <td colSpan={7} className="py-8 text-center text-slate-400">
+                    Belum ada sekolah binaan yang terdaftar. Klik "Tambah Sekolah Target" untuk menambahkan sekolah binaan Anda.
                   </td>
                 </tr>
               )}

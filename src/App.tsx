@@ -440,9 +440,13 @@ export default function App() {
     if (currentUser.role === 'super_admin') {
       if (activeSupervisorOverride) {
         if (isKusnandarAccount(activeSupervisorOverride)) {
-          return schools.filter(s => !s.createdBy || s.createdBy === 'system' || s.createdBy === 'user-pengawas-kusnandar');
+          return schools.filter(s => {
+            const otherSup = s.supervisorId && s.supervisorId !== 'user-pengawas-kusnandar' && s.supervisorId !== 'admin-kusnandar' && s.supervisorId !== activeSupervisorOverride.uid;
+            if (otherSup) return false;
+            return !s.createdBy || s.createdBy === 'system' || s.createdBy === 'user-pengawas-kusnandar' || s.createdBy === activeSupervisorOverride.uid;
+          });
         }
-        return schools.filter(s => s.createdBy === activeSupervisorOverride.uid);
+        return schools.filter(s => s.createdBy === activeSupervisorOverride.uid || s.supervisorId === activeSupervisorOverride.uid);
       }
       return schools;
     }
@@ -456,13 +460,17 @@ export default function App() {
       return schools.filter(s => s.id === currentUser.schoolId);
     }
 
-    // Existing Pengawas (Pak Kusnandar): melihat sekolah binaan resmi yang sudah ada
+    // Existing Pengawas (Pak Kusnandar): hanya melihat sekolah binaan miliknya (tidak melihat sekolah pengawas lain)
     if (isKusnandarAccount(currentUser)) {
-      return schools.filter(s => !s.createdBy || s.createdBy === 'system' || s.createdBy === 'user-pengawas-kusnandar' || s.createdBy === currentUser.uid);
+      return schools.filter(s => {
+        const otherSup = s.supervisorId && s.supervisorId !== 'user-pengawas-kusnandar' && s.supervisorId !== 'admin-kusnandar' && s.supervisorId !== currentUser.uid;
+        if (otherSup) return false;
+        return !s.createdBy || s.createdBy === 'system' || s.createdBy === 'user-pengawas-kusnandar' || s.createdBy === currentUser.uid;
+      });
     }
 
-    // Newly added Pengawas: bersih/kosong, melihat sekolah binaan miliknya sendiri
-    return schools.filter(s => s.createdBy === currentUser.uid);
+    // Pengawas lainnya: terisolasi penuh, hanya melihat sekolah binaan miliknya sendiri
+    return schools.filter(s => s.createdBy === currentUser.uid || s.supervisorId === currentUser.uid);
   }, [schools, currentUser, activeSupervisorOverride]);
 
   const isAdminOrPengawas = currentUser?.role === 'admin' || (currentUser?.role as string) === 'pengawas' || currentUser?.role === 'super_admin';
@@ -655,6 +663,10 @@ export default function App() {
               <UserManagementView
                 currentUser={currentUser}
                 schools={visibleSchools}
+                allSchools={schools}
+                supervisions={visibleSupervisions}
+                allSupervisions={supervisions}
+                activeSupervisorOverride={activeSupervisorOverride}
                 onUserAdded={async () => {
                   const updated = await fetchSupervisions();
                   setSupervisions(filterValidSupervisions(updated));

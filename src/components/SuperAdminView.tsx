@@ -27,6 +27,7 @@ import {
 import { UserProfile, School, Supervision, Role } from '../types';
 import { 
   fetchAllUsers, 
+  subscribeToUsers,
   addUserAccount, 
   updateUserAccount, 
   deleteUserAccount,
@@ -83,7 +84,12 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
   };
 
   useEffect(() => {
+    const unsub = subscribeToUsers((liveUsers) => {
+      setUsers(liveUsers);
+      setLoading(false);
+    });
     loadAllPengawas();
+    return () => unsub();
   }, []);
 
   // Filter only pengawas and admin accounts
@@ -128,9 +134,13 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
   const getSchoolCountFor = (p: UserProfile) => {
     if (p.role === 'super_admin') return schools.length;
     if (isKusnandarAccount(p)) {
-      return schools.length;
+      return schools.filter(s => {
+        const otherSup = s.supervisorId && s.supervisorId !== 'user-pengawas-kusnandar' && s.supervisorId !== 'admin-kusnandar' && s.supervisorId !== p.uid;
+        if (otherSup) return false;
+        return !s.createdBy || s.createdBy === 'system' || s.createdBy === 'user-pengawas-kusnandar' || s.createdBy === p.uid;
+      }).length;
     }
-    return schools.filter(s => s.createdBy === p.uid).length;
+    return schools.filter(s => s.createdBy === p.uid || s.supervisorId === p.uid).length;
   };
 
   const handleOpenAddModal = () => {
